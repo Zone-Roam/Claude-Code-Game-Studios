@@ -1,0 +1,401 @@
+<!-- PROTOTYPE - NOT FOR PRODUCTION -->
+<!-- Question: 每消一对，剩下的块按“阵法”整体挪动（向左收拢 / 向上推进 / 向两翼分开），会不会让连连看从“找”变成“想”，不再无聊？ -->
+<!-- Date: 2026-10-26 -->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>阵法连连看 · 原型</title>
+<style>
+  :root { --bg:#f6ecd6; --ink:#2a2018; --muted:#7d6a52; --red:#b8322a; --gold:#c99a2e; --edge:#d8c3a0; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); overflow:hidden;
+    font-family:"STKaiti","KaiTi","Kaiti SC",-apple-system,"PingFang SC","Microsoft YaHei",serif;
+    touch-action:manipulation; user-select:none; -webkit-user-select:none; }
+  #app { height:100%; display:flex; flex-direction:column; align-items:center;
+    padding:10px 12px calc(12px + env(safe-area-inset-bottom)); }
+  #top { width:100%; max-width:480px; }
+  #bar { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  #round { font-size:20px; font-weight:700; color:var(--red); }
+  #time { font-size:36px; font-weight:800; font-variant-numeric:tabular-nums; min-width:2.4em; text-align:center; }
+  #time.low { color:var(--red); }
+  #left { font-size:18px; color:var(--muted); }
+  #rule { margin:4px 0 0; font-size:17px; text-align:center; }
+  #rule b { color:var(--red); font-size:22px; }
+  #stage { position:relative; margin-top:8px; }
+  #board { position:relative; }
+  #board.shake { animation:bshake .25s; }
+  .tile { position:absolute; display:flex; align-items:center; justify-content:center; border-radius:12px;
+    border:2px solid var(--edge); box-shadow:0 3px 0 var(--edge); background:#fffaf0;
+    font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif; line-height:1;
+    transition:left .2s ease-out, top .2s ease-out, transform .12s, opacity .2s; cursor:pointer; }
+  .tile.hero { border-color:var(--gold); box-shadow:0 3px 0 var(--gold); background:#fff3d6; }
+  .face { width:82%; height:82%; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:"STKaiti","KaiTi","Kaiti SC",serif; font-weight:800; }
+  .tile.sel { border-color:var(--red); box-shadow:0 0 0 4px var(--red); transform:translateY(-3px); }
+  .tile.shake { animation:shake .3s; }
+  .tile.gone { opacity:0; transform:scale(.4) rotate(-12deg); pointer-events:none; }
+  @keyframes shake { 25% { transform:translateX(-6px); } 75% { transform:translateX(6px); } }
+  @keyframes bshake { 25% { transform:translate(-3px,2px); } 50% { transform:translate(3px,-2px); } 75% { transform:translate(-2px,-1px); } }
+  #lines { position:absolute; left:0; top:0; pointer-events:none; overflow:visible; }
+  #combo, #say { z-index:5; }
+  #combo { position:absolute; left:50%; top:42%; transform:translate(-50%,-50%) scale(.6); font-size:44px; font-weight:900;
+    color:var(--red); text-shadow:0 2px 0 #fff, 0 0 12px rgba(255,255,255,.9); opacity:0; pointer-events:none;
+    white-space:nowrap; transition:opacity .15s, transform .15s; }
+  #combo.on { opacity:1; transform:translate(-50%,-50%) scale(1); }
+  #say { position:absolute; left:4%; right:4%; top:6%; display:flex; gap:10px; align-items:center; padding:10px 12px;
+    background:rgba(42,32,24,.93); color:#fff; border-radius:14px; pointer-events:none; opacity:0; transform:translateY(-8px);
+    transition:opacity .12s, transform .12s; }
+  #say.on { opacity:1; transform:none; }
+  #say .face { width:52px; height:52px; flex:none; font-size:30px; }
+  #say .who { font-size:15px; color:#f0c96a; }
+  #say .text { font-size:21px; line-height:1.35; font-weight:700; }
+  .ov { position:fixed; inset:0; background:rgba(40,28,16,.55); display:none; align-items:center; justify-content:center; padding:16px; z-index:10; }
+  .ov.on { display:flex; }
+  .card { width:100%; max-width:360px; background:#fffaf0; border-radius:18px; padding:22px 20px; text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.25); border:2px solid var(--gold); }
+  .card h1 { margin:0; font-size:22px; color:var(--red); }
+  .card h2 { margin:6px 0 10px; font-size:28px; }
+  .card p { margin:6px 0; font-size:18px; }
+  .card .big { font-size:24px; font-weight:800; color:var(--red); }
+  .card .muted { color:var(--muted); font-size:14px; }
+  .card ul { list-style:none; padding:0; margin:10px 0 0; font-size:13px; color:var(--muted); max-height:110px; overflow:auto; text-align:left; }
+  .btns { display:flex; gap:10px; margin-top:16px; }
+  .btn { flex:1; font-family:inherit; font-size:21px; font-weight:800; padding:13px 8px; border-radius:14px; border:2px solid var(--red);
+    background:#fff; color:var(--red); }
+  .btn.main { background:var(--red); color:#fff; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <div id="bar">
+      <div id="round">第一回</div>
+      <div id="time">120</div>
+      <div id="left">剩 18 对</div>
+    </div>
+    <div id="rule"></div>
+  </div>
+  <div id="stage">
+    <div id="board"><svg id="lines"></svg></div>
+    <div id="combo"></div>
+    <div id="say"><div class="face"></div><div><div class="who"></div><div class="text"></div></div></div>
+  </div>
+</div>
+<div class="ov" id="intro"><div class="card">
+  <h1 id="iNo"></h1><h2 id="iTitle"></h2>
+  <p class="big" id="iRule"></p>
+  <p class="muted">点两块一样的，连线最多拐两个弯就消掉</p>
+  <div class="btns"><button class="btn main" id="go">开讲</button></div>
+</div></div>
+<div class="ov" id="end"><div class="card">
+  <h1 id="eNo"></h1><h2 id="eTitle"></h2>
+  <p id="eMain"></p>
+  <p id="eNext"></p>
+  <ul id="eLog"></ul>
+  <div class="btns"><button class="btn" id="again">再来一回</button><button class="btn main" id="next">下一回</button></div>
+</div></div>
+
+<script>
+// Tuning via URL: ?line=0 (台词关) &linems=800 &time=180
+const P = new URLSearchParams(location.search);
+const LINE_ON = P.get('line') !== '0';
+const LINE_MS = +P.get('linems') || 800;
+const TIME_OVERRIDE = +P.get('time') || 0;
+const COMBO_WINDOW = 3000, COMBO_BONUS = 1;
+
+const ICONS = ['🐎','🏹','⚔️','🛡️','🚩','🥁','🏯','🔥','🍶','🍑','📜','🏮'];
+const TINTS = ['#f3e1c8','#e6efd9','#e9e4f2','#dfe9f3','#f6dcd8','#f2e5c9','#e3e0d6','#fbe0cf','#ece5d7','#fde2e4','#efe6cf','#fbe6c8'];
+const HEROES = {
+  刘: { bg:'#f6dcc0', ink:'#5a3a1a', name:'刘备' },
+  关: { bg:'#c8322a', ink:'#fff',    name:'关羽' },
+  张: { bg:'#262626', ink:'#fff',    name:'张飞' },
+  吕: { bg:'#efe6f7', ink:'#5b2a86', name:'吕布' },
+  赵: { bg:'#e1eefc', ink:'#1d4f99', name:'赵云' },
+  曹: { bg:'#fbfbf6', ink:'#222',    name:'曹操' },
+};
+// The formation IS the rule: after every clear, the remaining tiles slide this way.
+const ROUNDS = [
+  { no:'第一回', title:'敌布长蛇阵', rows:6, cols:6, kinds:8, time:120, shift:'left', rule:'每消一对，敌阵<b>向左收拢 ⬅</b>',
+    lines:{ 刘:'刘备在此！今日结为兄弟，同心协力，救困扶危！', 关:'关某愿随兄长，上报国家，下安黎庶！', 张:'俺也一样！' } },
+  { no:'第二回', title:'敌布锋矢阵', rows:7, cols:6, kinds:10, time:120, shift:'up', rule:'每消一对，敌阵<b>向上推进 ⬆</b>',
+    lines:{ 吕:'吾乃吕布吕奉先，谁敢与我一战！', 张:'三姓家奴休走！燕人张飞来也！', 关:'青龙偃月刀在此，吕布看刀！' } },
+  { no:'第三回', title:'敌布鹤翼阵', rows:8, cols:6, kinds:12, time:120, shift:'split', rule:'每消一对，敌阵<b>向两翼分开 ⬅➡</b>',
+    lines:{ 赵:'常山赵子龙在此！挡我者死！', 张:'燕人张翼德在此！谁敢与我决一死战？', 曹:'好一员虎将！传我将令：只许活捉，不许放冷箭！' } },
+];
+const NUM = ['','一','二','三','四','五','六','七','八','九','十'];
+
+const $ = id => document.getElementById(id);
+const board = $('board'), svg = $('lines');
+let R, ROWS, COLS, heroKeys, grid, els, sel, over, busy, timer;
+let ri = 0, timeLimit, elapsed, lastTick, paused, sayT, comboT;
+let combo, maxCombo, lastClear, linesShown, pairsLeft, totalPairs, reshuffles;
+const log = [];
+let T = 56, PAD = 18;
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+const blank = () => Array.from({ length: ROWS + 2 }, () => Array(COLS + 2).fill(0));
+
+// ---- connect rule (copied, prototypes never import each other) ----
+const empty = (r, c) => grid[r][c] === 0;
+function lineClear(r1, c1, r2, c2) {
+  if (r1 === r2) { for (let c = Math.min(c1, c2) + 1; c < Math.max(c1, c2); c++) if (!empty(r1, c)) return false; return true; }
+  if (c1 === c2) { for (let r = Math.min(r1, r2) + 1; r < Math.max(r1, r2); r++) if (!empty(r, c1)) return false; return true; }
+  return false;
+}
+function oneCorner(a, b) {
+  for (const k of [[a[0], b[1]], [b[0], a[1]]])
+    if (empty(k[0], k[1]) && lineClear(a[0], a[1], k[0], k[1]) && lineClear(k[0], k[1], b[0], b[1])) return k;
+  return null;
+}
+function findPath(a, b) {
+  if ((a[0] === b[0] || a[1] === b[1]) && lineClear(a[0], a[1], b[0], b[1])) return [a, b];
+  const k = oneCorner(a, b);
+  if (k) return [a, k, b];
+  for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    let r = a[0] + dr, c = a[1] + dc;
+    while (r >= 0 && r <= ROWS + 1 && c >= 0 && c <= COLS + 1 && empty(r, c)) {
+      const k2 = oneCorner([r, c], b);
+      if (k2) return [a, [r, c], k2, b];
+      r += dr; c += dc;
+    }
+  }
+  return null;
+}
+function findAnyPair() {
+  const byKind = {};
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++)
+    if (grid[r][c]) (byKind[grid[r][c]] = byKind[grid[r][c]] || []).push([r, c]);
+  for (const list of Object.values(byKind))
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++)
+      if (findPath(list[i], list[j])) return [list[i], list[j]];
+  return null;
+}
+
+// ---- formation shift: each lane is an ordered list of cells, index 0 is where tiles pile up ----
+function lanes(kind) {
+  const out = [], half = COLS / 2;
+  for (let r = 1; r <= ROWS && (kind === 'left' || kind === 'split'); r++) {
+    const row = []; for (let c = 1; c <= COLS; c++) row.push([r, c]);
+    if (kind === 'left') out.push(row);
+    else { out.push(row.slice(0, Math.floor(half))); out.push(row.slice(Math.floor(half)).reverse()); }
+  }
+  for (let c = 1; c <= COLS && kind === 'up'; c++) {
+    const col = []; for (let r = 1; r <= ROWS; r++) col.push([r, c]);
+    out.push(col);
+  }
+  return out;
+}
+function shiftBoard(kind) {
+  const g2 = blank(), e2 = Array.from({ length: ROWS + 2 }, () => Array(COLS + 2).fill(null));
+  for (const lane of lanes(kind)) {
+    lane.filter(([r, c]) => grid[r][c]).forEach(([r, c], i) => {
+      const [nr, nc] = lane[i];
+      g2[nr][nc] = grid[r][c]; e2[nr][nc] = els[r][c];
+    });
+  }
+  grid = g2; els = e2;
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (els[r][c]) place(els[r][c], r, c);
+}
+
+// ---- rendering ----
+const isHero = v => v >= 100;
+const px = c => c === 0 ? PAD / 2 : c === COLS + 1 ? PAD + COLS * T + PAD / 2 : PAD + (c - 1) * T + T / 2;
+const py = r => r === 0 ? PAD / 2 : r === ROWS + 1 ? PAD + ROWS * T + PAD / 2 : PAD + (r - 1) * T + T / 2;
+
+function place(el, r, c) {
+  el.dataset.r = r; el.dataset.c = c;
+  el.style.left = (PAD + (c - 1) * T + 2) + 'px';
+  el.style.top = (PAD + (r - 1) * T + 2) + 'px';
+}
+function layout() {
+  const W = Math.min(window.innerWidth, 480) - 24;
+  const H = window.innerHeight - $('top').offsetHeight - 36;
+  T = Math.max(24, Math.floor(Math.min(W / (COLS + 0.6), H / (ROWS + 0.6), 78)));
+  PAD = Math.round(T * 0.3);
+  const bw = COLS * T + 2 * PAD, bh = ROWS * T + 2 * PAD;
+  board.style.width = bw + 'px'; board.style.height = bh + 'px';
+  $('stage').style.width = bw + 'px';
+  svg.setAttribute('width', bw); svg.setAttribute('height', bh);
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (els[r][c]) {
+    const el = els[r][c];
+    place(el, r, c);
+    el.style.width = el.style.height = (T - 4) + 'px';
+    el.style.fontSize = Math.round(T * 0.56) + 'px';
+  }
+}
+function faceHTML(key, size) {
+  const h = HEROES[key];
+  return '<div class="face" style="background:' + h.bg + ';color:' + h.ink + ';font-size:' + size + 'px">' + key + '</div>';
+}
+function paint(el, v) {
+  el.classList.toggle('hero', isHero(v));
+  if (isHero(v)) { el.innerHTML = faceHTML(heroKeys[v - 100], Math.round(T * 0.42)); el.style.background = ''; }
+  else { el.textContent = ICONS[v - 1]; el.style.background = TINTS[v - 1]; }
+}
+function drawPath(path) {
+  const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  pl.setAttribute('points', path.map(([r, c]) => px(c) + ',' + py(r)).join(' '));
+  pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', '#b8322a'); pl.setAttribute('stroke-width', Math.max(4, T / 11));
+  pl.setAttribute('stroke-linecap', 'round'); pl.setAttribute('stroke-linejoin', 'round');
+  svg.appendChild(pl);
+  setTimeout(() => pl.remove(), 300);
+}
+function hud() {
+  const left = Math.max(0, timeLimit - elapsed / 1000);
+  $('time').textContent = Math.ceil(left);
+  $('time').classList.toggle('low', left <= 10);
+  $('left').textContent = '剩 ' + pairsLeft + ' 对';
+  return left;
+}
+
+// ---- round flow ----
+function buildRound() {
+  R = ROUNDS[ri]; ROWS = R.rows; COLS = R.cols; heroKeys = Object.keys(R.lines);
+  grid = blank();
+  totalPairs = pairsLeft = ROWS * COLS / 2;
+  const deck = [];
+  heroKeys.forEach((k, i) => deck.push(100 + i, 100 + i));
+  for (let i = 0; i < totalPairs - heroKeys.length; i++) { const k = i % R.kinds + 1; deck.push(k, k); }
+  shuffle(deck);
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) grid[r][c] = deck.pop();
+  if (!findAnyPair()) reshuffle(false);
+  board.querySelectorAll('.tile').forEach(e => e.remove());
+  els = Array.from({ length: ROWS + 2 }, () => Array(COLS + 2).fill(null));
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) {
+    const el = document.createElement('div');
+    el.className = 'tile';
+    board.appendChild(el); els[r][c] = el;
+  }
+  layout();
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) paint(els[r][c], grid[r][c]);
+  sel = null; over = true; busy = false; paused = false;
+  timeLimit = TIME_OVERRIDE || R.time; elapsed = 0;
+  combo = 0; maxCombo = 0; lastClear = -1e9; linesShown = 0; reshuffles = 0;
+  clearInterval(timer);
+  $('round').textContent = R.no;
+  $('rule').innerHTML = R.rule;
+  hud();
+  $('end').classList.remove('on');
+  $('iNo').textContent = R.no; $('iTitle').textContent = R.title;
+  $('iRule').innerHTML = R.rule;
+  $('intro').classList.add('on');
+}
+function startRound() {
+  $('intro').classList.remove('on');
+  over = false; lastTick = Date.now();
+  timer = setInterval(() => {
+    const now = Date.now();
+    if (!paused) elapsed += now - lastTick;
+    lastTick = now;
+    if (hud() <= 0) finish(false);
+  }, 100);
+}
+function reshuffle(count = true) {
+  const cells = [], vals = [];
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (grid[r][c]) { cells.push([r, c]); vals.push(grid[r][c]); }
+  for (let tries = 0; tries < 100; tries++) {
+    shuffle(vals);
+    cells.forEach(([r, c], i) => grid[r][c] = vals[i]);
+    if (findAnyPair()) break;
+  }
+  if (count) { reshuffles++; cells.forEach(([r, c]) => paint(els[r][c], grid[r][c])); }
+}
+function setSel(p) {
+  if (sel) els[sel[0]][sel[1]].classList.remove('sel');
+  sel = p;
+  if (sel) els[sel[0]][sel[1]].classList.add('sel');
+}
+function shake(r, c) {
+  const el = els[r][c];
+  el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+}
+function flash(text) {
+  const el = $('combo');
+  el.textContent = text;
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  clearTimeout(comboT); comboT = setTimeout(() => el.classList.remove('on'), 650);
+}
+function showCombo(n) {
+  flash((n <= 10 ? NUM[n] : n) + '连斩！');
+  if (n >= 3) { board.classList.remove('shake'); void board.offsetWidth; board.classList.add('shake'); }
+}
+function say(key) {
+  const h = HEROES[key];
+  $('say').querySelector('.face').outerHTML = faceHTML(key, 30);
+  $('say').querySelector('.who').textContent = h.name + '：';
+  $('say').querySelector('.text').textContent = R.lines[key];
+  $('say').classList.add('on');
+  paused = true; linesShown++;
+  clearTimeout(sayT);
+  sayT = setTimeout(() => { $('say').classList.remove('on'); paused = false; }, LINE_MS);
+}
+function removeAt(r, c) {
+  const el = els[r][c];
+  grid[r][c] = 0; els[r][c] = null;
+  el.classList.add('gone');
+  setTimeout(() => el.remove(), 250);
+}
+function tap(r, c) {
+  if (over || busy || !grid[r][c]) return;
+  if (!sel) return setSel([r, c]);
+  if (sel[0] === r && sel[1] === c) return setSel(null);
+  const a = sel, b = [r, c], v = grid[r][c];
+  if (grid[a[0]][a[1]] !== v) return setSel(b);
+  const path = findPath(a, b);
+  if (!path) { shake(a[0], a[1]); shake(r, c); return setSel(b); }
+  setSel(null);
+  drawPath(path);
+  removeAt(a[0], a[1]); removeAt(r, c);
+  pairsLeft--;
+  combo = elapsed - lastClear <= COMBO_WINDOW ? combo + 1 : 1;
+  lastClear = elapsed;
+  maxCombo = Math.max(maxCombo, combo);
+  if (combo >= 2) { timeLimit += COMBO_BONUS; showCombo(combo); }
+  if (isHero(v) && LINE_ON) say(heroKeys[v - 100]);
+  hud();
+  if (!pairsLeft) return finish(true);
+  shiftBoard(R.shift);
+  if (!findAnyPair()) {
+    busy = true;
+    setTimeout(() => { reshuffle(); busy = false; }, 350);
+  }
+}
+function finish(win) {
+  over = true; clearInterval(timer); setSel(null);
+  const secs = Math.round(elapsed / 1000);
+  log.push({ round: R.no, win, secs, cleared: totalPairs - pairsLeft, totalPairs, maxCombo, reshuffles, then: '' });
+  console.table(log);
+  setTimeout(() => {
+    const last = ri === ROUNDS.length - 1;
+    $('eNo').textContent = R.no + (win ? ' 完' : '');
+    $('eTitle').textContent = win ? '破了' + R.title.slice(2) + '！' : '撤军！';
+    $('eMain').textContent = win ? '用时 ' + secs + ' 秒 · 最高 ' + maxCombo + ' 连斩' : '消了 ' + (totalPairs - pairsLeft) + ' / ' + totalPairs + ' 对 · 最高 ' + maxCombo + ' 连斩';
+    $('eNext').textContent = win ? (last ? '原型就到这里（共三回）。' : '下一回：' + ROUNDS[ri + 1].title) : '不要紧，再来一回';
+    $('eLog').innerHTML = log.map(x => '<li>' + x.round + '：' + (x.win ? '胜 ' + x.secs + ' 秒' : '撤军 ' + x.cleared + '/' + x.totalPairs) +
+      '，最高 ' + x.maxCombo + ' 连斩，洗牌 ' + x.reshuffles + (x.then ? '，然后' + x.then : '') + '</li>').join('');
+    $('next').style.display = win ? '' : 'none';
+    $('next').textContent = last ? '从头再来' : '下一回';
+    $('end').classList.add('on');
+  }, win ? 500 : 0);
+}
+
+board.addEventListener('pointerdown', e => {
+  const t = e.target.closest('.tile');
+  if (t && !t.classList.contains('gone')) tap(+t.dataset.r, +t.dataset.c);
+});
+$('go').addEventListener('click', startRound);
+$('again').addEventListener('click', () => { log[log.length - 1].then = '再来'; buildRound(); });
+$('next').addEventListener('click', () => {
+  log[log.length - 1].then = ri === ROUNDS.length - 1 ? '从头' : '下一回';
+  ri = (ri + 1) % ROUNDS.length; buildRound();
+});
+window.addEventListener('resize', () => layout());
+buildRound();
+</script>
+</body>
+</html>

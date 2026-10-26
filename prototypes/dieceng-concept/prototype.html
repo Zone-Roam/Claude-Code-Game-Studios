@@ -1,0 +1,419 @@
+<!-- PROTOTYPE - NOT FOR PRODUCTION -->
+<!-- Question: 盘面中间叠两层、消掉上层才翻开下层（武将是藏在下层的“伏兵”），这种“揭开”会不会让连连看有发现感、不再无聊？ -->
+<!-- Date: 2026-10-26 -->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>叠层连连看 · 原型</title>
+<style>
+  :root { --bg:#f6ecd6; --ink:#2a2018; --muted:#7d6a52; --red:#b8322a; --gold:#c99a2e; --edge:#d8c3a0; --deep:#8c6f45; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); overflow:hidden;
+    font-family:"STKaiti","KaiTi","Kaiti SC",-apple-system,"PingFang SC","Microsoft YaHei",serif;
+    touch-action:manipulation; user-select:none; -webkit-user-select:none; }
+  #app { height:100%; display:flex; flex-direction:column; align-items:center;
+    padding:10px 12px calc(12px + env(safe-area-inset-bottom)); }
+  #top { width:100%; max-width:480px; }
+  #bar { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  #round { font-size:20px; font-weight:700; color:var(--red); }
+  #time { font-size:36px; font-weight:800; font-variant-numeric:tabular-nums; min-width:2.4em; text-align:center; }
+  #time.low { color:var(--red); }
+  #left { font-size:18px; color:var(--muted); }
+  #rule { margin:4px 0 0; font-size:17px; text-align:center; }
+  #rule b { color:var(--red); }
+  #stage { position:relative; margin-top:8px; }
+  #board { position:relative; }
+  #board.shake { animation:bshake .25s; }
+  .tile { position:absolute; display:flex; align-items:center; justify-content:center; border-radius:12px;
+    border:2px solid var(--edge); box-shadow:0 3px 0 var(--edge); background:#fffaf0;
+    font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif; line-height:1;
+    transition:transform .12s, opacity .2s; cursor:pointer; }
+  .tile.stacked { box-shadow:0 3px 0 var(--edge), 0 8px 0 var(--deep); transform:translateY(-4px); }
+  .tile.stacked::after { content:""; position:absolute; right:4px; bottom:4px; width:9px; height:9px; border-radius:50%; background:var(--deep); }
+  .tile.hero { border-color:var(--gold); box-shadow:0 3px 0 var(--gold); background:#fff3d6; }
+  .tile.flip { animation:flip .28s ease-out; }
+  @keyframes flip { from { transform:rotateY(90deg) scale(.9); } to { transform:none; } }
+  .face { width:82%; height:82%; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:"STKaiti","KaiTi","Kaiti SC",serif; font-weight:800; }
+  .tile.sel { border-color:var(--red); box-shadow:0 0 0 4px var(--red); transform:translateY(-3px); }
+  .tile.shake { animation:shake .3s; }
+  .tile.gone { opacity:0; transform:scale(.4) rotate(-12deg); pointer-events:none; }
+  @keyframes shake { 25% { transform:translateX(-6px); } 75% { transform:translateX(6px); } }
+  @keyframes bshake { 25% { transform:translate(-3px,2px); } 50% { transform:translate(3px,-2px); } 75% { transform:translate(-2px,-1px); } }
+  #lines { position:absolute; left:0; top:0; pointer-events:none; overflow:visible; }
+  #combo, #say { z-index:5; }
+  #combo { position:absolute; left:50%; top:42%; transform:translate(-50%,-50%) scale(.6); font-size:44px; font-weight:900;
+    color:var(--red); text-shadow:0 2px 0 #fff, 0 0 12px rgba(255,255,255,.9); opacity:0; pointer-events:none;
+    white-space:nowrap; transition:opacity .15s, transform .15s; }
+  #combo.on { opacity:1; transform:translate(-50%,-50%) scale(1); }
+  #say { position:absolute; left:4%; right:4%; top:6%; display:flex; gap:10px; align-items:center; padding:10px 12px;
+    background:rgba(42,32,24,.93); color:#fff; border-radius:14px; pointer-events:none; opacity:0; transform:translateY(-8px);
+    transition:opacity .12s, transform .12s; }
+  #say.on { opacity:1; transform:none; }
+  #say .face { width:52px; height:52px; flex:none; font-size:30px; }
+  #say .who { font-size:15px; color:#f0c96a; }
+  #say .text { font-size:21px; line-height:1.35; font-weight:700; }
+  .ov { position:fixed; inset:0; background:rgba(40,28,16,.55); display:none; align-items:center; justify-content:center; padding:16px; z-index:10; }
+  .ov.on { display:flex; }
+  .card { width:100%; max-width:360px; background:#fffaf0; border-radius:18px; padding:22px 20px; text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.25); border:2px solid var(--gold); }
+  .card h1 { margin:0; font-size:22px; color:var(--red); }
+  .card h2 { margin:6px 0 10px; font-size:28px; }
+  .card p { margin:6px 0; font-size:18px; }
+  .card .big { font-size:21px; font-weight:800; color:var(--red); }
+  .card .muted { color:var(--muted); font-size:14px; }
+  .card ul { list-style:none; padding:0; margin:10px 0 0; font-size:13px; color:var(--muted); max-height:110px; overflow:auto; text-align:left; }
+  .btns { display:flex; gap:10px; margin-top:16px; }
+  .btn { flex:1; font-family:inherit; font-size:21px; font-weight:800; padding:13px 8px; border-radius:14px; border:2px solid var(--red);
+    background:#fff; color:var(--red); }
+  .btn.main { background:var(--red); color:#fff; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <div id="bar">
+      <div id="round">第一回</div>
+      <div id="time">130</div>
+      <div id="left">剩 22 对</div>
+    </div>
+    <div id="rule">带<b>黑点</b>的块下面还压着一块，消掉才翻开；<b>武将都藏在下面</b></div>
+  </div>
+  <div id="stage">
+    <div id="board"><svg id="lines"></svg></div>
+    <div id="combo"></div>
+    <div id="say"><div class="face"></div><div><div class="who"></div><div class="text"></div></div></div>
+  </div>
+</div>
+<div class="ov" id="intro"><div class="card">
+  <h1 id="iNo"></h1><h2 id="iTitle"></h2>
+  <p class="big">带黑点的块下面还压着一块<br>消掉它，才翻开下面</p>
+  <p class="muted" id="iHint"></p>
+  <div class="btns"><button class="btn main" id="go">开讲</button></div>
+</div></div>
+<div class="ov" id="end"><div class="card">
+  <h1 id="eNo"></h1><h2 id="eTitle"></h2>
+  <p id="eMain"></p>
+  <p id="eNext"></p>
+  <ul id="eLog"></ul>
+  <div class="btns"><button class="btn" id="again">再来一回</button><button class="btn main" id="next">下一回</button></div>
+</div></div>
+
+<script>
+// Tuning via URL: ?line=0 (台词关) &linems=800 &time=180
+const P = new URLSearchParams(location.search);
+const LINE_ON = P.get('line') !== '0';
+const LINE_MS = +P.get('linems') || 800;
+const TIME_OVERRIDE = +P.get('time') || 0;
+const COMBO_WINDOW = 3000, COMBO_BONUS = 1;
+
+const ICONS = ['🐎','🏹','⚔️','🛡️','🚩','🥁','🏯','🔥','🍶','🍑','📜','🏮'];
+const TINTS = ['#f3e1c8','#e6efd9','#e9e4f2','#dfe9f3','#f6dcd8','#f2e5c9','#e3e0d6','#fbe0cf','#ece5d7','#fde2e4','#efe6cf','#fbe6c8'];
+const HEROES = {
+  刘: { bg:'#f6dcc0', ink:'#5a3a1a', name:'刘备' },
+  关: { bg:'#c8322a', ink:'#fff',    name:'关羽' },
+  张: { bg:'#262626', ink:'#fff',    name:'张飞' },
+  吕: { bg:'#efe6f7', ink:'#5b2a86', name:'吕布' },
+  赵: { bg:'#e1eefc', ink:'#1d4f99', name:'赵云' },
+  曹: { bg:'#fbfbf6', ink:'#222',    name:'曹操' },
+};
+// under: [rowFrom, rowTo, colFrom, colTo] — the cells that hold a second, hidden tile
+const ROUNDS = [
+  { no:'第一回', title:'宴桃园豪杰三结义', rows:6, cols:6, kinds:8, time:130, under:[3, 4, 2, 5],
+    lines:{ 刘:'刘备在此！今日结为兄弟，同心协力，救困扶危！', 关:'关某愿随兄长，上报国家，下安黎庶！', 张:'俺也一样！' } },
+  { no:'第二回', title:'虎牢关三英战吕布', rows:7, cols:6, kinds:10, time:140, under:[3, 5, 2, 5],
+    lines:{ 吕:'吾乃吕布吕奉先，谁敢与我一战！', 张:'三姓家奴休走！燕人张飞来也！', 关:'青龙偃月刀在此，吕布看刀！' } },
+  { no:'第三回', title:'赵子龙单骑救主', rows:8, cols:6, kinds:12, time:150, under:[3, 6, 2, 5],
+    lines:{ 赵:'常山赵子龙在此！挡我者死！', 张:'燕人张翼德在此！谁敢与我决一死战？', 曹:'好一员虎将！传我将令：只许活捉，不许放冷箭！' } },
+];
+const NUM = ['','一','二','三','四','五','六','七','八','九','十'];
+
+const $ = id => document.getElementById(id);
+const board = $('board'), svg = $('lines');
+let R, ROWS, COLS, heroKeys, grid, stacks, els, sel, over, busy, timer;
+let ri = 0, timeLimit, elapsed, lastTick, paused, sayT, comboT;
+let combo, maxCombo, lastClear, linesShown, pairsLeft, totalPairs, reshuffles, reveals, heroReveals;
+const log = [];
+let T = 56, PAD = 18;
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+const blank = v => Array.from({ length: ROWS + 2 }, () => Array.from({ length: COLS + 2 }, () => v()));
+
+// ---- connect rule (copied, prototypes never import each other) ----
+// grid holds the TOP tile of each stack; a cell is passable only when its whole stack is gone.
+const empty = (r, c) => grid[r][c] === 0;
+function lineClear(r1, c1, r2, c2) {
+  if (r1 === r2) { for (let c = Math.min(c1, c2) + 1; c < Math.max(c1, c2); c++) if (!empty(r1, c)) return false; return true; }
+  if (c1 === c2) { for (let r = Math.min(r1, r2) + 1; r < Math.max(r1, r2); r++) if (!empty(r, c1)) return false; return true; }
+  return false;
+}
+function oneCorner(a, b) {
+  for (const k of [[a[0], b[1]], [b[0], a[1]]])
+    if (empty(k[0], k[1]) && lineClear(a[0], a[1], k[0], k[1]) && lineClear(k[0], k[1], b[0], b[1])) return k;
+  return null;
+}
+function findPath(a, b) {
+  if ((a[0] === b[0] || a[1] === b[1]) && lineClear(a[0], a[1], b[0], b[1])) return [a, b];
+  const k = oneCorner(a, b);
+  if (k) return [a, k, b];
+  for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    let r = a[0] + dr, c = a[1] + dc;
+    while (r >= 0 && r <= ROWS + 1 && c >= 0 && c <= COLS + 1 && empty(r, c)) {
+      const k2 = oneCorner([r, c], b);
+      if (k2) return [a, [r, c], k2, b];
+      r += dr; c += dc;
+    }
+  }
+  return null;
+}
+function findAnyPair() {
+  const byKind = {};
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++)
+    if (grid[r][c]) (byKind[grid[r][c]] = byKind[grid[r][c]] || []).push([r, c]);
+  for (const list of Object.values(byKind))
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++)
+      if (findPath(list[i], list[j])) return [list[i], list[j]];
+  return null;
+}
+const isUnder = (r, c) => r >= R.under[0] && r <= R.under[1] && c >= R.under[2] && c <= R.under[3];
+
+// ---- rendering ----
+const isHero = v => v >= 100;
+const px = c => c === 0 ? PAD / 2 : c === COLS + 1 ? PAD + COLS * T + PAD / 2 : PAD + (c - 1) * T + T / 2;
+const py = r => r === 0 ? PAD / 2 : r === ROWS + 1 ? PAD + ROWS * T + PAD / 2 : PAD + (r - 1) * T + T / 2;
+
+function layout() {
+  const W = Math.min(window.innerWidth, 480) - 24;
+  const H = window.innerHeight - $('top').offsetHeight - 36;
+  T = Math.max(24, Math.floor(Math.min(W / (COLS + 0.6), H / (ROWS + 0.6), 78)));
+  PAD = Math.round(T * 0.3);
+  const bw = COLS * T + 2 * PAD, bh = ROWS * T + 2 * PAD;
+  board.style.width = bw + 'px'; board.style.height = bh + 'px';
+  $('stage').style.width = bw + 'px';
+  svg.setAttribute('width', bw); svg.setAttribute('height', bh);
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) {
+    const el = els[r][c];
+    el.style.left = (PAD + (c - 1) * T + 2) + 'px';
+    el.style.top = (PAD + (r - 1) * T + 2) + 'px';
+    el.style.width = el.style.height = (T - 4) + 'px';
+    el.style.fontSize = Math.round(T * 0.56) + 'px';
+  }
+}
+function faceHTML(key, size) {
+  const h = HEROES[key];
+  return '<div class="face" style="background:' + h.bg + ';color:' + h.ink + ';font-size:' + size + 'px">' + key + '</div>';
+}
+function paint(r, c) {
+  const v = grid[r][c], el = els[r][c];
+  el.classList.toggle('gone', !v);
+  el.classList.toggle('stacked', stacks[r][c].length > 1);
+  if (!v) return;
+  el.classList.toggle('hero', isHero(v));
+  if (isHero(v)) { el.innerHTML = faceHTML(heroKeys[v - 100], Math.round(T * 0.42)); el.style.background = ''; }
+  else { el.textContent = ICONS[v - 1]; el.style.background = TINTS[v - 1]; }
+}
+function drawPath(path) {
+  const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  pl.setAttribute('points', path.map(([r, c]) => px(c) + ',' + py(r)).join(' '));
+  pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', '#b8322a'); pl.setAttribute('stroke-width', Math.max(4, T / 11));
+  pl.setAttribute('stroke-linecap', 'round'); pl.setAttribute('stroke-linejoin', 'round');
+  svg.appendChild(pl);
+  setTimeout(() => pl.remove(), 300);
+}
+function hud() {
+  const left = Math.max(0, timeLimit - elapsed / 1000);
+  $('time').textContent = Math.ceil(left);
+  $('time').classList.toggle('low', left <= 10);
+  $('left').textContent = '剩 ' + pairsLeft + ' 对';
+  return left;
+}
+
+// ---- round flow ----
+function buildRound() {
+  R = ROUNDS[ri]; ROWS = R.rows; COLS = R.cols; heroKeys = Object.keys(R.lines);
+  const underCells = [];
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (isUnder(r, c)) underCells.push([r, c]);
+  const total = ROWS * COLS + underCells.length;
+  totalPairs = pairsLeft = total / 2;
+  // heroes are the hidden "伏兵": all six hero tiles go into the lower layer
+  const heroes = [], deck = [];
+  heroKeys.forEach((k, i) => heroes.push(100 + i, 100 + i));
+  for (let i = 0; i < totalPairs - heroKeys.length; i++) { const k = i % R.kinds + 1; deck.push(k, k); }
+  shuffle(deck);
+  const lower = shuffle(heroes.concat(deck.splice(0, underCells.length - heroes.length)));
+  stacks = blank(() => []);
+  underCells.forEach(([r, c], i) => stacks[r][c].push(lower[i]));
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) stacks[r][c].push(deck.pop());
+  syncGrid();
+  if (!findAnyPair()) reshuffle(false);
+  board.querySelectorAll('.tile').forEach(e => e.remove());
+  els = blank(() => null);
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) {
+    const el = document.createElement('div');
+    el.className = 'tile'; el.dataset.r = r; el.dataset.c = c;
+    board.appendChild(el); els[r][c] = el;
+  }
+  layout();
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) paint(r, c);
+  sel = null; over = true; busy = false; paused = false;
+  timeLimit = TIME_OVERRIDE || R.time; elapsed = 0;
+  combo = 0; maxCombo = 0; lastClear = -1e9; linesShown = 0; reshuffles = 0; reveals = 0; heroReveals = 0;
+  clearInterval(timer);
+  $('round').textContent = R.no;
+  hud();
+  $('end').classList.remove('on');
+  $('iNo').textContent = R.no; $('iTitle').textContent = R.title;
+  $('iHint').textContent = '这一回的伏兵：' + heroKeys.map(k => HEROES[k].name).join('、');
+  $('intro').classList.add('on');
+}
+function syncGrid() {
+  grid = blank(() => 0);
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) {
+    const s = stacks[r][c];
+    grid[r][c] = s.length ? s[s.length - 1] : 0;
+  }
+}
+function startRound() {
+  $('intro').classList.remove('on');
+  over = false; lastTick = Date.now();
+  timer = setInterval(() => {
+    const now = Date.now();
+    if (!paused) elapsed += now - lastTick;
+    lastTick = now;
+    if (hud() <= 0) finish(false);
+  }, 100);
+}
+// Dead board: shuffle every remaining tile (top and hidden) over the same slots. If that cannot
+// help (e.g. the last two of a kind sit in one stack), spread the tiles out one per cell.
+function reshuffle(count = true) {
+  const slots = [], vals = [];
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) stacks[r][c].forEach((v, i) => { slots.push([r, c, i]); vals.push(v); });
+  let ok = false;
+  for (let tries = 0; tries < 100 && !ok; tries++) {
+    shuffle(vals);
+    slots.forEach(([r, c, i], j) => stacks[r][c][i] = vals[j]);
+    syncGrid();
+    ok = !!findAnyPair();
+  }
+  if (!ok) {
+    const cells = [];
+    for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (stacks[r][c].length) cells.push([r, c]);
+    for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (!stacks[r][c].length && cells.length < vals.length) cells.push([r, c]);
+    for (let tries = 0; tries < 100; tries++) {
+      shuffle(vals);
+      stacks = blank(() => []);
+      cells.forEach(([r, c], i) => stacks[r][c] = [vals[i]]);
+      syncGrid();
+      if (findAnyPair()) break;
+    }
+  }
+  if (count) { reshuffles++; for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) paint(r, c); }
+}
+function setSel(p) {
+  if (sel) els[sel[0]][sel[1]].classList.remove('sel');
+  sel = p;
+  if (sel) els[sel[0]][sel[1]].classList.add('sel');
+}
+function shake(r, c) {
+  const el = els[r][c];
+  el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+}
+function flash(text) {
+  const el = $('combo');
+  el.textContent = text;
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  clearTimeout(comboT); comboT = setTimeout(() => el.classList.remove('on'), 650);
+}
+function showCombo(n) {
+  flash((n <= 10 ? NUM[n] : n) + '连斩！');
+  if (n >= 3) { board.classList.remove('shake'); void board.offsetWidth; board.classList.add('shake'); }
+}
+function say(key) {
+  const h = HEROES[key];
+  $('say').querySelector('.face').outerHTML = faceHTML(key, 30);
+  $('say').querySelector('.who').textContent = h.name + '：';
+  $('say').querySelector('.text').textContent = R.lines[key];
+  $('say').classList.add('on');
+  paused = true; linesShown++;
+  clearTimeout(sayT);
+  sayT = setTimeout(() => { $('say').classList.remove('on'); paused = false; }, LINE_MS);
+}
+// Pop the top tile; returns the hero key if a hidden hero was just revealed.
+function removeTop(r, c) {
+  stacks[r][c].pop();
+  const s = stacks[r][c];
+  grid[r][c] = s.length ? s[s.length - 1] : 0;
+  const el = els[r][c];
+  if (!grid[r][c]) { paint(r, c); return null; }
+  reveals++;
+  el.classList.remove('flip'); void el.offsetWidth; el.classList.add('flip');
+  paint(r, c);
+  if (isHero(grid[r][c])) { heroReveals++; return heroKeys[grid[r][c] - 100]; }
+  return null;
+}
+function tap(r, c) {
+  if (over || busy || !grid[r][c]) return;
+  if (!sel) return setSel([r, c]);
+  if (sel[0] === r && sel[1] === c) return setSel(null);
+  const a = sel, b = [r, c], v = grid[r][c];
+  if (grid[a[0]][a[1]] !== v) return setSel(b);
+  const path = findPath(a, b);
+  if (!path) { shake(a[0], a[1]); shake(r, c); return setSel(b); }
+  setSel(null);
+  drawPath(path);
+  const found = [removeTop(a[0], a[1]), removeTop(r, c)].filter(Boolean);
+  pairsLeft--;
+  combo = elapsed - lastClear <= COMBO_WINDOW ? combo + 1 : 1;
+  lastClear = elapsed;
+  maxCombo = Math.max(maxCombo, combo);
+  if (found.length) flash('伏兵！' + found.map(k => HEROES[k].name).join('、'));
+  else if (combo >= 2) showCombo(combo);
+  if (combo >= 2) timeLimit += COMBO_BONUS;
+  if (isHero(v) && LINE_ON) say(heroKeys[v - 100]);
+  hud();
+  if (!pairsLeft) return finish(true);
+  if (!findAnyPair()) {
+    busy = true;
+    setTimeout(() => { reshuffle(); busy = false; }, 350);
+  }
+}
+function finish(win) {
+  over = true; clearInterval(timer); setSel(null);
+  const secs = Math.round(elapsed / 1000);
+  log.push({ round: R.no, win, secs, cleared: totalPairs - pairsLeft, totalPairs, maxCombo, reveals, heroReveals, reshuffles, then: '' });
+  console.table(log);
+  setTimeout(() => {
+    const last = ri === ROUNDS.length - 1;
+    $('eNo').textContent = R.no + (win ? ' 完' : '');
+    $('eTitle').textContent = win ? R.title : '撤军！';
+    $('eMain').textContent = (win ? '用时 ' + secs + ' 秒' : '消了 ' + (totalPairs - pairsLeft) + ' / ' + totalPairs + ' 对') +
+      ' · 翻开 ' + reveals + ' 块 · 找到伏兵 ' + heroReveals + '/' + heroKeys.length * 2;
+    $('eNext').textContent = win ? (last ? '原型就到这里（共三回）。' : '下一回：' + ROUNDS[ri + 1].title) : '不要紧，再来一回';
+    $('eLog').innerHTML = log.map(x => '<li>' + x.round + '：' + (x.win ? '胜 ' + x.secs + ' 秒' : '撤军 ' + x.cleared + '/' + x.totalPairs) +
+      '，最高 ' + x.maxCombo + ' 连斩，翻开 ' + x.reveals + (x.then ? '，然后' + x.then : '') + '</li>').join('');
+    $('next').style.display = win ? '' : 'none';
+    $('next').textContent = last ? '从头再来' : '下一回';
+    $('end').classList.add('on');
+  }, win ? 500 : 0);
+}
+
+board.addEventListener('pointerdown', e => {
+  const t = e.target.closest('.tile');
+  if (t && !t.classList.contains('gone')) tap(+t.dataset.r, +t.dataset.c);
+});
+$('go').addEventListener('click', startRound);
+$('again').addEventListener('click', () => { log[log.length - 1].then = '再来'; buildRound(); });
+$('next').addEventListener('click', () => {
+  log[log.length - 1].then = ri === ROUNDS.length - 1 ? '从头' : '下一回';
+  ri = (ri + 1) % ROUNDS.length; buildRound();
+});
+window.addEventListener('resize', () => layout());
+buildRound();
+</script>
+</body>
+</html>

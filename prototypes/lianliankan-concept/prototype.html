@@ -1,0 +1,296 @@
+<!-- PROTOTYPE - NOT FOR PRODUCTION -->
+<!-- Question: 第一次玩的人（含 50+ 岁）只看一行规则，能否在竖屏单指连连看里 120 秒消掉至少一半，并愿意再来一局？ -->
+<!-- Date: 2026-10-26 -->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>摸鱼连连看 · 原型</title>
+<style>
+  :root { --bg:#fbf3e4; --ink:#3b2f22; --muted:#8a7a66; --accent:#e8743b; --ok:#2f9e5b; --bad:#d64545; --edge:#dcc9ad; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); overflow:hidden;
+    font-family:-apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    touch-action:manipulation; user-select:none; -webkit-user-select:none; }
+  #app { height:100%; display:flex; flex-direction:column; align-items:center;
+    padding:12px 12px calc(12px + env(safe-area-inset-bottom)); }
+  #top { width:100%; max-width:480px; }
+  #bar { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  #time { font-size:36px; font-weight:800; font-variant-numeric:tabular-nums; min-width:2.6em; }
+  #time.low { color:var(--bad); }
+  #left { font-size:18px; color:var(--muted); }
+  #hint { font-size:18px; font-weight:700; padding:10px 18px; border-radius:999px; border:2px solid var(--accent);
+    background:#fff; color:var(--accent); }
+  #hint:disabled { opacity:.35; }
+  #rule { margin:6px 0 2px; font-size:16px; line-height:1.4; color:var(--muted); text-align:center; }
+  #rule b { color:var(--ink); }
+  #board { position:relative; margin-top:6px; }
+  .tile { position:absolute; display:flex; align-items:center; justify-content:center; border-radius:12px;
+    border:2px solid var(--edge); box-shadow:0 3px 0 var(--edge);
+    font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif; line-height:1;
+    transition:transform .12s, opacity .2s; cursor:pointer; }
+  .tile.sel { border-color:var(--accent); box-shadow:0 0 0 4px var(--accent); transform:translateY(-3px); }
+  .tile.hint { border-color:var(--ok); animation:pulse .6s ease-in-out infinite alternate; }
+  .tile.shake { animation:shake .3s; }
+  .tile.gone { opacity:0; transform:scale(.5); pointer-events:none; }
+  @keyframes pulse { from { box-shadow:0 0 0 2px var(--ok); } to { box-shadow:0 0 0 6px var(--ok); } }
+  @keyframes shake { 25% { transform:translateX(-6px); } 75% { transform:translateX(6px); } }
+  #lines { position:absolute; left:0; top:0; pointer-events:none; overflow:visible; }
+  #toast { position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translateX(-50%);
+    background:rgba(59,47,34,.92); color:#fff; font-size:17px; padding:10px 18px; border-radius:12px;
+    opacity:0; transition:opacity .25s; pointer-events:none; white-space:nowrap; }
+  #toast.on { opacity:1; }
+  #over { position:fixed; inset:0; background:rgba(40,30,20,.45); display:none; align-items:center; justify-content:center; padding:16px; }
+  #over.on { display:flex; }
+  #card { width:100%; max-width:360px; background:#fffaf1; border-radius:20px; padding:24px 20px; text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.2); }
+  #card h2 { margin:0 0 8px; font-size:30px; }
+  #main { font-size:22px; margin:4px 0 10px; }
+  #sub { font-size:15px; color:var(--muted); line-height:1.6; }
+  #hist { font-size:14px; color:var(--muted); margin:10px 0 0; padding:0; list-style:none; max-height:120px; overflow:auto; }
+  #again { margin-top:16px; width:100%; font-size:22px; font-weight:800; padding:14px; border:0; border-radius:14px;
+    background:var(--accent); color:#fff; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <div id="bar">
+      <div id="time">120</div>
+      <div id="left">剩 24 对</div>
+      <button id="hint">提示 ×3</button>
+    </div>
+    <div id="rule">点<b>两块一样</b>的，连线最多<b>拐两个弯</b>就消掉<br><span id="status">点任意一块开始计时</span></div>
+  </div>
+  <div id="board"><svg id="lines"></svg></div>
+</div>
+<div id="toast"></div>
+<div id="over"><div id="card">
+  <h2 id="title"></h2>
+  <div id="main"></div>
+  <div id="sub"></div>
+  <ul id="hist"></ul>
+  <button id="again">再来一局</button>
+</div></div>
+
+<script>
+// Tuning via URL: ?time=180&rows=6&cols=6&hints=5
+const P = new URLSearchParams(location.search);
+const TIME = +P.get('time') || 120;
+const COLS = +P.get('cols') || 6;
+let ROWS = +P.get('rows') || 8;
+if ((ROWS * COLS) % 2) ROWS++;
+const HINTS = P.has('hints') ? +P.get('hints') : 3;
+const KINDS = ['🍎','🍊','🍋','🍉','🍇','🌸','🍀','📘','☕','🍄','🌻','🎁'];
+const TINTS = ['#ffe1dc','#ffe6c7','#fff4b8','#dcf3d2','#ece0ff','#ffe0ee','#d8f2e0','#dbe8ff','#efe2d4','#f6dede','#fff0c9','#f3e0d0'];
+
+const $ = id => document.getElementById(id);
+const board = $('board'), svg = $('lines');
+let grid, els, sel, started, over, busy, startAt, timer, hintsLeft, pairsLeft, totalPairs;
+let hintsUsed, misses, reshuffles, hinted;
+const rounds = [];
+let T = 56, PAD = 22;
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+// ---- board model: (ROWS+2) x (COLS+2), outer ring always empty so paths can go around ----
+const empty = (r, c) => grid[r][c] === 0;
+function lineClear(r1, c1, r2, c2) {
+  if (r1 === r2) { for (let c = Math.min(c1, c2) + 1; c < Math.max(c1, c2); c++) if (!empty(r1, c)) return false; return true; }
+  if (c1 === c2) { for (let r = Math.min(r1, r2) + 1; r < Math.max(r1, r2); r++) if (!empty(r, c1)) return false; return true; }
+  return false;
+}
+function oneCorner(a, b) {
+  for (const k of [[a[0], b[1]], [b[0], a[1]]])
+    if (empty(k[0], k[1]) && lineClear(a[0], a[1], k[0], k[1]) && lineClear(k[0], k[1], b[0], b[1])) return k;
+  return null;
+}
+// Path with at most two turns, as a list of points, or null.
+function findPath(a, b) {
+  if ((a[0] === b[0] || a[1] === b[1]) && lineClear(a[0], a[1], b[0], b[1])) return [a, b];
+  const k = oneCorner(a, b);
+  if (k) return [a, k, b];
+  for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    let r = a[0] + dr, c = a[1] + dc;
+    while (r >= 0 && r <= ROWS + 1 && c >= 0 && c <= COLS + 1 && empty(r, c)) {
+      const k2 = oneCorner([r, c], b);
+      if (k2) return [a, [r, c], k2, b];
+      r += dr; c += dc;
+    }
+  }
+  return null;
+}
+function findAnyPair() {
+  const byKind = {};
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++)
+    if (grid[r][c]) (byKind[grid[r][c]] = byKind[grid[r][c]] || []).push([r, c]);
+  for (const list of Object.values(byKind))
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++)
+      if (findPath(list[i], list[j])) return [list[i], list[j]];
+  return null;
+}
+
+// ---- rendering ----
+const px = c => c === 0 ? PAD / 2 : c === COLS + 1 ? PAD + COLS * T + PAD / 2 : PAD + (c - 1) * T + T / 2;
+const py = r => r === 0 ? PAD / 2 : r === ROWS + 1 ? PAD + ROWS * T + PAD / 2 : PAD + (r - 1) * T + T / 2;
+
+function layout() {
+  const W = Math.min(window.innerWidth, 480) - 24;
+  const H = window.innerHeight - $('top').offsetHeight - 40;
+  T = Math.max(24, Math.floor(Math.min(W / (COLS + 0.6), H / (ROWS + 0.6), 78)));
+  PAD = Math.round(T * 0.3);
+  const bw = COLS * T + 2 * PAD, bh = ROWS * T + 2 * PAD;
+  board.style.width = bw + 'px'; board.style.height = bh + 'px';
+  svg.setAttribute('width', bw); svg.setAttribute('height', bh);
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) {
+    const el = els[r][c];
+    el.style.left = (PAD + (c - 1) * T + 2) + 'px';
+    el.style.top = (PAD + (r - 1) * T + 2) + 'px';
+    el.style.width = el.style.height = (T - 4) + 'px';
+    el.style.fontSize = Math.round(T * 0.58) + 'px';
+  }
+}
+function paint(r, c) {
+  const k = grid[r][c], el = els[r][c];
+  el.classList.toggle('gone', !k);
+  if (k) { el.textContent = KINDS[k - 1]; el.style.background = TINTS[k - 1]; }
+}
+function drawPath(path) {
+  const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  pl.setAttribute('points', path.map(([r, c]) => px(c) + ',' + py(r)).join(' '));
+  pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', '#e8743b'); pl.setAttribute('stroke-width', Math.max(4, T / 12));
+  pl.setAttribute('stroke-linecap', 'round'); pl.setAttribute('stroke-linejoin', 'round');
+  svg.appendChild(pl);
+  setTimeout(() => pl.remove(), 320);
+}
+function hud() {
+  const left = started ? Math.max(0, TIME - (Date.now() - startAt) / 1000) : TIME;
+  $('time').textContent = Math.ceil(left);
+  $('time').classList.toggle('low', started && left <= 10);
+  $('left').textContent = '剩 ' + pairsLeft + ' 对';
+  $('hint').textContent = '提示 ×' + hintsLeft;
+  $('hint').disabled = hintsLeft <= 0 || over;
+  return left;
+}
+let toastT;
+function toast(msg) {
+  $('toast').textContent = msg; $('toast').classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => $('toast').classList.remove('on'), 1800);
+}
+
+// ---- game flow ----
+function newGame() {
+  grid = Array.from({ length: ROWS + 2 }, () => Array(COLS + 2).fill(0));
+  totalPairs = pairsLeft = ROWS * COLS / 2;
+  const deck = [];
+  for (let i = 0; i < totalPairs; i++) { const k = i % KINDS.length + 1; deck.push(k, k); }
+  shuffle(deck);
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) grid[r][c] = deck.pop();
+  if (!findAnyPair()) reshuffle(false);
+  if (!els) {
+    els = [];
+    for (let r = 0; r <= ROWS + 1; r++) {
+      els[r] = [];
+      for (let c = 1; c <= COLS && r >= 1 && r <= ROWS; c++) {
+        const el = document.createElement('div');
+        el.className = 'tile'; el.dataset.r = r; el.dataset.c = c;
+        board.appendChild(el); els[r][c] = el;
+      }
+    }
+  }
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) { els[r][c].className = 'tile'; paint(r, c); }
+  sel = null; hinted = null; started = false; over = false; busy = false;
+  hintsLeft = HINTS; hintsUsed = 0; misses = 0; reshuffles = 0;
+  clearInterval(timer);
+  $('status').textContent = '点任意一块开始计时';
+  $('over').classList.remove('on');
+  layout(); hud();
+}
+function start() {
+  started = true; startAt = Date.now();
+  $('status').textContent = ' ';
+  timer = setInterval(() => { if (hud() <= 0) finish(false); }, 100);
+}
+function reshuffle(count = true) {
+  const cells = [], kinds = [];
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (grid[r][c]) { cells.push([r, c]); kinds.push(grid[r][c]); }
+  for (let tries = 0; tries < 100; tries++) {
+    shuffle(kinds);
+    cells.forEach(([r, c], i) => grid[r][c] = kinds[i]);
+    if (findAnyPair()) break;
+  }
+  if (count) { reshuffles++; cells.forEach(([r, c]) => paint(r, c)); }
+}
+function clearHint() {
+  if (hinted) hinted.forEach(([r, c]) => els[r][c].classList.remove('hint'));
+  hinted = null;
+}
+function setSel(p) {
+  if (sel) els[sel[0]][sel[1]].classList.remove('sel');
+  sel = p;
+  if (sel) els[sel[0]][sel[1]].classList.add('sel');
+}
+function shake(r, c) {
+  const el = els[r][c];
+  el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+}
+function tap(r, c) {
+  if (over || busy || !grid[r][c]) return;
+  if (!started) start();
+  if (!sel) return setSel([r, c]);
+  if (sel[0] === r && sel[1] === c) return setSel(null);
+  const a = sel, b = [r, c];
+  if (grid[a[0]][a[1]] !== grid[r][c]) return setSel(b);
+  const path = findPath(a, b);
+  if (!path) { misses++; shake(a[0], a[1]); shake(r, c); return setSel(b); }
+  setSel(null); clearHint();
+  drawPath(path);
+  grid[a[0]][a[1]] = 0; grid[r][c] = 0;
+  paint(a[0], a[1]); paint(r, c);
+  pairsLeft--; hud();
+  if (!pairsLeft) return finish(true);
+  if (!findAnyPair()) {
+    busy = true;
+    setTimeout(() => { reshuffle(); busy = false; toast('没有能消的了，已帮你重新洗牌'); }, 380);
+  }
+}
+function finish(win) {
+  over = true; clearInterval(timer); setSel(null); clearHint();
+  const secs = Math.min(TIME, Math.round((Date.now() - startAt) / 1000));
+  const cleared = totalPairs - pairsLeft;
+  rounds.push({ round: rounds.length + 1, win, secs, cleared, totalPairs, hintsUsed, misses, reshuffles });
+  console.table(rounds);
+  hud();
+  setTimeout(() => {
+    $('title').textContent = win ? '清空了！🎉' : '时间到';
+    $('main').textContent = win ? '用时 ' + secs + ' 秒' : '消了 ' + cleared + ' / ' + totalPairs + ' 对';
+    $('sub').textContent = '提示 ' + hintsUsed + ' 次 · 连不上 ' + misses + ' 次 · 洗牌 ' + reshuffles + ' 次';
+    $('hist').innerHTML = rounds.length < 2 ? '' : rounds.map(x =>
+      '<li>第 ' + x.round + ' 局：' + (x.win ? '清空 ' + x.secs + ' 秒' : '消了 ' + x.cleared + '/' + x.totalPairs) + '，提示 ' + x.hintsUsed + '</li>').join('');
+    $('over').classList.add('on');
+  }, win ? 350 : 0);
+}
+
+board.addEventListener('pointerdown', e => {
+  const t = e.target.closest('.tile');
+  if (t) tap(+t.dataset.r, +t.dataset.c);
+});
+$('hint').addEventListener('click', () => {
+  if (over || busy || hintsLeft <= 0) return;
+  if (!started) start();
+  const p = findAnyPair();
+  if (!p) return;
+  clearHint(); setSel(null);
+  hinted = p; p.forEach(([r, c]) => els[r][c].classList.add('hint'));
+  hintsLeft--; hintsUsed++; hud();
+});
+$('again').addEventListener('click', newGame);
+window.addEventListener('resize', () => layout());
+newGame();
+</script>
+</body>
+</html>

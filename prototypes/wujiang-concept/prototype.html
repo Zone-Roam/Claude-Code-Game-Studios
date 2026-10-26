@@ -1,0 +1,653 @@
+<!-- PROTOTYPE - NOT FOR PRODUCTION -->
+<!-- Question: 武将不再是盘上的块，而是盘下的技能（消对应的兵蓄力，满了点头像放技能），会不会让武将有存在感、让“什么时候放”成为一个有意思的决定？ -->
+<!-- Date: 2026-10-26 -->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>武将连连看 · 原型</title>
+<style>
+  :root { --bg:#f6ecd6; --ink:#2a2018; --muted:#7d6a52; --red:#b8322a; --gold:#c99a2e; --edge:#d8c3a0; --green:#3f8f4f; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); overflow:hidden;
+    font-family:"STKaiti","KaiTi","Kaiti SC",-apple-system,"PingFang SC","Microsoft YaHei",serif;
+    touch-action:manipulation; user-select:none; -webkit-user-select:none; }
+  #app { height:100%; display:flex; flex-direction:column; align-items:center;
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom)); }
+  #top { width:100%; max-width:480px; }
+  #bar { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  #round { font-size:20px; font-weight:700; color:var(--red); }
+  #main { font-size:30px; font-weight:800; font-variant-numeric:tabular-nums; min-width:2.4em; text-align:center; white-space:nowrap; }
+  #main.low { color:var(--red); animation:blink .5s infinite alternate; }
+  @keyframes blink { to { opacity:.45; } }
+  #sub { font-size:18px; color:var(--muted); white-space:nowrap; }
+  #boss { display:flex; align-items:center; gap:10px; margin-top:6px; }
+  #boss .face { width:40px; height:40px; flex:none; font-size:22px; }
+  #boss .bn { font-size:16px; font-weight:700; }
+  .hp { height:12px; background:#e8d9bd; border-radius:6px; overflow:hidden; margin-top:3px; }
+  .hp i { display:block; height:100%; width:100%; background:var(--green); transition:width .2s; }
+  #mrow { display:flex; align-items:center; gap:8px; margin-top:6px; }
+  #mlabel { font-size:15px; color:var(--muted); white-space:nowrap; min-width:3em; }
+  #meter { flex:1; height:12px; background:#e8d9bd; border-radius:6px; overflow:hidden; }
+  #meter i { display:block; height:100%; width:0; background:var(--red); }
+  #meter.hot i { background:#e0541a; }
+  #rule { margin:5px 0 0; font-size:15px; text-align:center; line-height:1.4; color:var(--muted); }
+  #stage { position:relative; margin-top:6px; }
+  #board { position:relative; border-radius:14px; transition:box-shadow .2s; }
+  #board.free { box-shadow:0 0 0 4px #4f86c6, 0 0 18px #4f86c6; }
+  #board.shake { animation:bshake .25s; }
+  #zone { position:absolute; left:0; right:0; background:rgba(184,50,42,.10); border-top:2px dashed rgba(184,50,42,.55); display:none; }
+  #board.press #zone { display:block; }
+  #board.danger #zone { background:rgba(184,50,42,.28); animation:blink .4s infinite alternate; }
+  .tile { position:absolute; display:flex; align-items:center; justify-content:center; border-radius:12px;
+    border:2px solid var(--edge); box-shadow:0 3px 0 var(--edge); background:#fffaf0;
+    font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif; line-height:1;
+    transition:left .22s ease-out, top .22s ease-out, transform .12s, opacity .25s; cursor:pointer; }
+  .tile.fx { border-color:var(--red); box-shadow:0 3px 0 var(--red); }
+  .tile .badge { position:absolute; right:1px; bottom:1px; font-size:38%; background:rgba(255,255,255,.85); border-radius:6px; padding:1px 2px; }
+  .tile.hit { background:#ffb199 !important; transform:scale(1.08); }
+  .tile.spawn { animation:spawn .35s ease-out; }
+  @keyframes spawn { from { transform:scale(.2); opacity:0; } to { transform:none; opacity:1; } }
+  .face { width:82%; height:82%; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:"STKaiti","KaiTi","Kaiti SC",serif; font-weight:800; }
+  .tile.sel { border-color:var(--red); box-shadow:0 0 0 4px var(--red); transform:translateY(-3px); }
+  .tile.shake { animation:shake .3s; }
+  .tile.gone { opacity:0; transform:scale(.4) rotate(-12deg); pointer-events:none; }
+  @keyframes shake { 25% { transform:translateX(-6px); } 75% { transform:translateX(6px); } }
+  @keyframes bshake { 25% { transform:translate(-4px,3px); } 50% { transform:translate(4px,-3px); } 75% { transform:translate(-3px,-1px); } }
+  #lines { position:absolute; left:0; top:0; pointer-events:none; overflow:visible; z-index:2; }
+  #combo, #say { z-index:5; }
+  #combo { position:absolute; left:50%; top:42%; transform:translate(-50%,-50%) scale(.6); font-size:36px; font-weight:900;
+    color:var(--red); text-shadow:0 2px 0 #fff, 0 0 12px rgba(255,255,255,.9); opacity:0; pointer-events:none;
+    white-space:nowrap; transition:opacity .15s, transform .15s; text-align:center; }
+  #combo.on { opacity:1; transform:translate(-50%,-50%) scale(1); }
+  #say { position:absolute; left:4%; right:4%; top:6%; display:flex; gap:10px; align-items:center; padding:10px 12px;
+    background:rgba(42,32,24,.93); color:#fff; border-radius:14px; pointer-events:none; opacity:0; transform:translateY(-8px);
+    transition:opacity .12s, transform .12s; }
+  #say.on { opacity:1; transform:none; }
+  #say .face { width:52px; height:52px; flex:none; font-size:30px; }
+  #say .who { font-size:15px; color:#f0c96a; }
+  #say .text { font-size:21px; line-height:1.35; font-weight:700; }
+  /* skill bar: the generals you command */
+  #skills { display:flex; gap:8px; width:100%; max-width:480px; margin-top:8px; }
+  .sk { flex:1; position:relative; font-family:inherit; background:#fffaf0; border:2px solid var(--edge); border-radius:14px; padding:6px 2px 5px;
+    display:flex; flex-direction:column; align-items:center; gap:2px; color:var(--ink); }
+  .sk .face { width:42px; height:42px; font-size:24px; }
+  .sk .sn { font-size:14px; font-weight:800; }
+  .sk .pips { font-size:12px; color:var(--muted); white-space:nowrap; font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif; }
+  .sk .bar { width:80%; height:6px; background:#e8d9bd; border-radius:3px; overflow:hidden; }
+  .sk .bar i { display:block; height:100%; width:0; background:var(--gold); transition:width .2s; }
+  .sk.ready { border-color:var(--gold); background:#fff3d6; animation:ready .7s infinite alternate; }
+  .sk.ready .sn { color:var(--red); }
+  @keyframes ready { from { box-shadow:0 0 0 0 rgba(201,154,46,.0); } to { box-shadow:0 0 0 5px rgba(201,154,46,.6); } }
+  .sk.armed { border-color:#4f86c6; background:#e3eefa; }
+  .ov { position:fixed; inset:0; background:rgba(40,28,16,.55); display:none; align-items:center; justify-content:center; padding:16px; z-index:10; }
+  .ov.on { display:flex; }
+  .card { width:100%; max-width:380px; background:#fffaf0; border-radius:18px; padding:18px 16px; text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.25); border:2px solid var(--gold); max-height:96vh; overflow:auto; }
+  .card h1 { margin:0; font-size:22px; color:var(--red); }
+  .card h2 { margin:6px 0 8px; font-size:26px; }
+  .card p { margin:6px 0; font-size:16px; line-height:1.5; }
+  .card .muted { color:var(--muted); font-size:14px; }
+  .card ul { list-style:none; padding:0; margin:8px 0 0; font-size:13px; color:var(--muted); max-height:110px; overflow:auto; text-align:left; }
+  .card table { width:100%; border-collapse:collapse; font-size:14px; text-align:left; margin-top:6px; }
+  .card td { padding:3px 4px; border-top:1px solid #eadbbf; vertical-align:top; }
+  .modes { display:flex; gap:6px; margin:10px 0 6px; }
+  .mode { flex:1; font-family:inherit; font-size:17px; font-weight:800; padding:10px 4px; border-radius:12px; border:2px solid var(--edge);
+    background:#fff; color:var(--ink); }
+  .mode.on { border-color:var(--red); background:#fbe3dc; color:var(--red); }
+  .btns { display:flex; gap:10px; margin-top:12px; }
+  .btn { flex:1; font-family:inherit; font-size:21px; font-weight:800; padding:12px 8px; border-radius:14px; border:2px solid var(--red);
+    background:#fff; color:var(--red); }
+  .btn.main { background:var(--red); color:#fff; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <div id="bar">
+      <div id="round">第一回</div>
+      <div id="main"></div>
+      <div id="sub"></div>
+    </div>
+    <div id="boss"><div class="face"></div><div style="flex:1"><div class="bn"></div><div class="hp"><i></i></div></div></div>
+    <div id="mrow"><span id="mlabel"></span><div id="meter"><i></i></div></div>
+    <div id="rule"></div>
+  </div>
+  <div id="stage">
+    <div id="board"><div id="zone"></div><svg id="lines"></svg></div>
+    <div id="combo"></div>
+    <div id="say"><div class="face"></div><div><div class="who"></div><div class="text"></div></div></div>
+  </div>
+  <div id="skills"></div>
+</div>
+<div class="ov" id="intro"><div class="card">
+  <h1 id="iNo"></h1><h2 id="iTitle"></h2>
+  <div class="modes">
+    <button class="mode" data-m="press">敌军压境</button>
+    <button class="mode" data-m="food">粮草有限</button>
+    <button class="mode" data-m="boss">敌将反击</button>
+  </div>
+  <p id="iDesc"></p>
+  <table id="iSkills"></table>
+  <div class="btns"><button class="btn main" id="go">开讲</button></div>
+</div></div>
+<div class="ov" id="end"><div class="card">
+  <h1 id="eNo"></h1><h2 id="eTitle"></h2>
+  <p id="eMain"></p>
+  <p class="muted" id="eSub"></p>
+  <ul id="eLog"></ul>
+  <div class="btns"><button class="btn" id="again">再来一回</button><button class="btn main" id="next">下一回</button></div>
+</div></div>
+
+<script>
+// URL: ?mode=press|food|boss  &need=2 (蓄满要几对)  &slack=2 (粮草余量)  &every= (压境间隔毫秒)  &charge= (敌将蓄力毫秒)  &linems=800
+const P = new URLSearchParams(location.search);
+let MODE = ['press', 'food', 'boss'].includes(P.get('mode')) ? P.get('mode') : 'press';
+const LINE_MS = +P.get('linems') || 800;
+const SLACK = P.has('slack') ? +P.get('slack') : 2;
+const NEED = +P.get('need') || 2;
+const EVERY = +P.get('every') || 0, CHARGE = +P.get('charge') || 0;
+const COMBO_WINDOW = 3000, COLS = 6;
+
+const MODES = {
+  press: { name:'敌军压境', desc:'敌军每隔几秒从上面压下一排，<b>底部红区有块时再压一排就输</b>。撑过所有波次、清空盘面就赢。' },
+  food:  { name:'粮草有限', desc:'<b>不限时</b>。每消一对耗 1 份粮，连不上也扣 1 份，<b>粮尽就输</b>。兵种效果和武将技能都不耗粮。' },
+  boss:  { name:'敌将反击', desc:'每消一块都在砍敌将。<b>他蓄力满了就出手</b>：增兵、扣你一颗心，三颗心没了就输。<b>三连斩以上</b>能打断他蓄力。' },
+};
+const KINDS = {
+  火: { icon:'🔥', tint:'#fbe0cf' }, 营: { icon:'⛺', tint:'#e6efd9' },
+  马: { icon:'🐎', tint:'#f3e1c8' }, 弓: { icon:'🏹', tint:'#e9e4f2' },
+  水: { icon:'🌊', tint:'#dbe8ff' }, 城: { icon:'🏯', tint:'#e3e0d6' },
+  刀: { icon:'⚔️', tint:'#ece5d7' }, 鼓: { icon:'🥁', tint:'#f2e5c9' },
+  盾: { icon:'🛡️', tint:'#dfe9f3' }, 书: { icon:'📜', tint:'#f4ead2' },
+  旗: { icon:'🚩', tint:'#f6dcd8' }, 酒: { icon:'🍶', tint:'#efe6cf' },
+};
+const EFFECTS = {
+  火: { target:'营', text:'火烧连营！' },
+  马: { target:'弓', text:'铁骑冲阵！' },
+  水: { target:'城', text:'水淹七军！' },
+};
+const KIND_IDS = Object.keys(KINDS);
+// The generals you command. Clearing a pair of `kind` charges them; NEED pairs fills the bar.
+const GENERALS = [
+  { key:'关', name:'关羽', bg:'#c8322a', ink:'#fff', kind:'刀', skill:'过关斩将', line:'过关斩将，何惧之有！',
+    desc:{ press:'斩掉最下面一排', food:'斩掉最下面一排', boss:'斩掉最下面一排' } },
+  { key:'张', name:'张飞', bg:'#262626', ink:'#fff', kind:'鼓', skill:'当阳一吼', line:'燕人张翼德在此！谁敢与我决一死战？',
+    desc:{ press:'下一波推迟 10 秒', food:'抢回 3 份粮', boss:'敌将蓄力清零' } },
+  { key:'赵', name:'赵云', bg:'#e1eefc', ink:'#1d4f99', kind:'盾', skill:'七进七出', line:'常山赵子龙在此！',
+    desc:{ press:'下一对一样的，连不上也能消', food:'下一对一样的，连不上也能消', boss:'下一对一样的，连不上也能消' } },
+  { key:'亮', name:'诸葛亮', bg:'#f3efe2', ink:'#2c5f2d', kind:'书', skill:'神机妙算', line:'亮已算定，此战必胜。',
+    desc:{ press:'清掉盘上最多的那一种兵', food:'清掉盘上最多的那一种兵', boss:'清掉盘上最多的那一种兵' } },
+];
+const ENEMIES = {
+  程: { bg:'#f2c94c', ink:'#5a3a00', name:'程远志' },
+  吕: { bg:'#efe6f7', ink:'#5b2a86', name:'吕布' },
+  郃: { bg:'#d9e4d0', ink:'#2d4a22', name:'张郃' },
+};
+// deck: tile counts per kind (even), summing to rows*cols
+const ROUNDS = [
+  { no:'第一回', title:'宴桃园豪杰三结义', rows:6,
+    deck:{ 火:2, 营:8, 刀:4, 鼓:4, 盾:4, 书:4, 旗:4, 酒:6 },
+    press:{ start:4, waves:8, every:7000 }, boss:{ key:'程', charge:10000, hearts:3 } },
+  { no:'第二回', title:'虎牢关三英战吕布', rows:7,
+    deck:{ 火:2, 营:6, 马:2, 弓:8, 刀:4, 鼓:4, 盾:4, 书:4, 旗:8 },
+    press:{ start:4, waves:10, every:6000 }, boss:{ key:'吕', charge:9000, hearts:3 } },
+  { no:'第三回', title:'赵子龙单骑救主', rows:8,
+    deck:{ 火:2, 营:6, 马:2, 弓:6, 水:2, 城:8, 刀:4, 鼓:4, 盾:4, 书:4, 旗:6 },
+    press:{ start:5, waves:12, every:5000 }, boss:{ key:'郃', charge:8000, hearts:3 } },
+];
+const NUM = ['','一','二','三','四','五','六','七','八','九','十'];
+
+const $ = id => document.getElementById(id);
+const board = $('board'), svg = $('lines');
+let R, ROWS, grid, els, sel, over, busy, timer;
+let ri = 0, elapsed, lastTick, paused, sayT, comboT;
+let combo, maxCombo, lastClear, fxTiles, reshuffles, misses;
+let wave, nextPush, food, foodStart, hp, hpMax, charge, hearts, attacks, interrupts;
+let gcharge, freeLink, skillLog;
+const log = [];
+let T = 56, PAD = 18;
+
+const idOf = name => KIND_IDS.indexOf(name) + 1;
+const nameOf = v => KIND_IDS[v - 1];
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+const blank = fill => Array.from({ length: ROWS + 2 }, () => Array(COLS + 2).fill(fill));
+function countTiles() { let n = 0; for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (grid[r][c]) n++; return n; }
+function poolPick() {
+  const names = [];
+  for (const [n, k] of Object.entries(R.deck)) for (let i = 0; i < k / 2; i++) names.push(n);
+  return idOf(names[Math.floor(Math.random() * names.length)]);
+}
+function wipePairs() {
+  let n = 0;
+  for (const [k, fx] of Object.entries(EFFECTS)) if (R.deck[k]) n += (R.deck[fx.target] || 0) / 2;
+  return n;
+}
+
+// ---- connect rule (copied, prototypes never import each other) ----
+const empty = (r, c) => grid[r][c] === 0;
+function lineClear(r1, c1, r2, c2) {
+  if (r1 === r2) { for (let c = Math.min(c1, c2) + 1; c < Math.max(c1, c2); c++) if (!empty(r1, c)) return false; return true; }
+  if (c1 === c2) { for (let r = Math.min(r1, r2) + 1; r < Math.max(r1, r2); r++) if (!empty(r, c1)) return false; return true; }
+  return false;
+}
+function oneCorner(a, b) {
+  for (const k of [[a[0], b[1]], [b[0], a[1]]])
+    if (empty(k[0], k[1]) && lineClear(a[0], a[1], k[0], k[1]) && lineClear(k[0], k[1], b[0], b[1])) return k;
+  return null;
+}
+function findPath(a, b) {
+  if ((a[0] === b[0] || a[1] === b[1]) && lineClear(a[0], a[1], b[0], b[1])) return [a, b];
+  const k = oneCorner(a, b);
+  if (k) return [a, k, b];
+  for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    let r = a[0] + dr, c = a[1] + dc;
+    while (r >= 0 && r <= ROWS + 1 && c >= 0 && c <= COLS + 1 && empty(r, c)) {
+      const k2 = oneCorner([r, c], b);
+      if (k2) return [a, [r, c], k2, b];
+      r += dr; c += dc;
+    }
+  }
+  return null;
+}
+function findAnyPair() {
+  const byKind = {};
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++)
+    if (grid[r][c]) (byKind[grid[r][c]] = byKind[grid[r][c]] || []).push([r, c]);
+  for (const list of Object.values(byKind))
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++)
+      if (findPath(list[i], list[j])) return [list[i], list[j]];
+  return null;
+}
+
+// ---- rendering ----
+const px = c => c === 0 ? PAD / 2 : c === COLS + 1 ? PAD + COLS * T + PAD / 2 : PAD + (c - 1) * T + T / 2;
+const py = r => r === 0 ? PAD / 2 : r === ROWS + 1 ? PAD + ROWS * T + PAD / 2 : PAD + (r - 1) * T + T / 2;
+
+function place(el, r, c) {
+  el.dataset.r = r; el.dataset.c = c;
+  el.style.left = (PAD + (c - 1) * T + 2) + 'px';
+  el.style.top = (PAD + (r - 1) * T + 2) + 'px';
+}
+function size(el) {
+  el.style.width = el.style.height = (T - 4) + 'px';
+  el.style.fontSize = Math.round(T * 0.56) + 'px';
+}
+function newTile(r, c, fromAbove) {
+  const el = document.createElement('div');
+  el.className = 'tile';
+  board.appendChild(el);
+  size(el);
+  if (fromAbove) { place(el, 0, c); void el.offsetWidth; }
+  place(el, r, c);
+  paint(el, grid[r][c]);
+  return el;
+}
+function layout() {
+  const W = Math.min(window.innerWidth, 480) - 24;
+  const H = window.innerHeight - $('top').offsetHeight - $('skills').offsetHeight - 40;
+  T = Math.max(24, Math.floor(Math.min(W / (COLS + 0.6), H / (ROWS + 0.6), 78)));
+  PAD = Math.round(T * 0.3);
+  const bw = COLS * T + 2 * PAD, bh = ROWS * T + 2 * PAD;
+  board.style.width = bw + 'px'; board.style.height = bh + 'px';
+  $('stage').style.width = bw + 'px';
+  svg.setAttribute('width', bw); svg.setAttribute('height', bh);
+  $('zone').style.top = (PAD + (ROWS - 1) * T) + 'px'; $('zone').style.height = T + 'px';
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (els && els[r][c]) { size(els[r][c]); place(els[r][c], r, c); }
+}
+function faceHTML(p, sz) {
+  return '<div class="face" style="background:' + p.bg + ';color:' + p.ink + ';font-size:' + sz + 'px">' + p.key + '</div>';
+}
+function paint(el, v) {
+  const n = nameOf(v), fx = EFFECTS[n];
+  el.classList.toggle('fx', !!fx);
+  el.innerHTML = KINDS[n].icon + (fx ? '<span class="badge">→' + KINDS[fx.target].icon + '</span>' : '');
+  el.style.background = KINDS[n].tint;
+}
+function drawPath(path, color) {
+  const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  pl.setAttribute('points', path.map(([r, c]) => px(c) + ',' + py(r)).join(' '));
+  pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', color || '#b8322a'); pl.setAttribute('stroke-width', Math.max(4, T / 11));
+  pl.setAttribute('stroke-linecap', 'round'); pl.setAttribute('stroke-linejoin', 'round');
+  svg.appendChild(pl);
+  setTimeout(() => pl.remove(), 300);
+}
+function renderSkills() {
+  $('skills').innerHTML = GENERALS.map((g, i) => {
+    const full = gcharge[i] >= NEED, armed = g.key === '赵' && freeLink;
+    return '<button class="sk' + (full ? ' ready' : '') + (armed ? ' armed' : '') + '" data-i="' + i + '">' + faceHTML(g, 24) +
+      '<div class="sn">' + (armed ? '待命中' : full ? g.skill : g.name) + '</div>' +
+      '<div class="pips">' + KINDS[g.kind].icon + ' ' + Math.min(gcharge[i], NEED) + '/' + NEED + '</div>' +
+      '<div class="bar"><i style="width:' + Math.min(100, gcharge[i] / NEED * 100) + '%"></i></div></button>';
+  }).join('');
+}
+function hud() {
+  const pairs = countTiles() / 2;
+  const main = $('main'), meter = $('meter');
+  if (MODE === 'press') {
+    const left = nextPush === Infinity ? null : Math.max(0, (nextPush - elapsed) / 1000);
+    main.textContent = left === null ? '最后一波' : Math.ceil(left) + '秒';
+    $('sub').textContent = '第 ' + wave + '/' + R.press.waves + ' 波';
+    $('mlabel').textContent = '下一波';
+    meter.firstChild.style.width = (left === null ? 100 : Math.max(0, 1 - left * 1000 / R.press.every) * 100) + '%';
+    let danger = false;
+    for (let c = 1; c <= COLS; c++) if (grid[ROWS][c]) danger = true;
+    board.classList.toggle('danger', danger);
+    main.classList.toggle('low', danger);
+  } else if (MODE === 'food') {
+    main.textContent = '🌾 ' + food;
+    main.classList.toggle('low', food <= 3);
+    $('sub').textContent = '剩 ' + pairs + ' 对';
+  } else {
+    main.textContent = '❤️'.repeat(hearts) + '🤍'.repeat(R.boss.hearts - hearts);
+    main.classList.toggle('low', hearts <= 1);
+    $('sub').textContent = '剩 ' + pairs + ' 对';
+    $('mlabel').textContent = '蓄力';
+    meter.firstChild.style.width = Math.min(100, charge) + '%';
+    meter.classList.toggle('hot', charge >= 70);
+    $('boss').querySelector('.hp i').style.width = Math.max(0, hp / hpMax * 100) + '%';
+    $('boss').querySelector('.bn').textContent = ENEMIES[R.boss.key].name + '　血 ' + Math.max(0, hp) + '/' + hpMax;
+  }
+}
+function ruleText() {
+  return Object.keys(EFFECTS).filter(k => R.deck[k]).map(k =>
+    '消一对 ' + KINDS[k].icon + '，所有 ' + KINDS[EFFECTS[k].target].icon + ' 一起清掉').join('；');
+}
+
+// ---- round flow ----
+function buildRound() {
+  R = ROUNDS[ri];
+  if (EVERY) R.press.every = EVERY;
+  if (CHARGE) R.boss.charge = CHARGE;
+  ROWS = MODE === 'press' ? 8 : R.rows;
+  grid = blank(0);
+  const deck = [];
+  if (MODE === 'press') {
+    while (deck.length < R.press.start * COLS) { const v = poolPick(); deck.push(v, v); }
+    shuffle(deck);
+    for (let r = 1; r <= R.press.start; r++) for (let c = 1; c <= COLS; c++) grid[r][c] = deck.pop();
+  } else {
+    for (const [n, k] of Object.entries(R.deck)) for (let i = 0; i < k; i++) deck.push(idOf(n));
+    shuffle(deck);
+    for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) grid[r][c] = deck.pop();
+  }
+  if (!findAnyPair()) reshuffle(false);
+  gcharge = GENERALS.map(() => 0); freeLink = false; skillLog = [];
+  renderSkills();
+  $('boss').style.display = MODE === 'boss' ? 'flex' : 'none';
+  $('mrow').style.display = MODE === 'food' ? 'none' : 'flex';
+  if (MODE === 'boss') $('boss').querySelector('.face').outerHTML = faceHTML(Object.assign({ key: R.boss.key }, ENEMIES[R.boss.key]), 22);
+  $('round').textContent = R.no;
+  $('rule').innerHTML = ruleText();
+  board.classList.toggle('press', MODE === 'press');
+  board.classList.remove('free');
+  board.querySelectorAll('.tile').forEach(e => e.remove());
+  els = null;
+  layout();
+  els = blank(null);
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (grid[r][c]) els[r][c] = newTile(r, c);
+  sel = null; over = true; busy = false; paused = false; elapsed = 0;
+  combo = 0; maxCombo = 0; lastClear = -1e9; fxTiles = 0; reshuffles = 0; misses = 0;
+  wave = 0; nextPush = R.press.every;
+  food = foodStart = countTiles() / 2 - wipePairs() + SLACK;
+  hpMax = hp = countTiles() / 2; charge = 0; hearts = R.boss.hearts; attacks = 0; interrupts = 0;
+  clearInterval(timer);
+  hud();
+  $('end').classList.remove('on');
+  $('iNo').textContent = R.no; $('iTitle').textContent = R.title;
+  document.querySelectorAll('.mode').forEach(b => b.classList.toggle('on', b.dataset.m === MODE));
+  $('iDesc').innerHTML = MODES[MODE].desc;
+  $('iSkills').innerHTML = '<tr><td colspan="3" class="muted">盘下四位武将：消对应的兵给他蓄力，头像发光就点</td></tr>' +
+    GENERALS.map(g => '<tr><td><b>' + g.name + '</b></td><td>' + KINDS[g.kind].icon + '</td><td>' + g.skill + '：' + g.desc[MODE] + '</td></tr>').join('');
+  $('intro').classList.add('on');
+}
+function startRound() {
+  $('intro').classList.remove('on');
+  over = false; lastTick = Date.now();
+  timer = setInterval(tick, 100);
+}
+function tick() {
+  const now = Date.now(), dt = now - lastTick;
+  lastTick = now;
+  if (over) return;
+  if (paused || busy) return hud();
+  elapsed += dt;
+  if (MODE === 'press' && elapsed >= nextPush) push();
+  if (MODE === 'boss' && !over) { charge += dt / R.boss.charge * 100; if (charge >= 100) bossAttack(); }
+  if (!over) hud();
+}
+function push() {
+  for (let c = 1; c <= COLS; c++) if (grid[ROWS][c]) return finish(false, '敌军破城！');
+  for (let r = ROWS; r >= 2; r--) for (let c = 1; c <= COLS; c++) { grid[r][c] = grid[r - 1][c]; els[r][c] = els[r - 1][c]; }
+  const row = [];
+  for (let i = 0; i < COLS / 2; i++) { const v = poolPick(); row.push(v, v); }
+  shuffle(row);
+  for (let c = 1; c <= COLS; c++) { grid[1][c] = row[c - 1]; els[1][c] = null; }
+  for (let r = 2; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (els[r][c]) place(els[r][c], r, c);
+  for (let c = 1; c <= COLS; c++) els[1][c] = newTile(1, c, true);
+  if (sel) sel = [sel[0] + 1, sel[1]];
+  wave++;
+  nextPush = wave >= R.press.waves ? Infinity : elapsed + R.press.every;
+  if (wave >= R.press.waves) flash('最后一波！清空就赢');
+  boardShake();
+  if (!findAnyPair()) reshuffle();
+}
+function bossAttack() {
+  charge = 0; attacks++; hearts--;
+  const empties = [];
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (!grid[r][c]) empties.push([r, c]);
+  shuffle(empties);
+  let added = 0;
+  for (let i = 0; i + 1 < empties.length && added < 2; i += 2, added++) {
+    const v = poolPick();
+    for (const [r, c] of [empties[i], empties[i + 1]]) { grid[r][c] = v; els[r][c] = newTile(r, c); els[r][c].classList.add('spawn'); }
+  }
+  flash(ENEMIES[R.boss.key].name + '出手！' + (added ? '<br><small>增兵 ' + added * 2 + ' 人，你丢了一颗心</small>' : ''), 1000);
+  boardShake();
+  if (hearts <= 0) return finish(false, '城破！');
+  if (!findAnyPair()) reshuffle();
+}
+function reshuffle(count = true) {
+  const cells = [], vals = [];
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (grid[r][c]) { cells.push([r, c]); vals.push(grid[r][c]); }
+  for (let tries = 0; tries < 100; tries++) {
+    shuffle(vals);
+    cells.forEach(([r, c], i) => grid[r][c] = vals[i]);
+    if (findAnyPair()) break;
+  }
+  if (count) { reshuffles++; cells.forEach(([r, c]) => paint(els[r][c], grid[r][c])); }
+}
+function setSel(p) {
+  if (sel && els[sel[0]][sel[1]]) els[sel[0]][sel[1]].classList.remove('sel');
+  sel = p;
+  if (sel) els[sel[0]][sel[1]].classList.add('sel');
+}
+function shake(r, c) {
+  const el = els[r][c];
+  el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+}
+function flash(text, ms = 650) {
+  const el = $('combo');
+  el.innerHTML = text;
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  clearTimeout(comboT); comboT = setTimeout(() => el.classList.remove('on'), ms);
+}
+function boardShake() { board.classList.remove('shake'); void board.offsetWidth; board.classList.add('shake'); }
+function say(p, text) {
+  $('say').querySelector('.face').outerHTML = faceHTML(p, 30);
+  $('say').querySelector('.who').textContent = p.name + '：';
+  $('say').querySelector('.text').textContent = text;
+  $('say').classList.add('on');
+  paused = true;
+  clearTimeout(sayT);
+  sayT = setTimeout(() => { $('say').classList.remove('on'); paused = false; }, LINE_MS);
+}
+function removeAt(r, c) {
+  const el = els[r][c];
+  grid[r][c] = 0; els[r][c] = null;
+  el.classList.add('gone');
+  setTimeout(() => el.remove(), 250);
+}
+function damage(n) { if (MODE === 'boss') hp -= n; }
+function afterClear() {
+  hud();
+  if (over) return;
+  if (MODE === 'boss' && hp <= 0) return finish(true);
+  if (!countTiles()) {
+    if (MODE === 'press' && wave < R.press.waves) return push();
+    return finish(true);
+  }
+  if (MODE === 'food' && food <= 0) return finish(false, '粮草断绝！');
+  if (!findAnyPair()) {
+    busy = true;
+    setTimeout(() => { reshuffle(); busy = false; }, 350);
+  }
+}
+// Highlight a set of tiles, then clear them together. Callers keep every kind's count even.
+function wipe(hit, text) {
+  busy = true;
+  hit.forEach(([r, c]) => els[r][c].classList.add('hit'));
+  flash(text, 900);
+  boardShake();
+  setTimeout(() => {
+    hit.forEach(([r, c]) => removeAt(r, c));
+    damage(hit.length / 2);
+    busy = false;
+    afterClear();
+  }, 380);
+}
+function fire(name) {
+  const fx = EFFECTS[name], tid = idOf(fx.target), hit = [];
+  for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (grid[r][c] === tid) hit.push([r, c]);
+  if (!hit.length) { flash(fx.text + '<br><small>可惜已经没有' + KINDS[fx.target].icon + '了</small>', 900); return false; }
+  fxTiles += hit.length;
+  wipe(hit, fx.text + '<br>清掉 ' + hit.length + ' 个' + KINDS[fx.target].icon);
+  return true;
+}
+
+// ---- generals' skills ----
+function cast(i) {
+  const g = GENERALS[i];
+  if (over || busy) return;
+  if (gcharge[i] < NEED) { flash('<small>消 ' + KINDS[g.kind].icon + ' 给' + g.name + '蓄力</small>'); return; }
+  if (g.key === '赵' && freeLink) return;
+  gcharge[i] = 0;
+  skillLog.push(g.name);
+  setSel(null);
+  say(g, g.line);
+  if (g.key === '关') {
+    let row = 0;
+    for (let r = ROWS; r >= 1 && !row; r--) for (let c = 1; c <= COLS; c++) if (grid[r][c]) { row = r; break; }
+    const hit = [];
+    for (let c = 1; c <= COLS; c++) if (grid[row][c]) hit.push([row, c]);
+    // keep every kind even: a kind left with an odd count loses one more tile, the lowest one
+    const cnt = {};
+    for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (grid[r][c]) cnt[grid[r][c]] = (cnt[grid[r][c]] || 0) + 1;
+    hit.forEach(([r, c]) => cnt[grid[r][c]]--);
+    for (const v of Object.keys(cnt)) if (cnt[v] % 2) {
+      done: for (let r = ROWS; r >= 1; r--) for (let c = 1; c <= COLS; c++) if (r !== row && grid[r][c] === +v) { hit.push([r, c]); break done; }
+    }
+    wipe(hit, '过关斩将！<br>斩掉 ' + hit.length + ' 块');
+  } else if (g.key === '张') {
+    if (MODE === 'press') { if (nextPush !== Infinity) nextPush += 10000; flash('当阳一吼！<br><small>下一波推迟 10 秒</small>', 900); }
+    else if (MODE === 'boss') { charge = 0; flash('当阳一吼！<br><small>敌将蓄力清零</small>', 900); }
+    else { food += 3; flash('当阳一吼！<br><small>抢回 3 份粮</small>', 900); }
+    hud();
+  } else if (g.key === '赵') {
+    freeLink = true;
+    board.classList.add('free');
+    flash('七进七出！<br><small>点两块一样的，直接消</small>', 1100);
+  } else {
+    const cnt = {};
+    for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (grid[r][c]) cnt[grid[r][c]] = (cnt[grid[r][c]] || 0) + 1;
+    const top = +Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+    const hit = [];
+    for (let r = 1; r <= ROWS; r++) for (let c = 1; c <= COLS; c++) if (grid[r][c] === top) hit.push([r, c]);
+    wipe(hit, '神机妙算！<br>清掉 ' + hit.length + ' 个' + KINDS[nameOf(top)].icon);
+  }
+  renderSkills();
+}
+
+function tap(r, c) {
+  if (over || busy || !grid[r][c]) return;
+  if (!sel) return setSel([r, c]);
+  if (sel[0] === r && sel[1] === c) return setSel(null);
+  const a = sel, b = [r, c], v = grid[r][c];
+  if (grid[a[0]][a[1]] !== v) return setSel(b);
+  let path = findPath(a, b), freeUsed = false;
+  if (!path && freeLink) { path = [a, b]; freeUsed = true; freeLink = false; board.classList.remove('free'); }
+  if (!path) {
+    misses++; shake(a[0], a[1]); shake(r, c); setSel(b);
+    if (MODE === 'food') { food--; flash('连不上，扣 1 份粮'); hud(); if (food <= 0) finish(false, '粮草断绝！'); }
+    if (MODE === 'boss') { charge += 15; flash('连不上，敌将蓄力 +15'); hud(); }
+    return;
+  }
+  setSel(null);
+  drawPath(path, freeUsed ? '#4f86c6' : null);
+  removeAt(a[0], a[1]); removeAt(r, c);
+  combo = elapsed - lastClear <= COMBO_WINDOW ? combo + 1 : 1;
+  lastClear = elapsed;
+  maxCombo = Math.max(maxCombo, combo);
+  if (MODE === 'food' && !freeUsed) food--;
+  damage(1);
+  const gi = GENERALS.findIndex(g => g.kind === nameOf(v));
+  const justFilled = gi >= 0 && gcharge[gi] === NEED - 1;
+  if (gi >= 0 && gcharge[gi] < NEED) gcharge[gi]++;
+  renderSkills();
+  if (EFFECTS[nameOf(v)] && fire(nameOf(v))) return;
+  if (MODE === 'boss' && combo >= 3) { charge = Math.max(0, charge - 25); interrupts++; }
+  if (freeUsed) flash('七进七出！');
+  else if (justFilled) flash(GENERALS[gi].name + '可以出手了！<br><small>点下面的头像</small>', 900);
+  else if (MODE === 'boss' && combo >= 3) { flash(NUM[Math.min(combo, 10)] + '连斩！打断蓄力'); boardShake(); }
+  else if (combo >= 2) flash((combo <= 10 ? NUM[combo] : combo) + '连斩！');
+  afterClear();
+}
+function finish(win, reason) {
+  if (over) return;
+  over = true; clearInterval(timer); setSel(null);
+  const secs = Math.round(elapsed / 1000);
+  const extra = MODE === 'press' ? '撑过 ' + wave + '/' + R.press.waves + ' 波'
+    : MODE === 'food' ? '余粮 ' + food + '/' + foodStart + '，连不上 ' + misses + ' 次'
+    : '剩 ' + hearts + ' 心，敌将出手 ' + attacks + ' 次，打断 ' + interrupts + ' 次';
+  const skills = skillLog.length ? skillLog.join('、') : '没放技能';
+  log.push({ round: R.no, mode: MODES[MODE].name, win, secs, extra, skills, then: '' });
+  console.table(log);
+  setTimeout(() => {
+    const last = ri === ROUNDS.length - 1;
+    $('eNo').textContent = R.no + ' · ' + MODES[MODE].name;
+    $('eTitle').textContent = win ? (MODE === 'boss' ? '击退' + ENEMIES[R.boss.key].name + '！' : '守住了！') : reason;
+    $('eMain').textContent = '用时 ' + secs + ' 秒 · 最高 ' + maxCombo + ' 连斩 · 技能：' + skills;
+    $('eSub').textContent = extra;
+    $('eLog').innerHTML = log.map(x => '<li>' + x.round + ' ' + x.mode + '：' + (x.win ? '胜' : '败') + ' ' + x.secs + ' 秒，' + x.extra +
+      '，技能 ' + x.skills + (x.then ? '，然后' + x.then : '') + '</li>').join('');
+    $('next').style.display = win ? '' : 'none';
+    $('next').textContent = last ? '从头再来' : '下一回';
+    $('end').classList.add('on');
+  }, win ? 500 : 300);
+}
+
+board.addEventListener('pointerdown', e => {
+  const t = e.target.closest('.tile');
+  if (t && !t.classList.contains('gone')) tap(+t.dataset.r, +t.dataset.c);
+});
+$('skills').addEventListener('click', e => {
+  const b = e.target.closest('.sk');
+  if (b) cast(+b.dataset.i);
+});
+document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => { MODE = b.dataset.m; buildRound(); }));
+$('go').addEventListener('click', startRound);
+$('again').addEventListener('click', () => { log[log.length - 1].then = '再来'; buildRound(); });
+$('next').addEventListener('click', () => {
+  log[log.length - 1].then = ri === ROUNDS.length - 1 ? '从头' : '下一回';
+  ri = (ri + 1) % ROUNDS.length; buildRound();
+});
+window.addEventListener('resize', () => layout());
+buildRound();
+</script>
+</body>
+</html>
