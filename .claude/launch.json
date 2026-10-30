@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dist",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-e", "const h=require('http'),f=require('fs'),p=require('path');h.createServer((q,s)=>{const u=decodeURIComponent(q.url.split('?')[0]);const file=p.join('dist',u==='/'?'index.html':u);f.readFile(file,(e,b)=>{if(e){s.writeHead(404);s.end();return;}s.writeHead(200,{'content-type':file.endsWith('.html')?'text/html; charset=utf-8':'application/octet-stream'});s.end(b);});}).listen(8765,'127.0.0.1');"],
+      "port": 8765
+    }
+  ]
+}
