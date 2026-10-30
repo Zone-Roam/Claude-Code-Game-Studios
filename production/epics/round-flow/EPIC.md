@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/round-flow.md
 > **Architecture Module**: `src/rules/round-flow.mjs`（每帧由 `src/app/main-loop.mjs` 驱动；`attempt` 计数归 `src/app/screens.mjs`）
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories round-flow`
+> **Stories**: 17 stories（2026-10-30，见下方 Stories 表）
 
 ## Overview
 
@@ -40,6 +40,28 @@
 | TR-round-flow-016 | 令牌到点使集合变空且有结果交回时就地做结算点（先 outcome()，再 ensurePlayable()）；分出胜负或洗牌时本帧不调 tick | ADR-0002 ✅ |
 
 Untraced Requirements: None（3 条部分覆盖，都在 Core 层，按 GDD 实现）。
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [游戏时钟 dt_game 与对局骨架](story-001-clock-dtgame.md) | Logic | Ready | ADR-0002 |
+| 002 | [令牌集合与前台计时](story-002-token-set.md) | Logic | Ready | ADR-0002 |
+| 003 | [一回的状态机、出口与种子](story-003-state-machine-exit-seed.md) | Logic | Ready | ADR-0002 |
+| 004 | [盘锁与“本帧开始时或此刻”的丢弃](story-004-board-lock-discard.md) | Logic | Ready | ADR-0002 |
+| 005 | [帧步骤、就地结算点与 ③b](story-005-frame-steps-settle-points.md) | Integration | Ready | ADR-0002 |
+| 006 | [match/miss 通知顺序与结果分发表](story-006-notify-order-dispatch.md) | Integration | Ready | ADR-0002 |
+| 007 | [tick 驱动、下压与换阶段](story-007-pressure-tick-push-phase.md) | Integration | Ready | ADR-0002 |
+| 008 | [结算点：先胜后负、洗牌与死局](story-008-outcome-reshuffle-settle-point.md) | Integration | Ready | ADR-0002 |
+| 009 | [进入“结束”、RoundResult 与进度结算](story-009-round-result-settle.md) | Logic | Ready | ADR-0002 |
+| 010 | [后台、隐式后台与“接着讲”](story-010-background-hidden.md) | Logic | Ready | ADR-0002 |
+| 011 | [暂停印与横屏](story-011-pause-landscape.md) | Logic | Ready | ADR-0002 |
+| 012 | [“回书目”放弃一回](story-012-return-to-catalog.md) | Integration | Ready | ADR-0002 |
+| 013 | [关羽选排的输入路由](story-013-row-select-guan-yu.md) | Integration | Ready | ADR-0003 |
+| 014 | [黄忠选列与关羽互斥](story-014-column-select-huang-zhong.md) | Integration | Ready | ADR-0003 |
+| 015 | [选排/选列的打断（暂停、下压、破城）](story-015-select-interrupts.md) | Integration | Ready | ADR-0002 |
+| 016 | [覆盖卡按钮防连点](story-016-overlay-card-guard.md) | Logic | Ready | ADR-0002 |
+| 017 | [开讲：150 ms 撤遮罩与出阵武将交接](story-017-start-fade-loadout.md) | Integration | Ready | ADR-0002 |
 
 ## Definition of Done
 

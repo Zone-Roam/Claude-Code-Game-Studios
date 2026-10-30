@@ -1,7 +1,9 @@
 // Board-link rules: grid model, random streams, deck validation, dealing,
 // tap state machine with match / miss / reveal, clearKind / clearCells /
 // clearSelection, rowContents / colContents, pushRowFromTop / addPairs / placeBlocks,
-// dead-board reshuffle (ensurePlayable, levels 1-3).
+// convertBlocks / shuffleTopRows,
+// roadblocks (block lines, untappable, broken by an adjacent player match),
+// dead-board reshuffle (ensurePlayable, levels 1-4; silent reshuffle after deal).
 // Data in, data out. No page, clock, global random or storage access.
 import {
   UNIT_KINDS, EMPTY_CELL, ROADBLOCK, BOARD_COLS, BOARD_COLS_ALLOWED, BOARD_ROWS_MIN, BOARD_ROWS_MAX,
@@ -36,6 +38,8 @@ import { createStream } from '../core/rng.mjs';
  *   rowContents: function(number): Object, colContents: function(number): Object,
  *   pushRowFromTop: function(Array<*>): Object, addPairs: function(Array<string>): Object,
  *   placeBlocks: function(number, Object): Object,
+ *   blocks: function(): Array<Object>, isEmpty: function(): boolean,
+ *   bottomOccupied: function(): boolean,
  *   buriedCells: function(string): Array<Object>, hasPlayablePair: function(): boolean,
  *   ensurePlayable: function(): (Object|null)}}
  * @example
@@ -103,6 +107,25 @@ export function createBoard(options) {
     const flipped = removeTop(row, col);
     if (flipped !== null) revealed.push(flipped);
     if (selected !== null && selected.r === row && selected.c === col) selected = null;
+  }
+
+  // Breaks every roadblock orthogonally next to `a` or `b` (GDD rule 9; a
+  // player match). Diagonals do not count; a roadblock next to both breaks
+  // once. Returns the broken cells {r, c} row-major.
+  function breakAdjacent(a, b) {
+    const hit = {};
+    for (const p of [a, b]) {
+      for (const d of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        const r = p.r + d[0];
+        const c = p.c + d[1];
+        if (inGrid(r, c) && top[r][c] === ROADBLOCK) hit[r * (cols + 2) + c] = { r, c };
+      }
+    }
+    return Object.keys(hit).map(Number).sort((x, y) => x - y).map((k) => {
+      const p = hit[k];
+      top[p.r][p.c] = EMPTY_CELL;
+      return p;
+    });
   }
 
   // Top-layer units, buried cards and roadblock cells along a list of cells
@@ -264,6 +287,18 @@ export function createBoard(options) {
     return moved;
   }
 
+  // Reshuffle levels 1-3 (GDD rule 12) on a board already known to be dead.
+  // Returns `{type: 'reshuffle', fallback}` once a playable pair exists, or
+  // null when all three fail (board still dead; level 4 is the caller's).
+  function reshuffleLevels() {
+    if (permuteUntilPlayable()) return { type: 'reshuffle', fallback: false };
+    if (swapFallback()) return { type: 'reshuffle', fallback: true };
+    if (liftBuried() > 0 && (board.hasPlayablePair() || permuteUntilPlayable() || swapFallback())) {
+      return { type: 'reshuffle', fallback: true };
+    }
+    return null;
+  }
+
   // Every empty top-layer cell of the playable area, row-major (addPairs,
   // placeBlocks). Empty cells never hold buried cards (I3).
   function emptyCells() {
@@ -311,7 +346,9 @@ export function createBoard(options) {
      * uniformly with the `deal` stream. Throws RangeError when deckValid fails,
      * so a bad deck is refused in release builds too (keeps I1 and I3).
      * Starts a round, so it also clears the selection and turns Zhao Yun stand-by off.
-     * Does not reshuffle a board without a playable pair (that is ensurePlayable).
+     * When the dealt top layer has no playable pair, reshuffles it at once with
+     * the same logic as ensurePlayable (GDD edge case "dead right after deal")
+     * and drops the result: no `reshuffle` is returned, so nothing is shown.
      * @param {{deck: Object<string, number>, mode: (string|undefined), startRows: (number|undefined)}} chapter
      *   `mode` is 'press', 'boss' or 'food'; `startRows` is required for 'press'
      * @example board.deal({ deck: { huo: 10, ying: 10 }, mode: 'press', startRows: 4 });
@@ -355,6 +392,7 @@ export function createBoard(options) {
         }
         open[stream.int(open.length)].push(pile[next++]);
       }
+      board.ensurePlayable();
     },
     /**
      * Snapshot of every playable cell, row-major. Fresh objects; mutating them
@@ -732,6 +770,83 @@ export function createBoard(options) {
       return { type: 'blocks', cells };
     },
     /**
+     * Turns top-layer units into another kind in place (GDD rule 13; the enemy
+     * general's `chain` special). Buried cards, roadblocks and positions never
+     * change. Refused as a whole with `{ok: false}` and the board unchanged when
+     * a target is outside the playable area, listed twice, or its top is not a
+     * unit (empty cell, roadblock), when `kind` is not a unit kind, or when the
+     * change would break I1: per kind, the count over every card (top and under)
+     * after minus before must be even (release behaviour; a dev-build assertion
+     * and logging are the caller's, since rules return data only). A target
+     * already of `kind` is listed with `from = kind` and is left as it is. Does
+     * not check I2 (the settle point does). Every call clears the selection,
+     * refused ones included. Returns data only; the caller emits it.
+     * @param {Array<{r: number, c: number}>} cells distinct playable cells
+     * @param {string} kind the UNIT_KINDS id the units become
+     * @returns {Object} `{type: 'convert', cells, kind}`: `cells` lists
+     *   `{r, c, from}` in the order given, `from` the kind each top held before;
+     *   or `{ok: false}` as above
+     * @example board.convertBlocks([{ r: 2, c: 1 }, { r: 4, c: 5 }], 'ying')
+     *   // { type: 'convert', cells: [{r:2,c:1,from:'shu'}, {r:4,c:5,from:'shu'}], kind: 'ying' }
+     */
+    convertBlocks(cells, kind) {
+      selected = null;
+      if (UNIT_KINDS.indexOf(kind) === -1) return { ok: false };
+      const seen = {};
+      const delta = {};
+      const out = [];
+      for (const p of cells) {
+        if (!inGrid(p.r, p.c) || p.r < 1 || p.r > rows || p.c < 1 || p.c > cols) return { ok: false };
+        const key = p.r * (cols + 2) + p.c;
+        if (seen[key] || !isUnit(top[p.r][p.c])) return { ok: false };
+        seen[key] = true;
+        const from = top[p.r][p.c];
+        out.push({ r: p.r, c: p.c, from });
+        delta[from] = (delta[from] === undefined ? 0 : delta[from]) - 1;
+        delta[kind] = (delta[kind] === undefined ? 0 : delta[kind]) + 1;
+      }
+      for (const k of Object.keys(delta)) if (delta[k] % 2 !== 0) return { ok: false };
+      for (const p of out) top[p.r][p.c] = kind;
+      return { type: 'convert', cells: out, kind };
+    },
+    /**
+     * Sweeps the top rows (GDD rule 13; the enemy general's halberd `sweep`
+     * special). Takes the first two rows, top down, whose top layer holds a
+     * unit (only one when just one does) and permutes the top-layer units of
+     * those rows among their own cells with `stream`, in row-major order.
+     * Buried cards, roadblocks and empty cells stay put, so every kind count is
+     * unchanged; I2 is not checked (the settle point does). Clears the
+     * selection. Returns data only; the caller emits it.
+     * @param {{shuffle: function(Array): Array}} stream random stream that
+     *   shuffles in place, e.g. `board.rng('wave')`
+     * @returns {{type: string, cells: Array<{r: number, c: number, kind: string}>}}
+     *   `{type: 'sweep', cells}`: the swept cells row-major with the kind each
+     *   holds now; `cells: []` when the top layer holds no unit
+     * @example board.shuffleTopRows(board.rng('wave'))
+     *   // { type: 'sweep', cells: [{r:2,c:1,kind:'dao'}, {r:2,c:4,kind:'gu'}, {r:3,c:2,kind:'gu'}, ...] }
+     */
+    shuffleTopRows(stream) {
+      selected = null;
+      const spots = [];
+      let taken = 0;
+      for (let r = 1; r <= rows && taken < 2; r++) {
+        let found = false;
+        for (let c = 1; c <= cols; c++) {
+          if (!isUnit(top[r][c])) continue;
+          spots.push({ r, c });
+          found = true;
+        }
+        if (found) taken++;
+      }
+      const kinds = spots.map((p) => top[p.r][p.c]);
+      stream.shuffle(kinds);
+      const cells = spots.map((p, i) => {
+        top[p.r][p.c] = kinds[i];
+        return { r: p.r, c: p.c, kind: kinds[i] };
+      });
+      return { type: 'sweep', cells };
+    },
+    /**
      * Clears the selection (GDD rule 13; general skills call it on release and
      * when Guan Yu starts picking a row). Leaves Zhao Yun stand-by as it is.
      * @example board.tap(2, 3); board.clearSelection(); board.selection() // null
@@ -838,13 +953,16 @@ export function createBoard(options) {
      * 2-point straight line between the two cells; no `miss` is produced. A tap on
      * another kind keeps stand-by on. Returns data only; the caller (round flow)
      * emits it. Board lock is the caller's job: a locked board gets no taps.
+     * A non-forced match breaks the roadblocks next to its two cells (`broken`).
      * @param {number} row grid row (outer ring allowed)
      * @param {number} col grid column (outer ring allowed); throws RangeError off the grid
      * @returns {(Object|null)} null when the tap produces no event, otherwise
      *   `{type: 'match', kind, a, b, path, forced, broken, revealed}` or
      *   `{type: 'miss', kind, a, b}`; `a` is the first selected cell, `b` the
      *   tapped one, `revealed` lists `{r, c, kind}` (a first, then b), `forced`
-     *   is true for a Zhao Yun pair, `broken` stays empty until the roadblock story
+     *   is true for a Zhao Yun pair, `broken` lists the roadblocks `{r, c}` this
+     *   match broke, row-major (GDD rule 9: every roadblock up, down, left or
+     *   right of `a` or `b`, once each; diagonals never; always `[]` when `forced`)
      * @example board.tap(2, 1); board.tap(2, 4)
      *   // { type: 'match', kind: 'dao', a: {r:2,c:1}, b: {r:2,c:4},
      *   //   path: [...], forced: false, broken: [], revealed: [{ r: 2, c: 4, kind: 'gu' }] }
@@ -883,12 +1001,49 @@ export function createBoard(options) {
         const flipped = removeTop(p.r, p.c);
         if (flipped !== null) revealed.push(flipped);
       }
+      const broken = forced ? [] : breakAdjacent(a, b);
       selected = null;
       forceNextOn = false;
       return {
         type: 'match', kind: value, a: { r: a.r, c: a.c }, b: { r: b.r, c: b.c },
-        path, forced, broken: [], revealed,
+        path, forced, broken, revealed,
       };
+    },
+    /**
+     * Roadblock cells (GDD rules 9, 17), row-major. Fresh objects; read-only.
+     * @returns {Array<{r: number, c: number}>} empty when there are none
+     * @example board.placeBlocks(1, board.rng('wave')); board.blocks() // [{ r: 3, c: 2 }]
+     */
+    blocks() {
+      const out = [];
+      for (let r = 1; r <= rows; r++) {
+        for (let c = 1; c <= cols; c++) if (top[r][c] === ROADBLOCK) out.push({ r, c });
+      }
+      return out;
+    },
+    /**
+     * Whether no unit is left on the top layer (GDD rule 17); by I3 that means
+     * no unit anywhere. Roadblocks do not count: a board holding only
+     * roadblocks is empty.
+     * @returns {boolean}
+     * @example boardFromPicture(['jm . . . .', ...]).isEmpty() // true
+     */
+    isEmpty() {
+      for (let r = 1; r <= rows; r++) {
+        for (let c = 1; c <= cols; c++) if (isUnit(top[r][c])) return false;
+      }
+      return true;
+    },
+    /**
+     * Whether the bottom row holds a unit (GDD rule 17; battle pressure reads
+     * it to decide a breach before pushing). Roadblocks do not count: a bottom
+     * row holding only roadblocks is not occupied, and a push drops them.
+     * @returns {boolean}
+     * @example boardFromPicture([..., '. . . jm .']).bottomOccupied() // false
+     */
+    bottomOccupied() {
+      for (let c = 1; c <= cols; c++) if (isUnit(top[rows][c])) return true;
+      return false;
     },
     /**
      * Whether the top layer holds at least one pair of the same kind that
@@ -926,33 +1081,63 @@ export function createBoard(options) {
      * with the `shuffle` stream, up to RESHUFFLE_TRIES times; level 2 swaps
      * deterministically (no random numbers); level 3 lifts buried cards onto
      * empty cells, then, if still dead, runs level 1 and level 2 once more.
-     * Roadblocks never move; the selection is always cleared. Work is bounded
-     * (formula reshuffle_bound): at most RESHUFFLE_TRIES x 2 permutations, one
-     * swap and one lift. Requests no token; returns data only.
-     * Level 4 (break roadblocks, clear the board) is NOT handled here (story
-     * board-link/011): when levels 1-3 all fail it returns `{ok: false}` and
-     * the board is left playable-less.
-     * @returns {(Object|null)} `{type: 'reshuffle', fallback}` (`fallback` true when
-     *   level 2 or 3 was needed), null when no reshuffle was needed, or
-     *   `{ok: false}` when only level 4 could help
+     * Roadblocks do not move in levels 1-3; the selection is always cleared.
+     * Level 4 (release behaviour; a dev-build assertion is the caller's, since
+     * rules return data only), when levels 1-3 all fail: breaks every roadblock
+     * (the one exception to "reshuffles never break roadblocks"), then, unless
+     * that alone opened a pair, runs levels 1-3 once more; if the board is
+     * still dead, clears every remaining unit with the cards under it (no I1
+     * check: last resort against a stuck board). Level 4 always returns one
+     * `clear` with `source: 'reshuffle'`, even when only roadblocks broke.
+     * Work is bounded (formula reshuffle_bound): at most RESHUFFLE_TRIES x 4
+     * permutations, two swaps, two lifts and one clear. Requests no token;
+     * returns data only.
+     * @returns {(Object|null)} null when no reshuffle was needed;
+     *   `{type: 'reshuffle', fallback}` (`fallback` true when level 2 or 3 was
+     *   needed); or, from level 4, `{type: 'clear', source: 'reshuffle', cells,
+     *   buried, blocks, revealed, pairs}`: `blocks` lists broken roadblocks
+     *   `{r, c}` row-major, `cells` the cleared top cells row-major (empty when
+     *   breaking roadblocks was enough), `buried` the buried cards cleared with
+     *   them, `revealed` always empty (whole stacks go),
+     *   `pairs = (cells.length + buried) / 2`
      * @example board.ensurePlayable() // { type: 'reshuffle', fallback: false } on a dead board
+     * @example board.ensurePlayable()
+     *   // { type: 'clear', source: 'reshuffle', cells: [], buried: 0,
+     *   //   blocks: [{r:2,c:3}, {r:3,c:2}, {r:3,c:4}, {r:4,c:3}], revealed: [], pairs: 0 }
+     *   // when one 刀 of the last pair at (3,3) was walled in by four roadblocks
      */
     ensurePlayable() {
-      let anyUnit = false;
-      for (let r = 1; r <= rows && !anyUnit; r++) {
-        for (let c = 1; c <= cols; c++) if (isUnit(top[r][c])) anyUnit = true;
-      }
-      if (!anyUnit || board.hasPlayablePair()) return null;
+      if (board.isEmpty() || board.hasPlayablePair()) return null;
       selected = null;
-      if (permuteUntilPlayable()) return { type: 'reshuffle', fallback: false };
-      if (swapFallback()) return { type: 'reshuffle', fallback: true };
-      if (liftBuried() > 0) {
-        if (board.hasPlayablePair() || permuteUntilPlayable() || swapFallback()) {
-          return { type: 'reshuffle', fallback: true };
+      const reshuffle = reshuffleLevels();
+      if (reshuffle !== null) return reshuffle;
+
+      // Level 4: break every roadblock, retry levels 1-3, then clear the rest.
+      const blocks = [];
+      for (let r = 1; r <= rows; r++) {
+        for (let c = 1; c <= cols; c++) {
+          if (top[r][c] !== ROADBLOCK) continue;
+          top[r][c] = EMPTY_CELL;
+          blocks.push({ r, c });
         }
       }
-      // Level 4 seam: story board-link/011 breaks roadblocks and clears here.
-      return { ok: false };
+      const cells = [];
+      const revealed = [];
+      let buried = 0;
+      if (!board.hasPlayablePair() && reshuffleLevels() === null) {
+        for (let r = 1; r <= rows; r++) {
+          for (let c = 1; c <= cols; c++) {
+            if (!isUnit(top[r][c])) continue;
+            buried += under[r][c].length;
+            under[r][c] = [];
+            clearTop(r, c, cells, revealed);
+          }
+        }
+      }
+      return {
+        type: 'clear', source: 'reshuffle', cells, buried, blocks, revealed,
+        pairs: (cells.length + buried) / 2,
+      };
     },
   };
   return board;

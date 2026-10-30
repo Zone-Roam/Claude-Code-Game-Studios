@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/clear-effects.md
 > **Architecture Module**: `src/rules/clear-effects.mjs`
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories clear-effects`
+> **Stories**: 7 stories（2026-10-30，见下方 Stories 表）
 
 ## Overview
 
@@ -28,6 +28,18 @@
 已退役，不实现：TR-clear-effects-001（deprecated，按时间算的连斩窗口）、TR-clear-effects-003（superseded-by TR-clear-effects-005）。
 
 Untraced Requirements: None。
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [效果兵表、触发判定与“目标已没了”](story-001-effect-table-trigger.md) | Logic | Ready | ADR-0002 |
+| 002 | [效果令牌 380 ms 与到点清除目标（含底牌）](story-002-effect-token-clear.md) | Logic | Ready | ADR-0002 |
+| 003 | [效果清除是“非玩家清除”](story-003-effect-clear-non-player.md) | Logic | Ready | ADR-0002 |
+| 004 | [连斩计数（不连错、不读时钟）](story-004-combo-count.md) | Logic | Ready | ADR-0002 |
+| 005 | [技能/敌将出手不改连斩，与连斩字文本](story-005-combo-neutral-events-label.md) | Logic | Ready | ADR-0002 |
+| 006 | [敌将模式连斩退步（comboReward）](story-006-boss-pushback-reward.md) | Logic | Ready | ADR-0003 |
+| 007 | [压境推迟下压、粮草模式只喝彩](story-007-press-delay-food-reward.md) | Logic | Ready | ADR-0002 |
 
 ## Definition of Done
 
