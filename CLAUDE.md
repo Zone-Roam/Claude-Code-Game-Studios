@@ -72,6 +72,14 @@ See `docs/COLLABORATIVE-DESIGN-PRINCIPLE.md` for full protocol and examples.
 > **First session?** If the project has no engine configured and no game concept,
 > run `/start` to begin the guided onboarding flow.
 
+## Browser Access
+
+**Connect to the user's Chrome only through browser harness** (the `browser-use`
+plugin: `browser-use` CLI / `mcp__plugin_browser-use_browser-use__*` tools, CDP to
+the running Chrome). Do not use Claude in Chrome (`mcp__claude-in-chrome__*`) for
+it. Use the user's existing logins as they are (e.g. EvoMeme); never log in, type
+passwords or top up for them. (User decision, 2026-10-30.)
+
 ## Coding Standards
 
 @.claude/docs/coding-standards.md
