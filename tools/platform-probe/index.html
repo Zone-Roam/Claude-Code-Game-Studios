@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>平台探测</title>
+<style>
+  :root { color-scheme: light; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body { margin: 0; padding: 16px; font: 16px/1.5 -apple-system, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; background: #f6ecd6; color: #2a2018; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  p { margin: 4px 0 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td { border-top: 1px solid #c9b896; padding: 4px 2px; vertical-align: top; word-break: break-all; }
+  td:first-child { width: 42%; color: #6b5a43; }
+  .ok { color: #2c5f2d; } .no { color: #8e2a3a; }
+  button { font: inherit; font-weight: 700; padding: 10px 16px; margin: 8px 8px 8px 0; border: 2px solid #2a2018; background: #fffaf0; border-radius: 6px; }
+  textarea { width: 100%; height: 160px; font: 12px/1.4 monospace; }
+  #safe { position: fixed; left: 0; top: 0; width: 1px; height: 1px; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); visibility: hidden; }
+  #px16 { font-size: 16px; position: absolute; visibility: hidden; }
+</style>
+</head>
+<body>
+<h1>平台探测（评书连连看）</h1>
+<p>打开后等 5 秒，再按“复制结果”，把文字发回来。之后请：切到别的 App 再切回来一次；点一次手机的返回键；过一天再打开看“第几次打开”。</p>
+<button id="copy">复制结果</button><button id="quota">测存储上限（约 5 秒）</button>
+<table id="t"></table>
+<textarea id="out" readonly></textarea>
+<div id="safe"></div><span id="px16">字</span>
+
+<script>
+  // Results collected from all probes; rendered into the table and the copy box.
+  window.PROBE = { results: {}, started: Date.now() };
+  window.probeSet = function (key, value) {
+    window.PROBE.results[key] = value;
+    var t = document.getElementById('t');
+    var row = document.getElementById('r-' + key);
+    if (!row) { row = t.insertRow(-1); row.id = 'r-' + key; row.insertCell(0).textContent = key; row.insertCell(1); }
+    var cell = row.cells[1];
+    cell.textContent = typeof value === 'string' ? value : JSON.stringify(value);
+    cell.className = value === true ? 'ok' : value === false ? 'no' : '';
+    document.getElementById('out').value = JSON.stringify(window.PROBE.results, null, 1);
+  };
+  var set = window.probeSet;
+
+  // 1. Where the page runs.
+  set('userAgent', navigator.userAgent);
+  set('protocol', location.protocol);
+  set('href', location.href.slice(0, 120));
+  set('origin', location.origin);
+
+  // 2. Screen and layout.
+  set('innerWxH', innerWidth + 'x' + innerHeight);
+  set('screenWxH', screen.width + 'x' + screen.height);
+  set('devicePixelRatio', devicePixelRatio);
+  var safe = getComputedStyle(document.getElementById('safe'));
+  set('safeAreaTRBL', [safe.paddingTop, safe.paddingRight, safe.paddingBottom, safe.paddingLeft].join(' '));
+  set('font16pxComputed', getComputedStyle(document.getElementById('px16')).fontSize);
+  set('pointerCoarse', matchMedia('(pointer: coarse)').matches);
+  set('reducedMotion', matchMedia('(prefers-reduced-motion: reduce)').matches);
+  set('darkScheme', matchMedia('(prefers-color-scheme: dark)').matches);
+  set('bodyBgComputed', getComputedStyle(document.body).backgroundColor);
+
+  // 3. Module scripts: the module below flips this flag.
+  set('moduleScript', false);
+
+  // 4. Storage.
+  try {
+    var n = +(localStorage.getItem('probe.visits') || 0) + 1;
+    localStorage.setItem('probe.visits', String(n));
+    if (!localStorage.getItem('probe.first')) localStorage.setItem('probe.first', new Date().toISOString());
+    set('localStorage', true);
+    set('visitCount', n);
+    set('firstVisit', localStorage.getItem('probe.first'));
+    set('lastEvents', JSON.parse(localStorage.getItem('probe.events') || '[]').slice(-8));
+  } catch (e) { set('localStorage', 'error: ' + e.message); }
+  try { sessionStorage.setItem('probe', '1'); set('sessionStorage', sessionStorage.getItem('probe') === '1'); } catch (e) { set('sessionStorage', 'error: ' + e.message); }
+  set('indexedDB', typeof indexedDB !== 'undefined');
+  if (navigator.storage && navigator.storage.estimate) {
+    navigator.storage.estimate().then(function (e) { set('storageEstimate', { quotaMB: Math.round(e.quota / 1048576), usageKB: Math.round(e.usage / 1024) }); }, function () { set('storageEstimate', 'rejected'); });
+  } else { set('storageEstimate', 'unsupported'); }
+  if (navigator.storage && navigator.storage.persisted) {
+    navigator.storage.persisted().then(function (p) { set('storagePersisted', p); });
+  }
+
+  // 5. Lifecycle events, logged so they survive a reload.
+  function logEvent(name) {
+    var line = new Date().toISOString().slice(11, 19) + ' ' + name + ' ' + document.visibilityState;
+    try {
+      var list = JSON.parse(localStorage.getItem('probe.events') || '[]');
+      list.push(line); localStorage.setItem('probe.events', JSON.stringify(list.slice(-30)));
+    } catch (e) { /* storage may be unavailable; the table still shows it */ }
+    var seen = window.PROBE.results.eventsThisVisit || [];
+    seen.push(line); set('eventsThisVisit', seen);
+  }
+  ['visibilitychange', 'pagehide', 'pageshow', 'blur', 'focus', 'freeze', 'resume'].forEach(function (ev) {
+    (ev === 'visibilitychange' || ev === 'freeze' || ev === 'resume' ? document : window).addEventListener(ev, function () { logEvent(ev); });
+  });
+  history.pushState({ probe: 1 }, '');
+  addEventListener('popstate', function () { logEvent('popstate(back key)'); history.pushState({ probe: 1 }, ''); });
+  addEventListener('orientationchange', function () { logEvent('orientationchange ' + innerWidth + 'x' + innerHeight); });
+
+  // 6. Frame rate over 3 seconds, and the largest gap between frames.
+  (function () {
+    var frames = 0, start = performance.now(), last = start, maxGap = 0;
+    function tick(now) {
+      frames++; maxGap = Math.max(maxGap, now - last); last = now;
+      if (now - start < 3000) requestAnimationFrame(tick);
+      else set('fps3s', { fps: Math.round(frames * 1000 / (now - start)), maxGapMs: Math.round(maxGap) });
+    }
+    requestAnimationFrame(tick);
+  })();
+
+  // 7. Fonts the reading-text stack relies on. document.fonts.check() says true for
+  // any system font it cannot verify, so compare rendered widths against fallbacks.
+  (function () {
+    var ctx = document.createElement('canvas').getContext('2d');
+    var sample = '评书连连看三国Wg1';
+    function width(font) { ctx.font = '32px ' + font; return ctx.measureText(sample).width; }
+    var bases = ['monospace', 'serif'];
+    set('fonts', ['PingFang SC', 'Noto Sans CJK SC', 'Source Han Sans SC', 'Microsoft YaHei', 'KaiTi'].map(function (f) {
+      var present = bases.some(function (b) { return width('"' + f + '", ' + b) !== width(b); });
+      return f + ':' + present;
+    }).join(' '));
+  })();
+
+  // 8. A second file and a data file: tells us whether a multi-file package works.
+  set('extraScript', false);
+  if (window.fetch) {
+    fetch('probe.json').then(function (r) { return r.json(); }).then(function (j) { set('fetchJson', j.ok === true); }, function (e) { set('fetchJson', 'error: ' + e.message); });
+  } else { set('fetchJson', 'fetch unsupported'); }
+
+  // Copy button and the optional quota test.
+  document.getElementById('copy').onclick = function () {
+    var box = document.getElementById('out'); box.select();
+    try { document.execCommand('copy'); } catch (e) { /* user can copy by hand */ }
+    if (navigator.clipboard) navigator.clipboard.writeText(box.value).catch(function () {});
+  };
+  document.getElementById('quota').onclick = function () {
+    var chunk = new Array(1024 * 100 + 1).join('x'), written = 0;
+    try {
+      for (var i = 0; i < 100; i++) { localStorage.setItem('probe.q' + i, chunk); written = (i + 1) * 100; }
+      set('localStorageQuotaKB', '>= ' + written);
+    } catch (e) { set('localStorageQuotaKB', 'about ' + written + ' (' + e.name + ')'); }
+    for (var k = 0; k < 100; k++) localStorage.removeItem('probe.q' + k);
+  };
+</script>
+<script type="module">window.probeSet('moduleScript', true);</script>
+<script src="probe-extra.js"></script>
+</body>
+</html>

@@ -40,7 +40,7 @@
 #   unsupported layout, with its number.
 
 version: 1
-last_updated: ""
+last_updated: "2026-10-27"
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -53,7 +53,51 @@ last_updated: ""
 # interface: how other systems access this state (read-only property, method call,
 #   signal, shared resource, etc.) — this is the contract other ADRs depend on.
 
-state_ownership: []
+state_ownership:
+  - state: game_time
+    status: active
+    owner_system: round-flow
+    adr: docs/architecture/adr-0002-main-loop-round-clock.md
+    interface: "round.gameTime() read-only ms; pressure receives dtGame only through tick(dtGame)"
+    write_access: round-flow-only
+    referenced_by:
+      - docs/architecture/adr-0002-main-loop-round-clock.md
+      - docs/architecture/adr-0003-rules-view-channel.md
+    added: 2026-10-27
+    revised: ""
+  - state: token_set
+    status: active
+    owner_system: round-flow
+    adr: docs/architecture/adr-0002-main-loop-round-clock.md
+    interface: "round.acquire(reason, durationMs?, onEnd?, detail?) / round.release(token); round.tokens() and round.boardLocked() read-only"
+    write_access: round-flow-only
+    referenced_by:
+      - docs/architecture/adr-0002-main-loop-round-clock.md
+      - docs/architecture/adr-0003-rules-view-channel.md
+    added: 2026-10-27
+    revised: ""
+  - state: board_cells
+    status: active
+    owner_system: board-link
+    adr: docs/architecture/adr-0003-rules-view-channel.md
+    interface: "board-link modification interfaces return result data; board.cells() / selection() / forceNext() read-only"
+    write_access: board-link-only
+    referenced_by:
+      - docs/architecture/adr-0002-main-loop-round-clock.md
+      - docs/architecture/adr-0003-rules-view-channel.md
+    added: 2026-10-27
+    revised: ""
+  - state: progress_record
+    status: active
+    owner_system: progress-save
+    adr: docs/architecture/adr-0004-local-save.md
+    interface: "progress.settle(RoundResult) -> SettleOutcome; progress.catalog() / storageState() / nextNotice() read-only"
+    write_access: progress-save-only
+    referenced_by:
+      - docs/architecture/adr-0004-local-save.md
+      - docs/architecture/adr-0002-main-loop-round-clock.md
+    added: 2026-10-27
+    revised: ""
 
 # Example:
 #
@@ -81,7 +125,73 @@ state_ownership: []
 #
 # pattern options: signal | direct_call | event_bus | shared_resource | rpc | none
 
-interfaces: []
+interfaces:
+  - contract: match_miss_dispatch
+    status: active
+    pattern: direct_call
+    producer: round-flow
+    consumers:
+      - clear-effects
+      - general-skills
+      - battle-pressure
+      - ui-interaction
+    adr: docs/architecture/adr-0002-main-loop-round-clock.md
+    signal_signature: "effects.onMatch(match) -> skills.onMatch(match) -> pressure.onMatch(match)/onMiss(miss) -> emit(match|miss), fixed order, synchronous"
+    referenced_by:
+      - docs/architecture/adr-0002-main-loop-round-clock.md
+      - docs/architecture/adr-0003-rules-view-channel.md
+    added: 2026-10-27
+    revised: ""
+  - contract: rules_to_view_events
+    status: active
+    pattern: shared_resource
+    producer: round-flow
+    consumers:
+      - ui-interaction
+    adr: docs/architecture/adr-0003-rules-view-channel.md
+    signal_signature: "emit(event) appends plain {type, ...} objects to the round outbox; view calls round.drainEvents() once per frame"
+    referenced_by:
+      - docs/architecture/adr-0003-rules-view-channel.md
+    added: 2026-10-27
+    revised: ""
+  - contract: view_to_rules_intents
+    status: active
+    pattern: shared_resource
+    producer: ui-interaction
+    consumers:
+      - round-flow
+    adr: docs/architecture/adr-0003-rules-view-channel.md
+    signal_signature: "input queue of {type: 'cell'|'card'|'pauseStamp'|'button', ...} processed in round.frame step 2 in arrival order"
+    referenced_by:
+      - docs/architecture/adr-0003-rules-view-channel.md
+      - docs/architecture/adr-0002-main-loop-round-clock.md
+    added: 2026-10-27
+    revised: ""
+  - contract: lifecycle_entry_points
+    status: active
+    pattern: direct_call
+    producer: platform-lifecycle
+    consumers:
+      - round-flow
+    adr: docs/architecture/adr-0002-main-loop-round-clock.md
+    signal_signature: "round.onHidden() / onVisible() / setLandscape(on) / onBack(), called immediately, never queued"
+    referenced_by:
+      - docs/architecture/adr-0002-main-loop-round-clock.md
+      - docs/architecture/adr-0003-rules-view-channel.md
+    added: 2026-10-27
+    revised: ""
+  - contract: storage_port
+    status: active
+    pattern: direct_call
+    producer: platform-storage
+    consumers:
+      - progress-save
+    adr: docs/architecture/adr-0004-local-save.md
+    signal_signature: "{ read(key) -> string|null, write(key, value), remove(key) }; exceptions propagate, progress-save catches"
+    referenced_by:
+      - docs/architecture/adr-0004-local-save.md
+    added: 2026-10-27
+    revised: ""
 
 # Example:
 #
@@ -110,7 +220,31 @@ interfaces: []
 # Register a budget when an ADR explicitly claims a frame time allocation.
 # The registry lets /architecture-review verify the total doesn't exceed the target.
 
-performance_budgets: []
+performance_budgets:
+  - target_fps: 60
+    total_frame_budget_ms: 16.67
+    platform: Mobile
+    adr: docs/architecture/adr-0002-main-loop-round-clock.md
+    added: 2026-10-27
+    revised: ""
+  - system: rules-step
+    status: active
+    budget_ms: 2.0
+    adr: docs/architecture/adr-0002-main-loop-round-clock.md
+    notes: "round.frame() incl. tap handling and tick, on the baseline Android phone (art bible section 8). A dead-board reshuffle frame may exceed it (ADR-0002 Performance Implications)"
+    referenced_by:
+      - docs/architecture/adr-0002-main-loop-round-clock.md
+    added: 2026-10-27
+    revised: ""
+  - system: view-step
+    status: active
+    budget_ms: 4.0
+    adr: docs/architecture/adr-0003-rules-view-channel.md
+    notes: "view.render(): drain events, start CSS animations, diff HUD; browser style/layout/paint/composite take the rest of the 16.67 ms frame"
+    referenced_by:
+      - docs/architecture/adr-0003-rules-view-channel.md
+    added: 2026-10-27
+    revised: ""
 
 # Example:
 #
@@ -141,7 +275,57 @@ performance_budgets: []
 # Register an API decision when the choice is non-obvious and other ADRs might
 # make a different choice for the same purpose without knowing this was decided.
 
-api_decisions: []
+api_decisions:
+  - purpose: frame_driver
+    status: active
+    api: "requestAnimationFrame, called only in src/app/main-loop.mjs"
+    not: "setTimeout / setInterval for any game timing"
+    adr: docs/architecture/adr-0002-main-loop-round-clock.md
+    reason: "one clock, tokens timed in foreground real time, testable with fake dtReal"
+    referenced_by:
+      - docs/architecture/adr-0002-main-loop-round-clock.md
+    added: 2026-10-27
+    revised: ""
+  - purpose: randomness
+    status: active
+    api: "src/core/rng.mjs: hash32 (FNV-1a + fmix32) seeds, mulberry32 streams deal/shuffle/wave/add"
+    not: "Math.random() anywhere in src/rules or src/core"
+    adr: docs/architecture/adr-0002-main-loop-round-clock.md
+    reason: "board-link rule 3 needs four independent reproducible streams"
+    referenced_by:
+      - docs/architecture/adr-0002-main-loop-round-clock.md
+    added: 2026-10-27
+    revised: ""
+  - purpose: rendering
+    status: active
+    api: "DOM elements + one SVG link layer + inline <symbol> sprite, CSS transform/opacity animation"
+    not: "Canvas 2D full-screen drawing"
+    adr: docs/architecture/adr-0003-rules-view-channel.md
+    reason: "system-font text legibility for older players; 48 cells is far inside the DOM budget"
+    referenced_by:
+      - docs/architecture/adr-0003-rules-view-channel.md
+    added: 2026-10-27
+    revised: ""
+  - purpose: persistence
+    status: active
+    api: "window.localStorage through src/platform/storage.mjs"
+    not: "IndexedDB / cookies"
+    adr: docs/architecture/adr-0004-local-save.md
+    reason: "synchronous, tiny record, widest support; swap the port if the probe says otherwise"
+    referenced_by:
+      - docs/architecture/adr-0004-local-save.md
+    added: 2026-10-27
+    revised: ""
+  - purpose: release_packaging
+    status: active
+    api: "one self-contained HTML file built by tools/build/build.mjs (Node built-ins only)"
+    not: "multi-file package, <script type=module>, fetch of local files in the release build"
+    adr: docs/architecture/adr-0001-no-engine-native-h5.md
+    reason: "runs whatever the unverified host supports"
+    referenced_by:
+      - docs/architecture/adr-0001-no-engine-native-h5.md
+    added: 2026-10-27
+    revised: ""
 
 # Example:
 #
@@ -167,7 +351,37 @@ api_decisions: []
 # Register a pattern when an ADR explicitly bans it AND other ADRs might
 # unknowingly use it (i.e., it's a tempting but wrong approach for this project).
 
-forbidden_patterns: []
+forbidden_patterns:
+  - pattern: rules_layer_platform_access
+    status: active
+    description: "src/rules and src/core must not reference document, window, localStorage, Date.now, performance.now or Math.random"
+    why: "rules must run and be tested in Node with injected time, seed and storage"
+    adr: docs/architecture/adr-0001-no-engine-native-h5.md
+    added: 2026-10-27
+  - pattern: third_party_runtime_code
+    status: active
+    description: "no library, framework, CDN or copied third-party snippet in the shipped package"
+    why: "user hard constraint; 2 MB budget"
+    adr: docs/architecture/adr-0001-no-engine-native-h5.md
+    added: 2026-10-27
+  - pattern: cross_system_subscription
+    status: active
+    description: "rules modules must not subscribe to each other; settlement order lives only in round-flow"
+    why: "subscription order becomes settlement order and reintroduces the races round-flow rule 6 removes"
+    adr: docs/architecture/adr-0002-main-loop-round-clock.md
+    added: 2026-10-27
+  - pattern: animation_driven_rules
+    status: active
+    description: "the view must never advance rules on transitionend or a view timer; only tokens, gameTime and round's own overlay timers do. Sole exception: round.endingDone() (end -> settle), timed by the view from accumulated foreground dtReal, never transitionend or setTimeout"
+    why: "animations can be skipped, throttled or paused by the host; rule timing would drift. endingDone is allowed because outcome, stars and save are fixed before it (ADR-0002 section 2)"
+    adr: docs/architecture/adr-0003-rules-view-channel.md
+    added: 2026-10-27
+  - pattern: non_compositor_animation
+    status: active
+    description: "no CSS filter, backdrop-filter, mix-blend-mode, runtime SVG filter; no animating left/top/width/height/font-size"
+    why: "low-end Android WebView frame budget (art bible section 8)"
+    adr: docs/architecture/adr-0003-rules-view-channel.md
+    added: 2026-10-27
 
 # Example:
 #

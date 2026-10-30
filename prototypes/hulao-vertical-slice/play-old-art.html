@@ -1,0 +1,2658 @@
+<!-- VERTICAL SLICE - NOT FOR PRODUCTION -->
+<!-- Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久 -->
+<!-- Date: 2026-10-27 — built by build.mjs, do not edit by hand -->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>评书连连看 · 第一回 · 垂直切片</title>
+<style>
+/* VERTICAL SLICE - NOT FOR PRODUCTION
+   Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+   Date: 2026-10-27 */
+
+/* Colours are the art bible §4 tokens; animations touch transform and opacity only (ADR-0003). */
+:root {
+  color-scheme: light;
+  --paper: #f6ecd6;
+  --paper-hi: #fffaf0;
+  --stage: #eadbbd;
+  --ink: #2a2018;
+  --ink-soft: #6b5a43;
+  --zhu: #b33a22;
+  --zhu-deep: #9a2e1c;
+  --qing: #1f4e5a;
+  --qing-soft: #cfdcdc;
+  --gold: #c99a2e;
+  --wood: #6e4a2e;
+  --ochre: #b58553;
+  --iron: #9a9286;
+  --jade: #7fa08a;
+  --plum: #5a3270;
+  --font: -apple-system, "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif;
+  --effect-ms: 380ms;
+  --skill-ms: 950ms;
+  --host-ms: 600ms;
+  --reshuffle-ms: 400ms;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app { position: fixed; inset: 0; overflow: hidden; }
+
+#stage {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform-origin: 50% 0;
+  touch-action: none;
+}
+
+/* ── top band (台眉) ── */
+#top { position: absolute; left: 0; right: 0; top: 0; }
+#pause-stamp {
+  position: absolute; left: 6px; top: 0; width: 44px; height: 44px;
+  border: 2px solid var(--ink); border-radius: 4px; background: var(--paper-hi);
+  display: flex; align-items: center; justify-content: center; gap: 6px; z-index: 30;
+}
+#pause-stamp i { display: block; width: 5px; height: 18px; background: var(--ink); border-radius: 1px; }
+#plaque {
+  position: absolute; left: 58px; right: 92px; top: 0; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; color: var(--zhu-deep); white-space: nowrap; overflow: hidden;
+}
+#plaque .shout { font-size: 24px; color: var(--ink); }
+#plaque .read { font-size: 18px; color: var(--ink); font-weight: 600; }
+#pairs { position: absolute; right: 8px; top: 0; height: 44px; line-height: 44px; font-size: 18px; color: var(--ink); }
+#banner {
+  position: absolute; left: 0; right: 0; top: 0; height: 44px; z-index: 25; box-sizing: border-box;
+  padding: 0 8px 0 58px; /* the pause stamp stays on top at the left (ui-interaction rule 19) */
+  display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;
+  font-size: 26px; font-weight: 800; letter-spacing: 1px; opacity: 0; pointer-events: none;
+}
+#banner.on { opacity: 1; }
+#banner.paper { background: var(--paper-hi); color: var(--zhu-deep); border-top: 2px solid var(--zhu); border-bottom: 2px solid var(--zhu); }
+#banner.ink { background: var(--ink); color: var(--paper-hi); }
+#banner.qing { background: var(--qing); color: var(--paper-hi); }
+#banner .seal { font-size: 14px; background: var(--zhu-deep); color: var(--paper-hi); padding: 2px 5px; border-radius: 2px; letter-spacing: 0; flex: none; }
+
+#hud { position: absolute; left: 0; right: 0; top: 50px; height: 60px; }
+#hearts {
+  position: absolute; left: 8px; top: 8px; height: 40px; padding: 0 8px; border-radius: 20px;
+  background: var(--paper-hi); display: flex; align-items: center; gap: 4px;
+}
+#hearts svg { width: 26px; height: 26px; }
+#hearts .lost path { fill: none; stroke: var(--zhu); stroke-dasharray: 3 3; }
+#charge-box { position: absolute; left: 118px; right: 112px; top: 20px; height: 20px; }
+#charge-label { position: absolute; left: 0; top: -18px; font-size: 14px; color: var(--ink-soft); }
+#charge-track { position: absolute; left: 0; right: 0; top: 4px; height: 12px; background: var(--paper-hi); border: 2px solid var(--qing); border-radius: 2px; overflow: hidden; }
+#charge-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: var(--qing); transform-origin: 0 50%; transform: scaleX(0); }
+#charge-box.t2 #charge-track { border-width: 3px; }
+#charge-box.t3 #charge-track { border-width: 4px; }
+#slash {
+  position: absolute; left: -6px; right: -6px; top: 8px; height: 4px; background: var(--zhu);
+  transform: rotate(-8deg) scaleX(0); transform-origin: 0 50%; opacity: 0;
+}
+#slash.go { animation: slash 420ms ease-out; }
+@keyframes slash { 0% { transform: rotate(-8deg) scaleX(0); opacity: 1; } 50% { transform: rotate(-8deg) scaleX(1); opacity: 1; } 100% { transform: rotate(-8deg) scaleX(1); opacity: 0; } }
+
+#foe {
+  position: absolute; right: 8px; top: 0; width: 96px; height: 60px; border: 2px solid var(--qing);
+  border-radius: 4px; background: var(--paper-hi); box-sizing: border-box; padding: 2px 6px 0 6px;
+}
+#foe .name { font-size: 18px; font-weight: 700; color: var(--qing); line-height: 24px; }
+#foe .face { position: absolute; right: 5px; top: 3px; width: 24px; height: 24px; border-radius: 50%; background: var(--plum); color: var(--paper-hi); font-size: 14px; line-height: 24px; text-align: center; }
+#foe .hp { font-size: 16px; color: var(--ink); line-height: 20px; }
+#foe .hpbar { position: absolute; left: 6px; right: 6px; bottom: 4px; height: 5px; background: var(--qing-soft); }
+#title {
+  position: absolute; left: 0; right: 0; top: 0; height: 44px; display: none; align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 800; color: var(--zhu-deep); letter-spacing: 2px; border-bottom: 2px solid var(--wood);
+}
+#title.on { display: flex; }
+#foe .hpbar i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: var(--qing); transform-origin: 0 50%; }
+#foe.t2 { transform: translateY(4px); border-width: 3px; }
+#foe.t3 { transform: translateY(4px); border-width: 4px; }
+
+/* ── board (台面) ── */
+#board-frame { position: absolute; background: var(--stage); border-left: 6px solid var(--wood); border-right: 6px solid var(--wood); box-sizing: content-box; }
+#board { position: absolute; left: 0; top: 0; transition: transform 180ms ease, opacity 180ms ease; }
+#board.out { transform: translateY(-12px); opacity: 0; }
+/* One tile = div + svg + use (≤ 3 nodes, ui-interaction rule 32); the div is the tile face. */
+.tile {
+  position: absolute; box-sizing: border-box;
+  background: var(--paper-hi); border: 2px solid var(--ink); border-radius: 6px;
+  box-shadow: 0 3px 0 var(--ink-soft);
+  transition: transform 140ms ease, opacity 140ms ease;
+}
+.tile svg { position: absolute; left: 50%; top: 50%; width: 72%; height: 72%; transform: translate(-50%, -52%); overflow: visible; }
+.tile .ch { font-size: 22px; font-weight: 700; }
+.tile.empty { opacity: 0; transform: scale(0.7); pointer-events: none; }
+.tile.sel { z-index: 2; transform: translateY(-3px); border-color: var(--zhu); border-width: 3px; }
+.tile.fx { border: 4px double var(--zhu); }
+.tile.fx svg { width: 60%; height: 60%; transform: translate(-62%, -62%); }
+.tile.fx::after {
+  content: attr(data-seal); position: absolute; right: 2px; bottom: 2px; width: 22px; height: 22px;
+  background: var(--zhu); color: var(--paper-hi); font-size: 15px; font-weight: 700; line-height: 22px;
+  text-align: center; border-radius: 2px;
+}
+.tile.fx.notarget::after { background: transparent; color: var(--zhu); border: 2px dashed var(--zhu); line-height: 18px; box-sizing: border-box; }
+.tile.pv::before {
+  content: ""; position: absolute; left: 9px; top: 9px; right: 9px; bottom: 9px;
+  border: 3px dashed var(--zhu); border-radius: 50%; z-index: 3;
+}
+.tile.hl { z-index: 2; border-color: var(--zhu); border-width: 4px; transform: scale(1.06); }
+.tile.shake { animation: shake 160ms linear; }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+
+#links { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+#links polyline { fill: none; stroke: var(--ink); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 22 4 9 3; }
+#links polyline.red { stroke: var(--zhu); }
+#links polyline.forced { stroke: var(--zhu); stroke-dasharray: 10 8; }
+#links polyline.fade { transition: opacity 220ms ease; opacity: 0; }
+
+.combo {
+  position: absolute; font-size: 36px; font-weight: 800; color: var(--zhu-deep); white-space: nowrap;
+  pointer-events: none; text-shadow: 0 0 6px var(--paper-hi), 0 0 2px var(--paper-hi);
+  animation: rise 900ms ease-out forwards;
+}
+@keyframes rise { 0% { transform: translate(-50%, 6px) scale(0.8); opacity: 0; } 15% { transform: translate(-50%, 0) scale(1); opacity: 1; } 75% { opacity: 1; } 100% { transform: translate(-50%, -14px); opacity: 0; } }
+.tick { position: absolute; pointer-events: none; animation: tickfade 500ms ease-in forwards; }
+.tick svg { width: 100%; height: 100%; }
+@keyframes tickfade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+
+#deadzone { position: absolute; left: 0; right: 0; height: 20px; background: var(--wood); }
+
+/* ── general cards (桌沿) ── */
+#cards { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; }
+.gcard {
+  position: relative; box-sizing: border-box; border: 2px solid var(--ink); border-radius: 6px;
+  background: var(--paper-hi); text-align: center; transition: transform 160ms ease;
+}
+.gcard .gname { font-size: 18px; font-weight: 700; margin-top: 2px; line-height: 22px; white-space: nowrap; }
+.gcard .avatar { width: 28px; height: 28px; margin: 5px auto 0; border-radius: 50%; border: 2px solid var(--ink); font-size: 16px; line-height: 28px; font-weight: 700; color: var(--paper-hi); }
+.gcard .pips { font-size: 16px; margin-top: 1px; line-height: 20px; color: var(--ink); }
+.gcard .pips b { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--ink); margin-left: 3px; vertical-align: -1px; }
+.gcard .pips b.on { background: var(--ink); }
+.gcard.ready { transform: translateY(-4px); border: 3px solid var(--gold); box-shadow: 0 0 0 2px var(--ink); }
+.gcard.ready .gname { color: var(--zhu-deep); }
+.gcard .token { display: none; position: absolute; right: -6px; top: -8px; width: 20px; height: 20px; border-radius: 50%; background: var(--gold); border: 2px solid var(--ink); font-size: 12px; line-height: 20px; font-weight: 700; }
+.gcard.ready .token { display: block; }
+.gcard.armed { border: 3px dashed var(--zhu); }
+.gcard .hint {
+  position: absolute; inset: 0; background: var(--ink); color: var(--paper-hi); border-radius: 4px;
+  font-size: 16px; display: flex; align-items: center; justify-content: center; padding: 4px; opacity: 0;
+  transition: opacity 120ms ease; text-align: center; line-height: 1.3;
+}
+.gcard.hinting .hint { opacity: 1; }
+
+/* ── skill show and masks ── */
+#mask { position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: var(--ink); opacity: 0; pointer-events: none; transition: opacity 100ms ease; z-index: 20; }
+#mask.skill { opacity: 0.6; }
+#mask.card { opacity: 0.55; transition-duration: 150ms; }
+#mask.lose { opacity: 0.4; transition-duration: 300ms; }
+#mask.win { opacity: 0.15; transition-duration: 300ms; }
+#hero { position: absolute; left: 50%; width: 150px; height: 150px; margin-left: -75px; z-index: 22; opacity: 0; pointer-events: none; transition: opacity 150ms ease; }
+#hero.on { opacity: 1; transition-duration: 100ms; }
+#hero .blot { position: absolute; inset: 0; border-radius: 47% 53% 44% 56%; background: var(--zhu); transform: scale(0.4); }
+#hero .who { position: absolute; left: 25px; top: 25px; width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--paper-hi); background: var(--ink); color: var(--paper-hi); font-size: 48px; font-weight: 800; line-height: 100px; text-align: center; transform: scale(0.4); }
+#hero .blot, #hero .who { transition: transform 220ms ease-out; }
+#hero.on .blot, #hero.on .who { transform: scale(1); }
+
+/* ── overlay cards ── */
+.card {
+  position: absolute; left: 16px; right: 16px; z-index: 40; background: var(--paper-hi); border: 3px solid var(--ink);
+  border-radius: 8px; padding: 18px 16px 16px; box-sizing: border-box; text-align: center;
+  opacity: 0; pointer-events: none; transition: opacity 150ms ease, transform 150ms ease; transform: translateY(8px);
+}
+.card.on { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.card h1 { margin: 0; font-size: 18px; color: var(--ink-soft); font-weight: 600; }
+.card h2 { margin: 4px 0 10px; font-size: 32px; color: var(--zhu-deep); font-weight: 800; letter-spacing: 2px; }
+.card p { margin: 6px 0; font-size: 18px; line-height: 1.45; }
+.card .small { font-size: 16px; color: var(--ink); }
+.card .roster { text-align: left; margin: 10px 4px; }
+.card .roster div { font-size: 16px; line-height: 1.6; }
+.card .roster b { display: inline-block; width: 4.2em; font-size: 18px; }
+.card .btns { margin-top: 14px; display: flex; gap: 10px; justify-content: center; }
+.card button {
+  font: inherit; font-size: 20px; font-weight: 700; min-width: 128px; min-height: 52px; border-radius: 6px;
+  border: 2px solid var(--ink); background: var(--paper-hi); color: var(--ink);
+}
+.card button.primary { background: var(--zhu-deep); color: var(--paper-hi); border-color: var(--zhu-deep); }
+.card .btns.wait { visibility: hidden; }
+/* Stamps settle by transition, so they still end up visible where animations do not run. */
+.stamp {
+  width: 96px; height: 96px; margin: 0 auto; background: var(--zhu-deep); color: var(--paper-hi); border-radius: 6px;
+  font-size: 60px; font-weight: 800; line-height: 96px; transform: scale(1.6); opacity: 0;
+  transition: transform 260ms ease-in, opacity 180ms ease-in;
+}
+.stamp.go { transform: scale(1); opacity: 1; }
+.stars { margin: 10px 0 4px; font-size: 0; }
+.stars span { display: inline-block; width: 36px; height: 36px; margin: 0 6px; opacity: 0; transform: scale(1.5); transition: transform 200ms ease-in, opacity 150ms ease-in; }
+.stars span.go { transform: scale(1); opacity: 1; }
+.stars svg { width: 36px; height: 36px; }
+.stars .off path { fill: none; stroke: var(--ink-soft); stroke-dasharray: 3 3; stroke-width: 2; }
+.stars .on path { fill: var(--gold); stroke: var(--ink); stroke-width: 2; }
+#error { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 20px; background: var(--paper); z-index: 99; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tile, #board, .card, #mask { transition-duration: 0ms; }
+  .combo { animation: none; transform: translate(-50%, 0); }
+  #hero .blot, #hero .who { transition: none; transform: scale(1); }
+}
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+"use strict";
+var __m = {};
+__m["src/app/build-flags.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// The slice behaves like the MVP test build (ADR-0001): it reads `seed` and `slow`.
+
+/**
+ * @param {string} search location.search
+ * @returns {{seed: number|null, slow: boolean}}
+ */
+function readUrlFlags(search) {
+  const flags = { seed: null, slow: false };
+  const q = (search || '').replace(/^\?/, '').split('&');
+  for (const part of q) {
+    const kv = part.split('=');
+    if (kv[0] === 'seed' && /^\d+$/.test(kv[1] || '')) flags.seed = Number(kv[1]) >>> 0;
+    if (kv[0] === 'slow' && kv[1] === '1') flags.slow = true;
+  }
+  return flags;
+}
+
+return { readUrlFlags };
+})();
+__m["src/app/main-loop.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// The only requestAnimationFrame loop (ADR-0002 §1).
+
+/**
+ * @param {function(number): void} onFrame called with dtReal; exceptions go to onError
+ * @param {function(Error): void} onError called once per failing frame
+ */
+function startLoop(onFrame, onError) {
+  let last = null;
+  function tick(now) {
+    requestAnimationFrame(tick);
+    const dtReal = last === null ? 0 : now - last;
+    last = now;
+    try {
+      onFrame(dtReal);
+    } catch (err) {
+      onError(err);
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+return { startLoop };
+})();
+__m["src/core/rng.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// Seeds and random streams exactly as ADR-0002 section 5 specifies.
+
+/**
+ * FNV-1a over the joined parts, finished with the murmur3 fmix32 avalanche.
+ * @param {...(string|number)} parts values joined with U+001F
+ * @returns {number} unsigned 32-bit hash
+ */
+function hash32(...parts) {
+  const s = parts.map(String).join('\u001f');
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
+  }
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b) >>> 0;
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35) >>> 0;
+  h ^= h >>> 16;
+  return h >>> 0;
+}
+
+/**
+ * A mulberry32 stream seeded from hash32(seed, name).
+ * @param {number} seed round seed
+ * @param {string} name stream name: deal | shuffle | wave | add
+ * @returns {{next: function(): number, int: function(number): number, shuffle: function(Array): Array, pickWeighted: function(Array): *}}
+ */
+function createStream(seed, name) {
+  let state = hash32(seed, name);
+
+  function next() {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(state ^ (state >>> 15), state | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return (t ^ (t >>> 14)) >>> 0;
+  }
+
+  function int(n) {
+    return Math.floor((next() * n) / 4294967296);
+  }
+
+  function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = int(i + 1);
+      const tmp = array[i];
+      array[i] = array[j];
+      array[j] = tmp;
+    }
+    return array;
+  }
+
+  // entries: [[kind, weight], ...] already in kind-table order
+  function pickWeighted(entries) {
+    let total = 0;
+    for (const e of entries) total += e[1];
+    let roll = int(total);
+    for (const e of entries) {
+      if (roll < e[1]) return e[0];
+      roll -= e[1];
+    }
+    return entries[entries.length - 1][0];
+  }
+
+  return { next, int, shuffle, pickWeighted };
+}
+
+return { hash32, createStream };
+})();
+__m["src/core/constants.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// Tuning-knob defaults, named as in the GDDs and design/registry/entities.yaml (ADR-0001).
+
+/** Tile kinds in the fixed kind-table order (board-link rule 2). Iterate kinds in this order, never by object key order. */
+const KINDS = ['huo', 'ying', 'ma', 'gong', 'shui', 'cheng', 'dao', 'gu', 'dun', 'shu', 'qi', 'jiu'];
+
+/** Display name of each kind (one character). */
+const KIND_NAMES = {
+  huo: '火', ying: '营', ma: '马', gong: '弓', shui: '水', cheng: '城',
+  dao: '刀', gu: '鼓', dun: '盾', shu: '书', qi: '旗', jiu: '酒',
+};
+
+/** Effect tiles and their targets (clear-effects rule 1). */
+const EFFECTS = {
+  huo: { target: 'ying', name: '火烧连营' },
+  ma: { target: 'gong', name: '铁骑冲阵' },
+  shui: { target: 'cheng', name: '水淹七军' },
+};
+
+/** The four MVP generals (general-skills rule 1). */
+const GENERALS = [
+  { id: 'guan_yu', name: '关羽', kind: 'dao', skill: '过关斩将', line: '过五关斩六将！' },
+  { id: 'zhang_fei', name: '张飞', kind: 'gu', skill: '当阳一吼', line: '燕人张翼德在此！' },
+  { id: 'zhao_yun', name: '赵云', kind: 'dun', skill: '七进七出', line: '常山赵子龙在此！' },
+  { id: 'zhuge_liang', name: '诸葛亮', kind: 'shu', skill: '神机妙算', line: '亮已算定。' },
+];
+
+const BOARD_COLS = 6;
+const MAX_TURNS = 2;
+const RESHUFFLE_TRIES = 100;
+
+const COMBO_WINDOW_MS = 3000;
+const COMBO_THRESHOLD = 3;
+const BOSS_INTERRUPT = 25;
+const BOSS_INTERRUPT_CAP = 50;
+const EFFECT_HIGHLIGHT_MS = 380;
+
+const MISS_CHARGE = 15;
+const HOST_ATTACK_MS = 600;
+const BOSS_WARN_1 = 70;
+const BOSS_WARN_2 = 90;
+
+const GENERAL_NEED = 2;
+const SKILL_SHOW_MS = 950;
+
+const MAX_STEP_MS = 250;
+const BG_GAP_MS = 1000;
+const TOKEN_MAX_MS = 5000;
+const RESHUFFLE_SHOW_MS = 400;
+const CARD_GUARD_MS = 500;
+const OPEN_FADE_MS = 150;
+const ENDING_WIN_MS = 1100;
+const ENDING_LOSE_MS = 300;
+
+const SHOUT_MS = 1200;
+const UNREADY_HINT_MS = 1500;
+const CARD_AFTER_BOARD_MS = 250;
+const SAME_CELL_GUARD_MS = 200;
+const TIER_MIN_DWELL_MS = 1000;
+
+/** Star thresholds for boss mode: heartsLost ≤ T3 → 3 stars, ≤ T2 → 2 stars (progress-save rule 2). */
+const STAR_BOSS_T3 = 0;
+const STAR_BOSS_T2 = 1;
+
+/** `slow=1` multipliers (chapter-design rule 14). */
+const SLOW_CHARGE_FACTOR = 1.5;
+
+return { KINDS, KIND_NAMES, EFFECTS, GENERALS, BOARD_COLS, MAX_TURNS, RESHUFFLE_TRIES, COMBO_WINDOW_MS, COMBO_THRESHOLD, BOSS_INTERRUPT, BOSS_INTERRUPT_CAP, EFFECT_HIGHLIGHT_MS, MISS_CHARGE, HOST_ATTACK_MS, BOSS_WARN_1, BOSS_WARN_2, GENERAL_NEED, SKILL_SHOW_MS, MAX_STEP_MS, BG_GAP_MS, TOKEN_MAX_MS, RESHUFFLE_SHOW_MS, CARD_GUARD_MS, OPEN_FADE_MS, ENDING_WIN_MS, ENDING_LOSE_MS, SHOUT_MS, UNREADY_HINT_MS, CARD_AFTER_BOARD_MS, SAME_CELL_GUARD_MS, TIER_MIN_DWELL_MS, STAR_BOSS_T3, STAR_BOSS_T2, SLOW_CHARGE_FACTOR };
+})();
+__m["src/core/assert.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// Development assertions (ADR-0001). The slice always runs them; the release
+// build of the real game replaces this module with no-ops.
+
+/** True while assertions are active. */
+let DEV = true;
+
+/**
+ * Switches assertions on or off (tests and the build use this).
+ * @param {boolean} on new state
+ */
+function setDev(on) {
+  DEV = on;
+}
+
+/**
+ * Throws when `cond` is false and assertions are active.
+ * @param {*} cond condition that must hold
+ * @param {string} message what went wrong
+ */
+function devAssert(cond, message) {
+  if (DEV && !cond) throw new Error('devAssert: ' + message);
+}
+
+/**
+ * Logs a warning when assertions are active.
+ * @param {string} message warning text
+ */
+function devWarn(message) {
+  if (DEV && typeof console !== 'undefined') console.warn('devWarn: ' + message);
+}
+
+return { DEV, setDev, devAssert, devWarn };
+})();
+__m["src/rules/round-flow.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// 对局流程与时钟 (design/gdd/round-flow.md) as ADR-0002 implements it: one game clock,
+// tokens, the five-step frame, settle points, overlay timers. Pure.
+
+const {
+  MAX_STEP_MS, BG_GAP_MS, TOKEN_MAX_MS, RESHUFFLE_SHOW_MS, CARD_GUARD_MS, OPEN_FADE_MS,
+} = __m["src/core/constants.mjs"];
+const { devAssert, devWarn } = __m["src/core/assert.mjs"];
+
+const TIMELESS = { background: true, pause: true, tutorial: true };
+
+/**
+ * Creates one round. `systems` is passed in by the composition root (ADR-0002).
+ * @param {{chapter: object, seed: number, progress: object, systems: object}} args
+ * @returns {object} round API
+ */
+function createRound({ chapter, seed, progress, systems }) {
+  let state = 'open';
+  let starting = false;
+  let startElapsed = 0;
+  let gameTime = 0;
+  let frameNo = 0;
+  let nextTokenId = 1;
+  let tokens = [];
+  let outbox = [];
+  let dirty = false;
+  let landscape = false;
+  let overlayAgeMs = 0;
+  let lastOverlay = null;
+  let result = null;
+  let settleOutcome = null;
+  let ended = false;
+
+  function emit(event) {
+    outbox.push(event);
+  }
+
+  function findToken(reason) {
+    return tokens.find((t) => t.reason === reason) || null;
+  }
+
+  function acquire(reason, durationMs, onEnd, detail) {
+    if (TIMELESS[reason]) {
+      const existing = findToken(reason);
+      if (existing) return existing;
+    }
+    const token = {
+      id: nextTokenId++, reason, durationMs: TIMELESS[reason] ? null : durationMs,
+      elapsedMs: 0, bornFrame: frameNo, notified: false, onEnd: onEnd || null, detail: detail || null,
+    };
+    tokens.push(token);
+    emit({ type: 'tokenStart', reason, durationMs: token.durationMs, detail: token.detail });
+    return token;
+  }
+
+  function release(token) {
+    const i = tokens.indexOf(token);
+    if (i < 0) return;
+    tokens.splice(i, 1);
+    emit({ type: 'tokenEnd', reason: token.reason, detail: token.detail });
+  }
+
+  function dispatch(res) {
+    if (!res || res.ok === false) return;
+    if (res.type === 'clear') {
+      pressure.onClear(res);
+      emit(res);
+    } else {
+      emit(res);
+    }
+    dirty = true;
+  }
+
+  const board = systems.createBoard(chapter, { seed });
+  const ctx = { chapter, board, emit, acquire, release, dispatch, gameTime: () => gameTime };
+  const pressure = systems.createPressure(ctx);
+  const effects = systems.createEffects(Object.assign({}, ctx, { pressure }));
+  const skills = systems.createSkills(Object.assign({}, ctx, { pressure }));
+
+  function sanitize(dtReal) {
+    return dtReal < 0 || dtReal > BG_GAP_MS ? 0 : dtReal;
+  }
+
+  function enterEnd(o) {
+    devAssert(tokens.length === 0, 'tokens held when entering end');
+    const win = o.result === 'win';
+    state = 'end';
+    result = {
+      chapterId: chapter.id,
+      mode: chapter.mode,
+      win,
+      reason: win ? null : o.reason,
+      gameTimeMs: Math.floor(gameTime),
+      maxCombo: effects.maxCombo(),
+      skillsUsed: skills.skillsUsed(),
+      metrics: pressure.metrics(),
+    };
+    settleOutcome = progress.settle(result);
+    emit({ type: 'state', from: 'play', to: 'end', win });
+  }
+
+  // Round-flow rule 6.5: outcome first, then ensurePlayable when the board may have changed.
+  function settlePoint(boardChanged) {
+    dirty = false;
+    const o = pressure.outcome();
+    if (o.result) {
+      enterEnd(o);
+      return;
+    }
+    if (!boardChanged) return;
+    const r = board.ensurePlayable();
+    if (!r) return;
+    if (r.type === 'reshuffle') {
+      emit(r);
+      acquire('reshuffle', RESHUFFLE_SHOW_MS, (tok) => { release(tok); dirty = true; }, { fallback: r.fallback });
+    } else if (r.type === 'clear') {
+      pressure.onClear(r);
+      emit(r);
+      settlePoint(false);
+    }
+  }
+
+  function boardBlocked(tokensAtStart) {
+    return state !== 'play' || tokensAtStart || tokens.length > 0;
+  }
+
+  function abandon(to) {
+    tokens = [];
+    ended = true;
+    emit({ type: 'exit', to });
+  }
+
+  function handleButton(it) {
+    if (overlayAgeMs < CARD_GUARD_MS) return;
+    const ov = overlay();
+    if (ov === 'open' && it.button === 'start') {
+      starting = true;
+      startElapsed = 0;
+      emit({ type: 'state', from: 'open', to: 'starting' });
+    } else if (ov === 'resume' && it.button === 'resume') {
+      const bg = findToken('background');
+      if (bg) release(bg);
+    } else if (ov === 'pause' && it.button === 'resume') {
+      const p = findToken('pause');
+      if (p) release(p);
+      const bg = findToken('background');
+      if (bg) release(bg);
+    } else if (ov === 'pause' && it.button === 'restart') {
+      abandon('retry');
+    } else if ((ov === 'win' || ov === 'lose') && state === 'settle' && it.button === 'retry') {
+      ended = true;
+      emit({ type: 'exit', to: 'retry' });
+    }
+  }
+
+  function handleIntent(it, tokensAtStart) {
+    if (ended) return;
+    if (it.type === 'cell') {
+      if (boardBlocked(tokensAtStart)) return;
+      const res = board.tap(it.row, it.col);
+      if (!res) return;
+      if (res.type === 'match') {
+        effects.onMatch(res);
+        skills.onMatch(res);
+        pressure.onMatch(res);
+        emit(res);
+      } else if (res.type === 'miss') {
+        pressure.onMiss(res);
+        emit(res);
+      }
+      if (tokens.length === 0) settlePoint(true);
+      else dirty = true;
+    } else if (it.type === 'card') {
+      if (boardBlocked(tokensAtStart)) return;
+      skills.tapCard(it.general);
+    } else if (it.type === 'pauseStamp') {
+      if (state === 'play') acquire('pause');
+    } else if (it.type === 'button') {
+      handleButton(it);
+    }
+  }
+
+  /**
+   * One frame in the five steps of round-flow rule 6.7 (ADR-0002 section 3).
+   * @param {number} dtReal real milliseconds since the previous frame
+   * @param {Array<object>} intents input intents in arrival order
+   */
+  function frame(dtReal, intents) {
+    frameNo++;
+    if (ended) return;
+    // ① implicit background
+    if (state === 'play' && dtReal > BG_GAP_MS) {
+      acquire('background');
+      trackOverlay(0);
+      return;
+    }
+    // ② intents
+    const tokensAtStart = tokens.length > 0;
+    for (const it of intents) handleIntent(it, tokensAtStart);
+    if (ended) return;
+    // ③ token timers (foreground time, frozen while background/pause is held)
+    const dtSan = sanitize(dtReal);
+    const frozen = !!(findToken('background') || findToken('pause'));
+    const dtTok = frozen ? 0 : dtSan;
+    for (const t of tokens.slice()) {
+      if (t.durationMs === null || t.bornFrame === frameNo) continue;
+      t.elapsedMs += dtTok;
+      if (!t.notified && t.elapsedMs >= t.durationMs) {
+        t.notified = true;
+        dirty = true;
+        if (t.onEnd) t.onEnd(t);
+      }
+      if (tokens.indexOf(t) >= 0 && t.elapsedMs >= TOKEN_MAX_MS) {
+        devWarn('token ' + t.reason + ' force-released');
+        if (!t.notified) { t.notified = true; if (t.onEnd) t.onEnd(t); }
+        release(t);
+        dirty = true;
+      }
+    }
+    if (state === 'open' && starting && !frozen) {
+      startElapsed += dtSan;
+      if (startElapsed >= OPEN_FADE_MS) {
+        state = 'play';
+        starting = false;
+        emit({ type: 'state', from: 'starting', to: 'play' });
+      }
+    }
+    // ④ clock and tick
+    let ticked = false;
+    let tickChanged = false;
+    if (state === 'play' && tokens.length === 0) {
+      const dtGame = Math.min(Math.max(dtReal, 0), MAX_STEP_MS);
+      if (dtGame > 0) {
+        gameTime += dtGame;
+        tickChanged = pressure.tick(dtGame);
+        ticked = true;
+      }
+    }
+    // ⑤ settle point
+    if (state === 'play' && tokens.length === 0 && (dirty || ticked)) settlePoint(dirty || tickChanged);
+    trackOverlay(dtSan);
+  }
+
+  function trackOverlay(dtSan) {
+    const ov = overlay();
+    if (ov !== lastOverlay) {
+      lastOverlay = ov;
+      overlayAgeMs = 0;
+    } else {
+      overlayAgeMs += dtSan;
+    }
+  }
+
+  function overlay() {
+    if (landscape) return 'landscape';
+    const bg = findToken('background');
+    const p = findToken('pause');
+    if (p) return 'pause';
+    if (bg) return 'resume';
+    if (state === 'open') return starting ? null : 'open';
+    if (state === 'end') return result && result.win ? 'win' : null;
+    if (state === 'settle') return result.win ? 'win' : 'lose';
+    return null;
+  }
+
+  return {
+    frame,
+    acquire,
+    release,
+    dispatch,
+    onHidden() { if (state === 'play' && !ended) acquire('background'); },
+    onVisible() {},
+    setLandscape(on) {
+      landscape = !!on;
+      if (landscape && state === 'play' && !ended) acquire('pause');
+    },
+    onBack() { if (state === 'play' && !ended) acquire('pause'); },
+    endingDone() {
+      if (state !== 'end') return;
+      state = 'settle';
+      overlayAgeMs = 0;
+      lastOverlay = overlay();
+      emit({ type: 'state', from: 'end', to: 'settle' });
+    },
+    state() { return state; },
+    starting() { return starting; },
+    gameTime() { return gameTime; },
+    tokens() { return tokens.map((t) => ({ reason: t.reason, remainingMs: t.durationMs === null ? null : Math.max(0, t.durationMs - t.elapsedMs) })); },
+    boardLocked() { return state !== 'play' || tokens.length > 0; },
+    overlay,
+    overlayAgeMs() { return overlayAgeMs; },
+    result() { return result; },
+    settleOutcome() { return settleOutcome; },
+    systems() { return { board, effects, pressure, skills }; },
+    drainEvents() { const out = outbox; outbox = []; return out; },
+  };
+}
+
+return { createRound };
+})();
+__m["src/rules/board-link.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// 盘面与连通 (design/gdd/board-link.md). Pure: no page, clock, randomness or storage.
+// Coordinates are {r, c}; playable cells are 1..rows × 1..cols, the outer ring is 0 and rows+1 / cols+1.
+
+const { KINDS, BOARD_COLS, RESHUFFLE_TRIES } = __m["src/core/constants.mjs"];
+const { createStream } = __m["src/core/rng.mjs"];
+const { devAssert, devWarn } = __m["src/core/assert.mjs"];
+
+/**
+ * Creates the board for one round and deals it.
+ * @param {object} chapter loaded chapter data (rows, deck)
+ * @param {{seed: number, streams?: object}} opts seed, or test-only stream overrides
+ * @returns {object} board API (board-link rules 11 and 14)
+ */
+function createBoard(chapter, opts) {
+  const rows = chapter.rows;
+  const cols = BOARD_COLS;
+  const streams = Object.assign({
+    deal: createStream(opts.seed, 'deal'),
+    shuffle: createStream(opts.seed, 'shuffle'),
+    wave: createStream(opts.seed, 'wave'),
+    add: createStream(opts.seed, 'add'),
+  }, opts.streams || {});
+
+  const grid = [];
+  for (let r = 0; r <= rows + 1; r++) {
+    const line = [];
+    for (let c = 0; c <= cols + 1; c++) line.push(null);
+    grid.push(line);
+  }
+  let selection = null;
+  let forceNext = false;
+  let version = 0;
+
+  function inPlay(r, c) {
+    return r >= 1 && r <= rows && c >= 1 && c <= cols;
+  }
+
+  function at(r, c) {
+    return inPlay(r, c) ? grid[r][c] : null;
+  }
+
+  function isFree(r, c) {
+    return at(r, c) === null;
+  }
+
+  function occupied() {
+    const list = [];
+    for (let r = 1; r <= rows; r++) {
+      for (let c = 1; c <= cols; c++) if (grid[r][c] !== null) list.push({ r, c });
+    }
+    return list;
+  }
+
+  function changed() {
+    version++;
+  }
+
+  function checkEven() {
+    const counts = {};
+    for (const p of occupied()) counts[grid[p.r][p.c]] = (counts[grid[p.r][p.c]] || 0) + 1;
+    for (const k of KINDS) devAssert(!counts[k] || counts[k] % 2 === 0, 'I1 broken for ' + k);
+  }
+
+  // Cells strictly between p and q (same row or column) are all free.
+  function segClear(p, q) {
+    if (p.r === q.r) {
+      const lo = Math.min(p.c, q.c);
+      const hi = Math.max(p.c, q.c);
+      for (let c = lo + 1; c < hi; c++) if (!isFree(p.r, c)) return false;
+      return true;
+    }
+    const lo = Math.min(p.r, q.r);
+    const hi = Math.max(p.r, q.r);
+    for (let r = lo + 1; r < hi; r++) if (!isFree(r, p.c)) return false;
+    return true;
+  }
+
+  function better(x, y) {
+    if (!y) return true;
+    if (x.turns !== y.turns) return x.turns < y.turns;
+    if (x.length !== y.length) return x.length < y.length;
+    for (let i = 0; i < x.corners.length; i++) {
+      if (x.corners[i].r !== y.corners[i].r) return x.corners[i].r < y.corners[i].r;
+      if (x.corners[i].c !== y.corners[i].c) return x.corners[i].c < y.corners[i].c;
+    }
+    return false;
+  }
+
+  /**
+   * Finds the chosen path between a and b, ignoring what kind they are.
+   * @returns {Array<{r:number,c:number}>|null} 2–4 points from a to b, or null
+   */
+  function findPath(a, b) {
+    let best = null;
+    const dist = Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
+    if ((a.r === b.r || a.c === b.c) && segClear(a, b)) {
+      return [a, b];
+    }
+    if (a.r !== b.r && a.c !== b.c) {
+      for (const k of [{ r: a.r, c: b.c }, { r: b.r, c: a.c }]) {
+        if (isFree(k.r, k.c) && segClear(a, k) && segClear(k, b)) {
+          const cand = { turns: 1, length: dist, corners: [k] };
+          if (better(cand, best)) best = cand;
+        }
+      }
+    }
+    if (best) return [a, best.corners[0], b];
+    if (a.c !== b.c) {
+      for (let x = 0; x <= rows + 1; x++) {
+        if (x === a.r || x === b.r) continue;
+        const p1 = { r: x, c: a.c };
+        const p2 = { r: x, c: b.c };
+        if (isFree(p1.r, p1.c) && isFree(p2.r, p2.c) && segClear(a, p1) && segClear(p1, p2) && segClear(p2, b)) {
+          const cand = { turns: 2, length: Math.abs(a.r - x) + Math.abs(a.c - b.c) + Math.abs(x - b.r), corners: [p1, p2] };
+          if (better(cand, best)) best = cand;
+        }
+      }
+    }
+    if (a.r !== b.r) {
+      for (let y = 0; y <= cols + 1; y++) {
+        if (y === a.c || y === b.c) continue;
+        const p1 = { r: a.r, c: y };
+        const p2 = { r: b.r, c: y };
+        if (isFree(p1.r, p1.c) && isFree(p2.r, p2.c) && segClear(a, p1) && segClear(p1, p2) && segClear(p2, b)) {
+          const cand = { turns: 2, length: Math.abs(a.c - y) + Math.abs(a.r - b.r) + Math.abs(y - b.c), corners: [p1, p2] };
+          if (better(cand, best)) best = cand;
+        }
+      }
+    }
+    return best ? [a, best.corners[0], best.corners[1], b] : null;
+  }
+
+  function hasPlayablePair() {
+    const byKind = {};
+    for (const p of occupied()) {
+      const k = grid[p.r][p.c];
+      (byKind[k] = byKind[k] || []).push(p);
+    }
+    for (const k of KINDS) {
+      const list = byKind[k];
+      if (!list) continue;
+      for (let i = 0; i < list.length; i++) {
+        for (let j = i + 1; j < list.length; j++) if (findPath(list[i], list[j])) return true;
+      }
+    }
+    return false;
+  }
+
+  function removeCells(cells) {
+    for (const p of cells) grid[p.r][p.c] = null;
+    if (selection && cells.some((p) => p.r === selection.r && p.c === selection.c)) selection = null;
+    changed();
+  }
+
+  // Board-link rule 10: permute within occupied cells, then the deterministic fallback.
+  function reshuffle(stream) {
+    const cells = occupied();
+    const kinds = cells.map((p) => grid[p.r][p.c]);
+    selection = null;
+    for (let t = 0; t < RESHUFFLE_TRIES; t++) {
+      stream.shuffle(kinds);
+      cells.forEach((p, i) => { grid[p.r][p.c] = kinds[i]; });
+      if (hasPlayablePair()) {
+        changed();
+        return { type: 'reshuffle', fallback: false };
+      }
+    }
+    for (let i = 0; i < cells.length; i++) {
+      for (let j = i + 1; j < cells.length; j++) {
+        const p = cells[i];
+        const q = cells[j];
+        if (!findPath(p, q)) continue;
+        const kp = grid[p.r][p.c];
+        const r = cells.find((x) => (x.r !== p.r || x.c !== p.c) && grid[x.r][x.c] === kp);
+        devAssert(r && (r.r !== q.r || r.c !== q.c), 'fallback partner');
+        const tmp = grid[q.r][q.c];
+        grid[q.r][q.c] = grid[r.r][r.c];
+        grid[r.r][r.c] = tmp;
+        changed();
+        checkEven();
+        return { type: 'reshuffle', fallback: true };
+      }
+    }
+    devAssert(false, 'reshuffle fallback found no pair');
+    removeCells(cells);
+    return { type: 'clear', source: 'reshuffle', cells, pairs: cells.length / 2 };
+  }
+
+  // Deal (board-link rule 4): build the deck in kind-table order, shuffle with `deal`, fill row-major.
+  // `opts.layout` (rows of kind ids or null) is a test-only override that places tiles directly.
+  (function deal() {
+    if (opts.layout) {
+      opts.layout.forEach((line, i) => line.forEach((k, j) => { grid[i + 1][j + 1] = k; }));
+      return;
+    }
+    const deck = [];
+    for (const k of KINDS) {
+      const n = chapter.deck[k] || 0;
+      for (let i = 0; i < n; i++) deck.push(k);
+    }
+    streams.deal.shuffle(deck);
+    let i = 0;
+    for (let r = 1; r <= rows && i < deck.length; r++) {
+      for (let c = 1; c <= cols && i < deck.length; c++) grid[r][c] = deck[i++];
+    }
+    checkEven();
+    if (!hasPlayablePair()) reshuffle(streams.shuffle);
+  })();
+
+  /**
+   * Handles a press on cell (r, c) (board-link rules 5–7, 12).
+   * @returns {object|null} match / miss result, or null when only the selection changed
+   */
+  function tap(r, c) {
+    const kind = at(r, c);
+    if (!selection) {
+      if (kind !== null) { selection = { r, c }; changed(); }
+      return null;
+    }
+    const a = selection;
+    if (a.r === r && a.c === c) { selection = null; changed(); return null; }
+    if (kind === null) { selection = null; changed(); return null; }
+    const ka = grid[a.r][a.c];
+    if (ka !== kind) { selection = { r, c }; changed(); return null; }
+    const b = { r, c };
+    const path = findPath(a, b);
+    if (forceNext) {
+      forceNext = false;
+      removeCells([a, b]);
+      selection = null;
+      return { type: 'match', kind, a, b, path: path || [a, b], forced: true };
+    }
+    if (path) {
+      removeCells([a, b]);
+      selection = null;
+      return { type: 'match', kind, a, b, path, forced: false };
+    }
+    selection = { r, c };
+    changed();
+    return { type: 'miss', kind, a, b };
+  }
+
+  /** Clears every tile of one kind (effects, Zhuge Liang). */
+  function clearKind(kind, source) {
+    const cells = occupied().filter((p) => grid[p.r][p.c] === kind);
+    removeCells(cells);
+    return { type: 'clear', source, kind, cells, pairs: cells.length / 2 };
+  }
+
+  /** Clears the given cells if that keeps every kind even (Guan Yu). */
+  function clearCells(cells, source) {
+    const counts = {};
+    for (const p of cells) {
+      const k = at(p.r, p.c);
+      if (k === null) continue;
+      counts[k] = (counts[k] || 0) + 1;
+    }
+    for (const k of Object.keys(counts)) {
+      if (counts[k] % 2 !== 0) {
+        devWarn('clearCells would break I1');
+        return { ok: false };
+      }
+    }
+    const real = cells.filter((p) => at(p.r, p.c) !== null);
+    removeCells(real);
+    checkEven();
+    return { type: 'clear', source, cells: real, pairs: real.length / 2 };
+  }
+
+  /** Places pairs on free cells using the `add` stream (enemy reinforcements). */
+  function addPairs(kinds) {
+    const placedCells = [];
+    let placed = 0;
+    for (const k of kinds) {
+      const free = [];
+      for (let r = 1; r <= rows; r++) {
+        for (let c = 1; c <= cols; c++) if (grid[r][c] === null) free.push({ r, c });
+      }
+      if (free.length < 2) break;
+      const p = free.splice(streams.add.int(free.length), 1)[0];
+      const q = free[streams.add.int(free.length)];
+      grid[p.r][p.c] = k;
+      grid[q.r][q.c] = k;
+      placedCells.push(p, q);
+      placed++;
+    }
+    if (placed) changed();
+    return { type: 'add', cells: placedCells, placed };
+  }
+
+  /** Board-link rule 9/10: at a settle point, make sure a playable pair exists. */
+  function ensurePlayable() {
+    if (occupied().length === 0 || hasPlayablePair()) return null;
+    return reshuffle(streams.shuffle);
+  }
+
+  return {
+    rows,
+    cols,
+    tap,
+    clearKind,
+    clearCells,
+    addPairs,
+    ensurePlayable,
+    findPath,
+    setForceNext(on) { forceNext = !!on; changed(); },
+    clearSelection() { if (selection) { selection = null; changed(); } },
+    isEmpty() { return occupied().length === 0; },
+    pairsLeft() { return occupied().length / 2; },
+    count(kind) { return occupied().filter((p) => grid[p.r][p.c] === kind).length; },
+    cellsOf(kind) { return occupied().filter((p) => grid[p.r][p.c] === kind); },
+    kindAt: at,
+    occupied,
+    selection() { return selection ? { r: selection.r, c: selection.c } : null; },
+    forceNext() { return forceNext; },
+    hasPlayablePair,
+    rng(name) { return streams[name]; },
+    version() { return version; },
+  };
+}
+
+return { createBoard };
+})();
+__m["src/rules/battle-pressure.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// 战场压力 (design/gdd/battle-pressure.md) — the slice implements boss mode only (rules 20–27).
+
+const {
+  KINDS, MISS_CHARGE, HOST_ATTACK_MS, BOSS_INTERRUPT, BOSS_INTERRUPT_CAP,
+} = __m["src/core/constants.mjs"];
+const { devAssert } = __m["src/core/assert.mjs"];
+
+/**
+ * @param {object} ctx round context
+ * @returns {object} pressure API
+ */
+function createPressure(ctx) {
+  const { chapter, board, emit, acquire, release } = ctx;
+  devAssert(chapter.mode === 'boss', 'slice implements boss mode only');
+  const boss = chapter.boss;
+  const hpMax = board.pairsLeft();
+  let hp = hpMax;
+  let charge = 0;
+  let hearts = boss.hearts;
+  let interruptSinceAttack = 0;
+  let lineIndex = 0;
+
+  function clampCharge(v) {
+    return Math.min(100, Math.max(0, v));
+  }
+
+  function poolEntries() {
+    const pool = chapter.pool || null;
+    const entries = [];
+    for (const k of KINDS) {
+      const w = pool ? pool[k] || 0 : (chapter.deck[k] || 0) / 2;
+      if (w > 0) entries.push([k, w]);
+    }
+    return entries;
+  }
+
+  // Rule 23: attack when charge reaches 100 and the enemy still has hp.
+  function attack() {
+    charge = 0;
+    hearts -= 1;
+    interruptSinceAttack = 0;
+    const stream = board.rng('add');
+    const entries = poolEntries();
+    const kinds = [];
+    for (let i = 0; i < boss.addPairs; i++) kinds.push(stream.pickWeighted(entries));
+    board.addPairs(kinds);
+    const lines = chapter.enemyLines;
+    const line = lineIndex % lines.length;
+    lineIndex++;
+    emit({ type: 'hostAttack', line });
+    acquire('hostAttack', HOST_ATTACK_MS, (tok) => release(tok), { line, text: lines[line] });
+  }
+
+  return {
+    onMatch() { hp = Math.max(0, hp - 1); },
+    onMiss() { charge = clampCharge(charge + MISS_CHARGE); },
+    onClear(clear) { hp = Math.max(0, hp - clear.pairs); },
+    comboReward() {
+      const cut = Math.min(BOSS_INTERRUPT, BOSS_INTERRUPT_CAP - interruptSinceAttack, charge);
+      if (cut <= 0) return 0;
+      charge -= cut;
+      interruptSinceAttack += cut;
+      return cut;
+    },
+    resetCharge() { charge = 0; },
+    charge() { return charge; },
+    /** @returns {boolean} whether the board changed (an attack added tiles) */
+    tick(dtGame) {
+      charge = clampCharge(charge + (100 * dtGame) / boss.chargeMs);
+      if (charge >= 100 && hp > 0) {
+        attack();
+        return true;
+      }
+      return false;
+    },
+    outcome() {
+      if (hp <= 0 || board.isEmpty()) return { result: 'win', reason: null };
+      if (hearts <= 0) return { result: 'lose', reason: '城破' };
+      return { result: null, reason: null };
+    },
+    hud() { return { hp, hpMax, charge, hearts, heartsMax: boss.hearts, interruptSinceAttack }; },
+    metrics() { return { heartsLost: boss.hearts - hearts }; },
+  };
+}
+
+return { createPressure };
+})();
+__m["src/rules/clear-effects.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// 清除效果与连斩 (design/gdd/clear-effects.md). Pure.
+
+const { EFFECTS, COMBO_WINDOW_MS, COMBO_THRESHOLD, EFFECT_HIGHLIGHT_MS } = __m["src/core/constants.mjs"];
+
+/**
+ * @param {object} ctx round context plus `pressure`
+ * @returns {object} effects API
+ */
+function createEffects(ctx) {
+  const { board, pressure, emit, acquire, release, dispatch, gameTime } = ctx;
+  let combo = 0;
+  let lastPlayerClearAt = -Infinity;
+  let maxCombo = 0;
+  let comboAt = null;
+
+  /** Rule 6–8 and 2–4: count the combo, pay the reward, trigger an effect tile. */
+  function onMatch(match) {
+    const now = gameTime();
+    combo = now - lastPlayerClearAt <= COMBO_WINDOW_MS ? combo + 1 : 1;
+    lastPlayerClearAt = now;
+    maxCombo = Math.max(maxCombo, combo);
+    comboAt = match.b;
+    if (combo >= COMBO_THRESHOLD) {
+      const cut = pressure.comboReward();
+      if (cut > 0) emit({ type: 'interrupt', cut });
+    }
+    const effect = EFFECTS[match.kind];
+    if (!effect) return;
+    const cells = board.cellsOf(effect.target);
+    if (cells.length === 0) {
+      emit({ type: 'targetGone', kind: effect.target });
+      return;
+    }
+    acquire('effect', EFFECT_HIGHLIGHT_MS, (tok) => {
+      const res = board.clearKind(effect.target, 'effect');
+      dispatch(res);
+      release(tok);
+    }, { effect: match.kind, target: effect.target, name: effect.name, cells });
+  }
+
+  return {
+    onMatch,
+    combo() { return combo; },
+    comboAt() { return comboAt; },
+    maxCombo() { return maxCombo; },
+    targetOf(kind) { return EFFECTS[kind] ? EFFECTS[kind].target : null; },
+  };
+}
+
+return { createEffects };
+})();
+__m["src/rules/general-skills.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// 武将技能 (design/gdd/general-skills.md) — boss-mode effects for Zhang Fei. Pure.
+
+const { GENERALS, KINDS, KIND_NAMES, GENERAL_NEED, SKILL_SHOW_MS } = __m["src/core/constants.mjs"];
+const { devAssert } = __m["src/core/assert.mjs"];
+
+const NUMERALS = ['零', '一', '两', '三', '四'];
+
+/**
+ * Cells Guan Yu cuts: the lowest occupied row, plus one more tile for every kind left odd (formula guan_cut).
+ * @param {object} board board API
+ * @returns {Array<{r:number,c:number}>}
+ */
+function guanCells(board) {
+  const occ = board.occupied();
+  if (occ.length === 0) return [];
+  const bottom = Math.max(...occ.map((p) => p.r));
+  const row = occ.filter((p) => p.r === bottom);
+  const counts = {};
+  for (const p of row) {
+    const k = board.kindAt(p.r, p.c);
+    counts[k] = (counts[k] || 0) + 1;
+  }
+  const cells = row.slice();
+  for (const k of KINDS) {
+    if (!counts[k] || counts[k] % 2 === 0) continue;
+    let found = null;
+    for (let r = bottom - 1; r >= 1 && !found; r--) {
+      for (let c = 1; c <= board.cols && !found; c++) {
+        if (board.kindAt(r, c) === k) found = { r, c };
+      }
+    }
+    devAssert(found, 'guan extra tile for ' + k);
+    if (found) cells.push(found);
+  }
+  return cells;
+}
+
+/**
+ * The kind Zhuge Liang clears: most tiles on the board, ties broken by kind-table order (formula kongming_pick).
+ * @param {object} board board API
+ * @returns {string|null}
+ */
+function zhugeKind(board) {
+  let best = null;
+  let bestCount = 0;
+  for (const k of KINDS) {
+    const n = board.count(k);
+    if (n > bestCount) { best = k; bestCount = n; }
+  }
+  return best;
+}
+
+/**
+ * @param {object} ctx round context plus `pressure`
+ * @returns {object} skills API
+ */
+function createSkills(ctx) {
+  const { chapter, board, pressure, emit, acquire, release, dispatch } = ctx;
+  const roster = GENERALS.filter((g) => chapter.generals.indexOf(g.id) >= 0).map((g) => ({
+    id: g.id, name: g.name, kind: g.kind, skill: g.skill, line: g.line,
+    need: typeof chapter.need === 'object' ? chapter.need[g.id] || GENERAL_NEED : chapter.need || GENERAL_NEED,
+    charge: 0, armed: false, used: 0,
+  }));
+
+  function byId(id) {
+    return roster.find((g) => g.id === id) || null;
+  }
+
+  function hasEffect(g) {
+    if (g.id === 'guan_yu' || g.id === 'zhuge_liang') return !board.isEmpty();
+    if (g.id === 'zhang_fei') return pressure.charge() > 0;
+    return true;
+  }
+
+  function noEffectText(g) {
+    if (g.id === 'zhang_fei') return '此时一吼无用';
+    return '盘上已经无兵';
+  }
+
+  // Rule 7: why a card cannot be released right now, or null.
+  function blocker(g) {
+    if (g.armed) return '已在待命';
+    if (g.charge < g.need) return '消' + KIND_NAMES[g.kind] + NUMERALS[g.need - g.charge] + '对';
+    if (!hasEffect(g)) return noEffectText(g);
+    return null;
+  }
+
+  function onMatch(match) {
+    const zhao = byId('zhao_yun');
+    if (match.forced && zhao && zhao.armed) {
+      zhao.armed = false;
+      emit({ type: 'skillArmedSpent', general: 'zhao_yun' });
+    }
+    for (const g of roster) {
+      if (g.kind !== match.kind || g.charge >= g.need) continue;
+      g.charge += 1;
+      if (g.charge === g.need) emit({ type: 'skillReady', general: g.id });
+    }
+  }
+
+  // Rule 8: release now, compute targets now, apply when the skill token ends.
+  function tapCard(id) {
+    const g = byId(id);
+    if (!g) return;
+    const why = blocker(g);
+    if (why) {
+      emit({ type: 'cardHint', general: g.id, text: why });
+      return;
+    }
+    board.clearSelection();
+    g.charge = 0;
+    g.used += 1;
+    let cells = [];
+    let kind = null;
+    if (g.id === 'guan_yu') cells = guanCells(board);
+    if (g.id === 'zhuge_liang') { kind = zhugeKind(board); cells = board.cellsOf(kind); }
+    acquire('skill', SKILL_SHOW_MS, (tok) => {
+      if (g.id === 'guan_yu') dispatch(board.clearCells(cells, 'skill'));
+      else if (g.id === 'zhuge_liang') dispatch(board.clearKind(kind, 'skill'));
+      else if (g.id === 'zhang_fei') pressure.resetCharge();
+      else if (g.id === 'zhao_yun') {
+        board.setForceNext(true);
+        g.armed = true;
+        emit({ type: 'skillArmed', general: g.id });
+      }
+      release(tok);
+    }, { general: g.id, name: g.name, skill: g.skill, line: g.line, cells });
+  }
+
+  return {
+    onMatch,
+    tapCard,
+    cards() {
+      return roster.map((g) => ({
+        id: g.id, name: g.name, kind: g.kind, skill: g.skill, charge: g.charge, need: g.need, armed: g.armed,
+        state: g.armed ? 'armed' : g.charge >= g.need ? 'ready' : 'charging',
+      }));
+    },
+    skillsUsed() {
+      const out = {};
+      for (const g of roster) out[g.id] = g.used;
+      return out;
+    },
+  };
+}
+
+return { guanCells, zhugeKind, createSkills };
+})();
+__m["src/app/screens.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// Screen state and composition root for rounds (ADR-0002 §2). The slice has no catalog:
+// the round's 开讲 card is the first screen, and 再来一回 / 从头讲 start a new attempt.
+
+const { hash32 } = __m["src/core/rng.mjs"];
+const { createRound } = __m["src/rules/round-flow.mjs"];
+const { createBoard } = __m["src/rules/board-link.mjs"];
+const { createPressure } = __m["src/rules/battle-pressure.mjs"];
+const { createEffects } = __m["src/rules/clear-effects.mjs"];
+const { createSkills } = __m["src/rules/general-skills.mjs"];
+
+const SYSTEMS = { createBoard, createPressure, createEffects, createSkills };
+
+/**
+ * @param {{chapter: object, progress: object, view: object, salt: number}} deps
+ * @returns {object} screens API
+ */
+function createScreens({ chapter, progress, view, salt }) {
+  let screen = 'round';
+  let round = null;
+  let attempt = 0;
+
+  function startRound() {
+    attempt += 1;
+    const seed = hash32(chapter.id, attempt, salt);
+    round = createRound({ chapter, seed, progress, systems: SYSTEMS });
+    view.bindRound(round, chapter);
+    screen = 'round';
+  }
+
+  return {
+    startRound,
+    round() { return screen === 'round' ? round : null; },
+    screen() { return screen; },
+    /** Handles exit events after the view has played the frame. */
+    afterFrame(events) {
+      for (const e of events) if (e.type === 'exit') { startRound(); return; }
+    },
+    fail(err) {
+      if (screen === 'error') return;
+      screen = 'error';
+      round = null;
+      view.showError();
+      if (typeof console !== 'undefined') console.error(err);
+    },
+  };
+}
+
+return { createScreens };
+})();
+__m["src/rules/chapter-loader.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// 回目编排与难度 loader (design/gdd/chapter-design.md rules 6–9, 14) — the checks the slice's one chapter needs.
+
+const { KINDS, BOARD_COLS, GENERALS, SLOW_CHARGE_FACTOR } = __m["src/core/constants.mjs"];
+
+/**
+ * Validates chapters and applies test flags. Rejected chapters are dropped with a reason.
+ * @param {{chapters: Array, enemies: object}} data raw data module
+ * @param {{slow: boolean}} flags build/URL flags
+ * @returns {{chapters: Array, rejected: Array<{id: string, reason: string}>}}
+ */
+function loadChapters(data, flags) {
+  const out = [];
+  const rejected = [];
+  const seen = {};
+  for (const raw of data.chapters) {
+    const why = reject(raw, data, seen);
+    if (why) {
+      rejected.push({ id: raw.id, reason: why });
+      continue;
+    }
+    seen[raw.id] = true;
+    const ch = JSON.parse(JSON.stringify(raw));
+    const enemy = data.enemies[ch.boss.enemy];
+    ch.enemyName = enemy.name;
+    ch.enemyLines = ch.enemyLines || enemy.lines;
+    if (flags.slow) ch.boss.chargeMs = Math.round(ch.boss.chargeMs * SLOW_CHARGE_FACTOR);
+    out.push(ch);
+  }
+  return { chapters: out, rejected };
+}
+
+function reject(ch, data, seen) {
+  if (seen[ch.id]) return 'duplicate id';
+  if (ch.mode !== 'boss') return 'slice supports boss mode only';
+  if (!(ch.rows >= 6 && ch.rows <= 8)) return 'rows out of range';
+  let total = 0;
+  for (const k of Object.keys(ch.deck)) {
+    if (KINDS.indexOf(k) < 0) return 'unknown kind ' + k;
+    if (ch.deck[k] % 2 !== 0) return 'odd count for ' + k;
+    total += ch.deck[k];
+  }
+  if (total !== ch.rows * BOARD_COLS) return 'deck does not fill the board';
+  if (!ch.boss || !data.enemies[ch.boss.enemy]) return 'unknown enemy';
+  if (!(ch.boss.chargeMs >= 6000 && ch.boss.chargeMs <= 20000)) return 'chargeMs out of range';
+  if (!(ch.boss.hearts >= 1 && ch.boss.hearts <= 5)) return 'hearts out of range';
+  if (!(ch.boss.addPairs >= 0 && ch.boss.addPairs <= 4)) return 'addPairs out of range';
+  if (!ch.generals || ch.generals.length === 0) return 'no generals';
+  for (const id of ch.generals) if (!GENERALS.some((g) => g.id === id)) return 'unknown general ' + id;
+  return null;
+}
+
+/**
+ * Fills {name} placeholders; numbers print without a trailing .0 (rule 4).
+ * @param {string} template text with {placeholders}
+ * @param {object} values replacement values
+ * @returns {string}
+ */
+function fillText(template, values) {
+  return template.replace(/\{(\w+)\}/g, (m, key) => {
+    if (!(key in values)) return m;
+    const v = values[key];
+    return typeof v === 'number' && !Number.isInteger(v) ? v.toFixed(1) : String(v);
+  });
+}
+
+return { loadChapters, fillText };
+})();
+__m["src/rules/progress-save.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// 进度、三星与存档 (design/gdd/progress-save.md) — the slice keeps stars and a
+// session-only best (no storage: saving is out of the slice's scope).
+
+const { STAR_BOSS_T3, STAR_BOSS_T2 } = __m["src/core/constants.mjs"];
+
+/**
+ * Stars for a boss-mode round (rule 2).
+ * @param {object} result RoundResult
+ * @returns {number} 0–3
+ */
+function starsFor(result) {
+  if (!result.win) return 0;
+  const lost = result.metrics.heartsLost;
+  if (lost <= STAR_BOSS_T3) return 3;
+  if (lost <= STAR_BOSS_T2) return 2;
+  return 1;
+}
+
+/**
+ * The reason line shown when a win is short of three stars (rule 6).
+ * @param {object} result RoundResult
+ * @param {number} stars stars earned
+ * @returns {string|null}
+ */
+function reasonLineFor(result, stars) {
+  if (!result.win || stars >= 3) return null;
+  return '丢了 ' + result.metrics.heartsLost + ' 颗心';
+}
+
+/** @returns {object} progress API with settle() (rule 5) */
+function createProgress() {
+  const best = {};
+  const settled = new Set();
+  return {
+    settle(result) {
+      if (settled.has(result)) throw new Error('settle called twice for one round');
+      settled.add(result);
+      const stars = starsFor(result);
+      const before = best[result.chapterId] || 0;
+      best[result.chapterId] = Math.max(before, stars);
+      return {
+        stars,
+        bestStars: best[result.chapterId],
+        isNewBest: stars > before,
+        reasonLine: reasonLineFor(result, stars),
+        saved: false,
+      };
+    },
+    bestStars(chapterId) { return best[chapterId] || 0; },
+  };
+}
+
+return { starsFor, reasonLineFor, createProgress };
+})();
+__m["src/data/chapter01.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// 第一回 data, copied from design/gdd/chapter-design.md rule 13 and rule 4 (texts).
+
+const CHAPTERS = [
+  {
+    id: 'ch01',
+    no: '第一回',
+    title: '虎牢关三英战吕布',
+    mode: 'boss',
+    rows: 6,
+    deck: { huo: 2, ying: 8, dao: 4, gu: 4, dun: 4, shu: 4, qi: 4, jiu: 6 },
+    boss: { enemy: 'lv_bu', chargeMs: 10000, hearts: 3, addPairs: 2 },
+    generals: ['guan_yu', 'zhang_fei', 'zhao_yun', 'zhuge_liang'],
+    need: 2,
+    newEffect: 'huo',
+  },
+];
+
+const ENEMIES = {
+  lv_bu: { name: '吕布', lines: ['人中吕布！', '谁敢挡我！'] },
+};
+
+const TEXTS = {
+  ruleLine: { boss: '敌将蓄满就出手，{hearts} 颗心没了就输' },
+  effectLine: { huo: '火烧连营：消一对火，烧掉所有营' },
+  failHint: { '城破': '{COMBO_THRESHOLD} 连斩能打断蓄力' },
+  skillLine: {
+    guan_yu: { boss: '斩掉最下一排' },
+    zhang_fei: { boss: '敌将蓄力清零' },
+    zhao_yun: { boss: '下一对同种兵必消' },
+    zhuge_liang: { boss: '清掉最多的那种兵' },
+  },
+  preview: '全书未完，下回分解',
+};
+
+return { CHAPTERS, ENEMIES, TEXTS };
+})();
+__m["src/view/layout.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// Layout from ui-interaction.md formulas cell_size and fit_scale. Pure: testable in Node (ADR-0003).
+
+const FRAME_SIDE = 6;
+const LANE = 32;
+const DEAD_ZONE = 20;
+const STAGE_MAX = 480;
+const TRIES = [[160, 96], [115, 96], [115, 80]];
+
+/**
+ * @param {{width: number, height: number, rows: number}} viewport available CSS size and board rows
+ * @returns {object} sizes in unscaled stage pixels plus the stage scale
+ */
+function computeLayout({ width, height, rows }) {
+  const ws = Math.min(width, STAGE_MAX);
+  const cell = Math.min(53, Math.max(52, Math.floor((ws - 2 * FRAME_SIDE - LANE) / 6)));
+  const boardW = 6 * cell + LANE;
+  const boardH = rows * cell + LANE;
+  const need = (top, cards) => top + boardH + DEAD_ZONE + cards;
+  let pick = null;
+  for (const t of TRIES) {
+    if (need(t[0], t[1]) <= height) { pick = t; break; }
+  }
+  let scale = 1;
+  if (!pick) {
+    pick = TRIES[TRIES.length - 1];
+    scale = height / need(pick[0], pick[1]);
+  }
+  const stageW = Math.max(ws, boardW + 2 * FRAME_SIDE);
+  if (stageW * scale > width) scale = width / stageW;
+  const [top, cards] = pick;
+  const stageH = height / scale;
+  const spare = Math.max(0, stageH - need(top, cards));
+  const topY = spare / 2;
+  const boardY = topY + top + spare / 2;
+  return {
+    cell, rows, scale, stageW, stageH, top, cards, lane: LANE,
+    topY,
+    boardX: (stageW - boardW) / 2,
+    boardY,
+    boardW,
+    boardH,
+    deadY: boardY + boardH,
+    cardsY: boardY + boardH + DEAD_ZONE,
+    compact: top === 115,
+  };
+}
+
+/**
+ * Board-local pixel centre of a grid point; the outer ring sits in the middle of the lane.
+ * @returns {{x: number, y: number}}
+ */
+function pointCenter(layout, r, c) {
+  const half = layout.lane / 2;
+  const axis = (i, n) => {
+    if (i <= 0) return half / 2;
+    if (i >= n + 1) return half + n * layout.cell + half / 2;
+    return half + (i - 1) * layout.cell + layout.cell / 2;
+  };
+  return { x: axis(c, 6), y: axis(r, layout.rows) };
+}
+
+/**
+ * Grid coordinate under a board-local point; the lane counts as the outer ring.
+ * @returns {{r: number, c: number}}
+ */
+function cellAt(layout, x, y) {
+  const half = layout.lane / 2;
+  const axis = (v, n) => {
+    if (v < half) return 0;
+    const i = Math.floor((v - half) / layout.cell) + 1;
+    return i > n ? n + 1 : i;
+  };
+  return { r: axis(y, layout.rows), c: axis(x, 6) };
+}
+
+return { computeLayout, pointCenter, cellAt };
+})();
+__m["src/view/sprite.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// Inline <symbol> sprite (art bible §3 "兵：只靠形状分种", §4 器物色). Placeholder-quality
+// drawings that follow the shape rules: one object per kind, ink outline, flat fill, no faces.
+
+const INK = '#2a2018';
+const PAPER = '#fffaf0';
+const OCHRE = '#b58553';
+const IRON = '#9a9286';
+const JADE = '#7fa08a';
+const ZHU = '#b33a22';
+const S = `stroke="${INK}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"`;
+
+const SYMBOLS = {
+  // 营：尖·横 — wide tent with a door slit
+  ying: `<path d="M3 31 L20 9 L37 31 Z" fill="${OCHRE}" ${S}/><path d="M20 17 L20 31" fill="none" ${S}/>`,
+  // 火：尖·竖 — single flame drop, paper core (the only solid 朱 icon)
+  huo: `<path d="M20 4 C28 13 32 20 29 28 C27 34 13 34 11 28 C8 21 15 15 20 4 Z" fill="${ZHU}" ${S}/><path d="M20 19 C23 23 24 26 22 29 C20 31 17 30 17 27 C17 24 19 22 20 19 Z" fill="${PAPER}" stroke="none"/>`,
+  // 鼓：圆·横 — side view drum with a row of studs
+  gu: `<rect x="5" y="12" width="30" height="17" rx="7" fill="${OCHRE}" ${S}/><path d="M8 16 L32 16" fill="none" ${S}/><circle cx="12" cy="20.5" r="1.4" fill="${INK}"/><circle cx="17" cy="20.5" r="1.4" fill="${INK}"/><circle cx="23" cy="20.5" r="1.4" fill="${INK}"/><circle cx="28" cy="20.5" r="1.4" fill="${INK}"/>`,
+  // 盾：圆·正 — round rattan shield with a centre boss
+  dun: `<circle cx="20" cy="20" r="14" fill="${IRON}" ${S}/><circle cx="20" cy="20" r="4.5" fill="${PAPER}" ${S}/>`,
+  // 酒：圆·竖 — round-bellied jar with a cloth knot
+  jiu: `<path d="M15 7 L25 7 L25 11 C33 14 35 21 34 27 C33 33 27 35 20 35 C13 35 7 33 6 27 C5 21 7 14 15 11 Z" fill="${JADE}" ${S}/><path d="M14 11 L26 11 M20 7 L23 3" fill="none" ${S}/>`,
+  // 刀：条·斜 — single-edged curved blade at 45°
+  dao: `<path d="M12 29 C19 25 27 17 33 6 C33 16 27 26 16 33 Z" fill="${IRON}" ${S}/><path d="M6 35 L13 28" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`,
+  // 书：方·横 — open bamboo slips with vertical strokes
+  shu: `<rect x="5" y="11" width="30" height="19" rx="2" fill="${JADE}" ${S}/><path d="M11 13 V28 M16.5 13 V28 M22 13 V28 M27.5 13 V28" fill="none" ${S}/>`,
+  // 旗：条·竖 — upright pole with a side-hung square flag
+  qi: `<path d="M11 5 L11 36" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><path d="M12 7 L31 7 L31 21 L12 21 Z" fill="${JADE}" ${S}/>`,
+};
+
+const EXTRA = {
+  heart: `<path d="M20 34 C9 26 4 20 4 13 C4 8 8 5 12 5 C16 5 18 7 20 10 C22 7 24 5 28 5 C32 5 36 8 36 13 C36 20 31 26 20 34 Z" fill="${ZHU}" stroke="${ZHU}" stroke-width="2"/>`,
+  star: `<path d="M20 3 L25 15 L38 15 L27.5 23 L31.5 36 L20 28 L8.5 36 L12.5 23 L2 15 L15 15 Z"/>`,
+  tick: `<path d="M8 21 L17 30 L33 9" fill="none" stroke="${ZHU}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`,
+};
+
+/**
+ * The whole sprite as one hidden <svg> string to insert once into the page.
+ * @returns {string}
+ */
+function spriteMarkup() {
+  const all = Object.assign({}, SYMBOLS, EXTRA);
+  const parts = Object.keys(all).map((id) => `<symbol id="s-${id}" viewBox="0 0 40 40">${all[id]}</symbol>`);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true">${parts.join('')}</svg>`;
+}
+
+/** @returns {boolean} whether a kind has a drawn symbol (others fall back to their character). */
+function hasSymbol(kind) {
+  return Object.prototype.hasOwnProperty.call(SYMBOLS, kind);
+}
+
+return { spriteMarkup, hasSymbol };
+})();
+__m["src/view/view.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// 界面与交互 (design/gdd/ui-interaction.md) per ADR-0003: reads queries, plays events, never
+// changes rule state (the one exception is round.endingDone(), ADR-0002 §2).
+
+const {
+  KIND_NAMES, GENERALS, EFFECTS, SHOUT_MS, UNREADY_HINT_MS, TIER_MIN_DWELL_MS,
+  BOSS_WARN_1, BOSS_WARN_2, ENDING_WIN_MS, ENDING_LOSE_MS, RESHUFFLE_SHOW_MS, COMBO_THRESHOLD,
+} = __m["src/core/constants.mjs"];
+const { computeLayout, pointCenter } = __m["src/view/layout.mjs"];
+const { spriteMarkup, hasSymbol } = __m["src/view/sprite.mjs"];
+const { fillText } = __m["src/rules/chapter-loader.mjs"];
+
+const SVGNS = 'http://www.w3.org/2000/svg';
+const COMBO_WORDS = ['', '', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
+const AVATAR_COLORS = { guan_yu: '#8e2a3a', zhang_fei: '#2a2018', zhao_yun: '#6b5a43', zhuge_liang: '#3e5c45' };
+const HEART_PATH = 'M20 34 C9 26 4 20 4 13 C4 8 8 5 12 5 C16 5 18 7 20 10 C22 7 24 5 28 5 C32 5 36 8 36 13 C36 20 31 26 20 34 Z';
+const STAR_PATH = 'M20 3 L25 15 L38 15 L27.5 23 L31.5 36 L20 28 L8.5 36 L12.5 23 L2 15 L15 15 Z';
+
+function el(tag, cls, parent, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  if (parent) parent.appendChild(n);
+  return n;
+}
+
+function svgIcon(path, attrs) {
+  const s = document.createElementNS(SVGNS, 'svg');
+  s.setAttribute('viewBox', '0 0 40 40');
+  const p = document.createElementNS(SVGNS, 'path');
+  p.setAttribute('d', path);
+  for (const k of Object.keys(attrs || {})) p.setAttribute(k, attrs[k]);
+  s.appendChild(p);
+  return s;
+}
+
+/**
+ * @param {HTMLElement} root mount point
+ * @param {{chapter: object, texts: object}} deps
+ * @returns {object} view API
+ */
+function createView(root, deps) {
+  const { texts } = deps;
+  root.insertAdjacentHTML('beforeend', spriteMarkup());
+  const stage = el('div', '', root);
+  stage.id = 'stage';
+  const errorEl = el('div', '', root, '戏本出错，请稍后再来');
+  errorEl.id = 'error';
+
+  // ── static structure: built once, only text, classes and transforms change afterwards (R7) ──
+  const top = el('div', '', stage); top.id = 'top';
+  const titleEl = el('div', '', top); titleEl.id = 'title';
+  const pauseEl = el('div', '', top); pauseEl.id = 'pause-stamp'; el('i', '', pauseEl); el('i', '', pauseEl);
+  const plaque = el('div', '', top); plaque.id = 'plaque';
+  const pairsEl = el('div', '', top); pairsEl.id = 'pairs';
+  const banner = el('div', '', top); banner.id = 'banner';
+  const hud = el('div', '', top); hud.id = 'hud';
+  const heartsEl = el('div', '', hud); heartsEl.id = 'hearts';
+  const chargeBox = el('div', '', hud); chargeBox.id = 'charge-box';
+  const chargeLabel = el('div', '', chargeBox, '吕布蓄力'); chargeLabel.id = 'charge-label';
+  const track = el('div', '', chargeBox); track.id = 'charge-track';
+  const chargeFill = el('div', '', track); chargeFill.id = 'charge-fill';
+  const slash = el('div', '', chargeBox); slash.id = 'slash';
+  const foe = el('div', '', hud); foe.id = 'foe';
+  const foeName = el('div', 'name', foe);
+  const foeFace = el('div', 'face', foe);
+  const foeHp = el('div', 'hp', foe);
+  const foeBar = el('i', '', el('div', 'hpbar', foe));
+
+  const frame = el('div', '', stage); frame.id = 'board-frame';
+  const boardEl = el('div', '', frame); boardEl.id = 'board';
+  const links = document.createElementNS(SVGNS, 'svg'); links.id = 'links'; frame.appendChild(links);
+  const fxLayer = el('div', '', frame); fxLayer.style.position = 'absolute'; fxLayer.style.left = '0'; fxLayer.style.top = '0';
+  const dead = el('div', '', stage); dead.id = 'deadzone';
+  const cardsEl = el('div', '', stage); cardsEl.id = 'cards';
+  const mask = el('div', '', stage); mask.id = 'mask';
+  const hero = el('div', '', stage); hero.id = 'hero';
+  el('div', 'blot', hero);
+  const heroWho = el('div', 'who', hero);
+
+  const cards = {};
+  function overlayCard(id) {
+    const c = el('div', 'card', stage);
+    c.id = 'card-' + id;
+    cards[id] = c;
+    return c;
+  }
+  function buttons(card, list) {
+    const row = el('div', 'btns', card);
+    for (const b of list) {
+      const btn = el('button', b.primary ? 'primary' : '', row, b.text);
+      btn.setAttribute('data-button', b.id);
+    }
+    return row;
+  }
+
+  const openCard = overlayCard('open');
+  const winCard = overlayCard('win');
+  const loseCard = overlayCard('lose');
+  const resumeCard = overlayCard('resume');
+  el('p', '', resumeCard, '刚才切出去了，局面原样未动。');
+  buttons(resumeCard, [{ id: 'resume', text: '接着讲', primary: true }]);
+  const pauseCard = overlayCard('pause');
+  el('h2', '', pauseCard, '暂停');
+  buttons(pauseCard, [{ id: 'resume', text: '接着讲', primary: true }, { id: 'restart', text: '从头讲' }]);
+  const landCard = overlayCard('landscape');
+  el('h2', '', landCard, '请竖着拿手机');
+
+  // ── per-round state ──
+  let round = null;
+  let board = null;
+  let effects = null;
+  let pressure = null;
+  let skills = null;
+  let chapter = null;
+  let layout = null;
+  let tiles = [];
+  let gcards = {};
+  let lastVersion = -1;
+  let selKey = '';
+  let selAge = 0;
+  let timers = [];
+  let banners = 0;
+  let tokenShout = null;
+  let shout = null;
+  let queued = null;
+  let tierShown = 1;
+  let tierAge = 0;
+  let endingLeft = -1;
+  let shownOverlay = 'none';
+  let lastHud = {};
+  let highlighted = [];
+
+  function later(ms, fn) {
+    timers.push({ left: ms, fn });
+  }
+
+  function runTimers(dt) {
+    const due = [];
+    timers = timers.filter((t) => {
+      t.left -= dt;
+      if (t.left <= 0) { due.push(t.fn); return false; }
+      return true;
+    });
+    for (const fn of due) fn();
+  }
+
+  // ── layout ──
+  function applyLayout(width, height) {
+    if (!chapter) return;
+    layout = computeLayout({ width, height, rows: chapter.rows });
+    const L = layout;
+    stage.style.width = L.stageW + 'px';
+    stage.style.height = L.stageH + 'px';
+    stage.style.transform = `translateX(-50%) scale(${L.scale})`;
+    top.style.top = L.topY + 'px';
+    top.style.height = L.top + 'px';
+    // Full top band (160) gives the 回目匾 its own row; compact (115) folds it into the shout slot.
+    const shift = L.compact ? 0 : 45;
+    titleEl.classList.toggle('on', !L.compact);
+    titleEl.textContent = chapter.no + ' · ' + chapter.title;
+    for (const n of [pauseEl, plaque, pairsEl]) n.style.top = shift + 'px';
+    hud.style.top = 50 + shift + 'px';
+    frame.style.left = L.boardX - 6 + 'px';
+    frame.style.top = L.boardY + 'px';
+    frame.style.width = L.boardW + 'px';
+    frame.style.height = L.boardH + 'px';
+    links.setAttribute('width', L.boardW);
+    links.setAttribute('height', L.boardH);
+    dead.style.top = L.deadY + 'px';
+    cardsEl.style.top = L.cardsY + 'px';
+    cardsEl.style.height = L.cards + 'px';
+    const cardW = Math.max(72, Math.min(83, (L.stageW - 32 - 24) / 4));
+    for (const id of Object.keys(gcards)) {
+      gcards[id].root.style.width = cardW + 'px';
+      gcards[id].root.style.height = (L.compact && L.cards < 96 ? 72 : 88) + 'px';
+    }
+    const third = L.boardY + L.boardH / 3;
+    hero.style.top = Math.max(L.topY + L.top - 20, third - 150) + 'px';
+    for (const c of Object.values(cards)) c.style.top = L.boardY + 24 + 'px';
+    banner.style.top = (L.compact ? 0 : 45) + 'px';
+    placeTiles();
+  }
+
+  function placeTiles() {
+    const L = layout;
+    for (const t of tiles) {
+      const p = pointCenter(L, t.r, t.c);
+      t.el.style.left = p.x - L.cell / 2 + 3 + 'px';
+      t.el.style.top = p.y - L.cell / 2 + 3 + 'px';
+      t.el.style.width = L.cell - 6 + 'px';
+      t.el.style.height = L.cell - 6 + 'px';
+    }
+  }
+
+  // ── binding a round ──
+  function bindRound(r, ch) {
+    round = r;
+    chapter = ch;
+    const sys = r.systems();
+    board = sys.board; effects = sys.effects; pressure = sys.pressure; skills = sys.skills;
+    boardEl.textContent = '';
+    links.textContent = '';
+    fxLayer.textContent = '';
+    tiles = [];
+    for (let rr = 1; rr <= board.rows; rr++) {
+      for (let cc = 1; cc <= board.cols; cc++) {
+        const n = el('div', 'tile empty', boardEl);
+        const s = document.createElementNS(SVGNS, 'svg');
+        s.setAttribute('viewBox', '0 0 40 40');
+        n.appendChild(s);
+        tiles.push({ r: rr, c: cc, el: n, svg: s, kind: null });
+      }
+    }
+    cardsEl.textContent = '';
+    gcards = {};
+    for (const card of skills.cards()) {
+      const g = GENERALS.find((x) => x.id === card.id);
+      const root = el('div', 'gcard', cardsEl);
+      root.setAttribute('data-general', card.id);
+      const av = el('div', 'avatar', root, g.name.slice(-1));
+      av.style.background = AVATAR_COLORS[card.id];
+      const name = el('div', 'gname', root, g.name);
+      const pips = el('div', 'pips', root);
+      el('div', 'token', root, '令');
+      const hint = el('div', 'hint', root);
+      gcards[card.id] = { root, name, pips, hint, g, key: '' };
+    }
+    heartsEl.textContent = '';
+    for (let i = 0; i < chapter.boss.hearts; i++) {
+      heartsEl.appendChild(svgIcon(HEART_PATH, { fill: '#b33a22', stroke: '#b33a22', 'stroke-width': '2' }));
+    }
+    foeName.textContent = chapter.enemyName;
+    foeFace.textContent = chapter.enemyName.slice(0, 1);
+    fillOpenCard();
+    timers = []; banners = 0; tokenShout = null; shout = null; queued = null;
+    tierShown = 1; tierAge = 0; endingLeft = -1; shownOverlay = 'none'; lastHud = {}; lastVersion = -1;
+    highlighted = []; selKey = '';
+    banner.className = ''; mask.className = ''; hero.className = '';
+    for (const c of Object.values(cards)) c.classList.remove('on');
+    applyLayout(window.innerWidth, window.innerHeight);
+  }
+
+  function fillOpenCard() {
+    openCard.textContent = '';
+    el('h1', '', openCard, chapter.no);
+    el('h2', '', openCard, chapter.title);
+    el('p', '', openCard, fillText(texts.ruleLine.boss, { hearts: chapter.boss.hearts }));
+    const roster = el('div', 'roster', openCard);
+    for (const id of chapter.generals) {
+      const g = GENERALS.find((x) => x.id === id);
+      const line = el('div', '', roster);
+      el('b', '', line, g.name);
+      line.appendChild(document.createTextNode(`消${KIND_NAMES[g.kind]}蓄力 · ${texts.skillLine[id].boss}`));
+    }
+    if (chapter.newEffect) el('p', 'small', openCard, texts.effectLine[chapter.newEffect]);
+    el('p', 'small', openCard, '敌将：' + chapter.enemyName);
+    buttons(openCard, [{ id: 'start', text: '开讲', primary: true }]);
+  }
+
+  // ── shouts (ui-interaction rule 20) ──
+  function showShout(text, cls, tag) {
+    const s = { text, cls: cls || 'read', left: SHOUT_MS, tag: tag || null };
+    if (banners > 0 || tokenShout) queued = s;
+    else shout = s;
+  }
+
+  function retractShout(tag) {
+    if (shout && shout.tag === tag) shout = null;
+    if (queued && queued.tag === tag) queued = null;
+  }
+
+  function tokenBoundStart() {
+    shout = null;
+  }
+
+  function tokenBoundEnd() {
+    if (banners === 0 && !tokenShout && queued) {
+      shout = queued;
+      shout.left = SHOUT_MS;
+      queued = null;
+    }
+  }
+
+  function renderPlaque(dt) {
+    if (shout) {
+      shout.left -= dt;
+      if (shout.left <= 0) shout = null;
+    }
+    let text = layout && !layout.compact ? '' : chapter.no + ' ' + chapter.title;
+    let cls = '';
+    if (tokenShout) { text = tokenShout; cls = 'read'; }
+    else if (shout) { text = shout.text; cls = shout.cls; }
+    const key = cls + '|' + text;
+    if (plaque.dataset.key !== key) {
+      plaque.dataset.key = key;
+      plaque.textContent = '';
+      el('span', cls, plaque, text);
+    }
+  }
+
+  function showBanner(kind, text, seal) {
+    banners++;
+    tokenBoundStart();
+    banner.className = 'on ' + kind;
+    banner.textContent = '';
+    el('span', '', banner, text);
+    if (seal) el('span', 'seal', banner, seal);
+  }
+
+  function hideBanner() {
+    banners = Math.max(0, banners - 1);
+    if (banners === 0) banner.className = '';
+    tokenBoundEnd();
+  }
+
+  // ── event handling ──
+  function drawLink(m) {
+    const pts = m.path.map((p) => pointCenter(layout, p.r, p.c));
+    const pl = document.createElementNS(SVGNS, 'polyline');
+    pl.setAttribute('points', pts.map((p) => p.x + ',' + p.y).join(' '));
+    if (m.forced) pl.setAttribute('class', 'forced');
+    else if (effects.combo() >= 2) pl.setAttribute('class', 'red');
+    links.appendChild(pl);
+    later(160, () => pl.setAttribute('class', (pl.getAttribute('class') || '') + ' fade'));
+    later(420, () => pl.remove());
+  }
+
+  function showCombo(m) {
+    const n = effects.combo();
+    if (n < 2) return;
+    const at = m.b;
+    const L = layout;
+    const p = pointCenter(L, at.r, at.c);
+    const above = at.r === 1 ? p.y + L.cell : p.y - L.cell;
+    const x = Math.min(Math.max(p.x, 70), L.boardW - 70);
+    const label = n <= 12 ? COMBO_WORDS[n] + '连斩' : '连斩不断';
+    const c = el('div', 'combo', fxLayer, label);
+    c.style.left = x + 'px';
+    c.style.top = above - 22 + 'px';
+    later(900, () => c.remove());
+  }
+
+  function tileAt(p) {
+    return tiles.find((t) => t.r === p.r && t.c === p.c) || null;
+  }
+
+  function shake(p) {
+    const t = tileAt(p);
+    if (!t) return;
+    t.el.classList.remove('shake');
+    void t.el.offsetWidth;
+    t.el.classList.add('shake');
+    later(200, () => t.el.classList.remove('shake'));
+  }
+
+  function drawTicks(cells) {
+    const L = layout;
+    for (const p of cells) {
+      const c = pointCenter(L, p.r, p.c);
+      const d = el('div', 'tick', fxLayer);
+      d.style.left = c.x - L.cell / 2 + 'px';
+      d.style.top = c.y - L.cell / 2 + 'px';
+      d.style.width = L.cell + 'px';
+      d.style.height = L.cell + 'px';
+      const s = document.createElementNS(SVGNS, 'svg');
+      s.setAttribute('viewBox', '0 0 40 40');
+      const u = document.createElementNS(SVGNS, 'use');
+      u.setAttribute('href', '#s-tick');
+      s.appendChild(u);
+      d.appendChild(s);
+      later(520, () => d.remove());
+    }
+  }
+
+  function setHighlight(cells) {
+    for (const t of highlighted) t.el.classList.remove('hl');
+    highlighted = (cells || []).map(tileAt).filter(Boolean);
+    for (const t of highlighted) t.el.classList.add('hl');
+  }
+
+  function onTokenStart(e) {
+    if (e.reason === 'effect') {
+      showBanner('paper', e.detail.name);
+      setHighlight(e.detail.cells);
+    } else if (e.reason === 'skill') {
+      const d = e.detail;
+      mask.className = 'skill';
+      heroWho.textContent = d.name.slice(-1);
+      hero.className = '';
+      void hero.offsetWidth;
+      hero.className = 'on';
+      // art bible §7 skill timeline: the mask starts fading out at 800 ms
+      later(800, () => { hero.className = ''; if (mask.className === 'skill') mask.className = ''; });
+      showBanner('ink', d.line, d.skill);
+      setHighlight(d.cells);
+    } else if (e.reason === 'hostAttack') {
+      showBanner('qing', e.detail.text);
+    } else if (e.reason === 'reshuffle') {
+      tokenBoundStart();
+      tokenShout = '重新布阵';
+      boardEl.classList.add('out');
+      later(RESHUFFLE_SHOW_MS * 0.55, () => boardEl.classList.remove('out'));
+    }
+  }
+
+  function onTokenEnd(e) {
+    if (e.reason === 'effect') {
+      setHighlight([]);
+      hideBanner();
+    } else if (e.reason === 'skill') {
+      setHighlight([]);
+      mask.className = '';
+      hero.className = '';
+      if (e.detail.cells && e.detail.cells.length) drawTicks(e.detail.cells);
+      hideBanner();
+    } else if (e.reason === 'hostAttack') {
+      hideBanner();
+    } else if (e.reason === 'reshuffle') {
+      tokenShout = null;
+      boardEl.classList.remove('out');
+      tokenBoundEnd();
+    }
+  }
+
+  function flipHint(id, text) {
+    const g = gcards[id];
+    if (!g) return;
+    g.hint.textContent = text;
+    g.root.classList.add('hinting');
+    g.hintLeft = UNREADY_HINT_MS;
+  }
+
+  function onState(e) {
+    if (e.to === 'end') {
+      endingLeft = e.win ? ENDING_WIN_MS : ENDING_LOSE_MS;
+      if (e.win) fillWinCard();
+      else fillLoseCard();
+    }
+    if (e.to === 'settle') {
+      const btns = winCard.querySelector('.btns');
+      if (btns) btns.classList.remove('wait');
+    }
+  }
+
+  function fillWinCard() {
+    const out = round.settleOutcome();
+    const res = round.result();
+    winCard.textContent = '';
+    const stamp = el('div', 'stamp', winCard, '胜');
+    const stars = el('div', 'stars', winCard);
+    const starEls = [];
+    for (let i = 0; i < 3; i++) {
+      const on = i < out.stars;
+      const span = el('span', on ? 'on' : 'off', stars);
+      span.appendChild(svgIcon(STAR_PATH, {}));
+      starEls.push(span);
+    }
+    if (out.reasonLine) el('p', '', winCard, out.reasonLine);
+    const secs = Math.round(res.gameTimeMs / 1000);
+    el('p', 'small', winCard, `用时 ${Math.floor(secs / 60)} 分 ${secs % 60} 秒 · 最高 ${res.maxCombo} 连斩`);
+    const used = GENERALS.filter((g) => res.skillsUsed[g.id] > 0).map((g) => g.name + '×' + res.skillsUsed[g.id]);
+    el('p', 'small', winCard, used.length ? '出过手：' + used.join('、') : '这一回没放技能');
+    el('p', 'small', winCard, texts.preview);
+    const row = buttons(winCard, [{ id: 'retry', text: '再来一回', primary: true }]);
+    row.classList.add('wait');
+    later(60, () => stamp.classList.add('go'));
+    starEls.forEach((s, i) => later(420 + i * 220, () => s.classList.add('go')));
+  }
+
+  function fillLoseCard() {
+    const res = round.result();
+    loseCard.textContent = '';
+    el('h2', '', loseCard, res.reason);
+    el('p', '', loseCard, fillText(texts.failHint[res.reason], { COMBO_THRESHOLD }));
+    buttons(loseCard, [{ id: 'retry', text: '再来一回', primary: true }]);
+  }
+
+  function handle(e) {
+    switch (e.type) {
+      case 'match': drawLink(e); showCombo(e); break;
+      case 'miss': shake(e.a); shake(e.b); break;
+      case 'interrupt':
+        slash.classList.remove('go');
+        void slash.offsetWidth;
+        slash.classList.add('go');
+        break;
+      case 'targetGone': showShout(KIND_NAMES[e.kind] + '已经没了'); break;
+      case 'skillReady': {
+        const g = GENERALS.find((x) => x.id === e.general);
+        showShout(g.name + '可以出手了');
+        break;
+      }
+      case 'skillArmed': showShout('下一对同种兵必消', 'read', 'zhao'); break;
+      case 'skillArmedSpent': retractShout('zhao'); break;
+      case 'cardHint': flipHint(e.general, e.text); break;
+      case 'tokenStart': onTokenStart(e); break;
+      case 'tokenEnd': onTokenEnd(e); break;
+      case 'state': onState(e); break;
+      default: break;
+    }
+  }
+
+  // ── per-frame sync from queries ──
+  function syncTiles() {
+    const v = board.version();
+    const sel = board.selection();
+    const key = sel ? sel.r + ',' + sel.c : '';
+    if (key !== selKey) { selKey = key; selAge = 0; }
+    if (v === lastVersion) return;
+    lastVersion = v;
+    for (const t of tiles) {
+      const k = board.kindAt(t.r, t.c);
+      if (k !== t.kind) {
+        t.kind = k;
+        t.svg.textContent = '';
+        if (k) {
+          if (hasSymbol(k)) {
+            const u = document.createElementNS(SVGNS, 'use');
+            u.setAttribute('href', '#s-' + k);
+            t.svg.appendChild(u);
+          } else {
+            const tx = document.createElementNS(SVGNS, 'text');
+            tx.setAttribute('x', '20'); tx.setAttribute('y', '28'); tx.setAttribute('text-anchor', 'middle');
+            tx.setAttribute('class', 'ch'); tx.textContent = KIND_NAMES[k];
+            t.svg.appendChild(tx);
+          }
+        }
+        t.el.classList.toggle('empty', !k);
+      }
+      const fx = k && EFFECTS[k];
+      t.el.classList.toggle('fx', !!fx);
+      if (fx) {
+        t.el.setAttribute('data-seal', KIND_NAMES[fx.target]);
+        t.el.classList.toggle('notarget', board.count(fx.target) === 0);
+      }
+      t.el.classList.toggle('sel', !!(sel && sel.r === t.r && sel.c === t.c));
+    }
+  }
+
+  function syncPreview() {
+    const sel = board.selection();
+    const k = sel ? board.kindAt(sel.r, sel.c) : null;
+    const target = k ? effects.targetOf(k) : null;
+    const show = !!(target && selAge >= 150 && !round.boardLocked());
+    for (const t of tiles) t.el.classList.toggle('pv', show && t.kind === target);
+  }
+
+  function syncHud(dt) {
+    const h = pressure.hud();
+    if (h.hearts !== lastHud.hearts) {
+      Array.prototype.forEach.call(heartsEl.children, (s, i) => s.classList.toggle('lost', i >= h.hearts));
+    }
+    if (h.charge !== lastHud.charge) chargeFill.style.transform = `scaleX(${h.charge / 100})`;
+    if (h.hp !== lastHud.hp) {
+      foeHp.textContent = `血 ${h.hp}/${h.hpMax}`;
+      foeBar.style.transform = `scaleX(${h.hpMax ? h.hp / h.hpMax : 0})`;
+    }
+    const pairs = board.pairsLeft();
+    if (pairs !== lastHud.pairs) pairsEl.textContent = `剩 ${pairs} 对`;
+    lastHud = { hearts: h.hearts, charge: h.charge, hp: h.hp, pairs };
+    // tier with down-dwell (ui-interaction rule 12)
+    const want = 1 + (h.charge >= BOSS_WARN_1 ? 1 : 0) + (h.charge >= BOSS_WARN_2 ? 1 : 0);
+    tierAge += dt;
+    if (want > tierShown || (want < tierShown && tierAge >= TIER_MIN_DWELL_MS)) {
+      tierShown = want;
+      tierAge = 0;
+      chargeBox.className = tierShown > 1 ? 't' + tierShown : '';
+      foe.className = tierShown > 1 ? 't' + tierShown : '';
+    }
+  }
+
+  function syncCards(dt) {
+    for (const c of skills.cards()) {
+      const g = gcards[c.id];
+      const key = c.state + c.charge;
+      if (key !== g.key) {
+        g.key = key;
+        g.root.classList.toggle('ready', c.state === 'ready');
+        g.root.classList.toggle('armed', c.state === 'armed');
+        g.name.textContent = c.state === 'ready' ? c.skill : c.state === 'armed' ? '待命' : c.name;
+        g.pips.textContent = KIND_NAMES[c.kind];
+        for (let i = 0; i < c.need; i++) el('b', i < c.charge ? 'on' : '', g.pips);
+      }
+      if (g.hintLeft > 0) {
+        g.hintLeft -= dt;
+        if (g.hintLeft <= 0) g.root.classList.remove('hinting');
+      }
+    }
+  }
+
+  function syncOverlay() {
+    const ov = round.overlay();
+    const st = round.state();
+    let want = ov || 'none';
+    if (want === shownOverlay) return;
+    shownOverlay = want;
+    for (const id of Object.keys(cards)) cards[id].classList.toggle('on', id === want);
+    if (want === 'open' || want === 'resume' || want === 'pause' || want === 'landscape') mask.className = 'card';
+    else if (want === 'win') mask.className = 'win';
+    else if (want === 'lose' || (st === 'end' && !ov)) mask.className = 'lose';
+    else if (mask.className === 'card') mask.className = '';
+  }
+
+  /**
+   * One frame: play this frame's events in order, then sync everything from queries.
+   * @param {number} dtReal real ms since the previous frame
+   * @param {Array<object>} events drained from the round
+   */
+  function render(dtReal, events) {
+    if (!round) return;
+    const dt = dtReal < 0 || dtReal > 1000 ? 0 : dtReal;
+    for (const e of events) handle(e);
+    runTimers(dt);
+    selAge += dt;
+    syncTiles();
+    syncPreview();
+    syncHud(dt);
+    syncCards(dt);
+    syncOverlay();
+    if (round.state() === 'end' && !round.overlay() && mask.className !== 'lose') mask.className = 'lose';
+    renderPlaque(dt);
+    if (endingLeft >= 0 && round.state() === 'end') {
+      endingLeft -= dt;
+      if (endingLeft <= 0) {
+        endingLeft = -1;
+        round.endingDone();
+      }
+    }
+  }
+
+  return {
+    stage,
+    frame,
+    pauseEl,
+    cardsEl,
+    overlayCards: cards,
+    bindRound,
+    render,
+    applyLayout,
+    layout() { return layout; },
+    showError() { errorEl.style.display = 'flex'; },
+  };
+}
+
+return { createView };
+})();
+__m["src/view/input.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// Pointer input → intents (ui-interaction rules 14–16, ADR-0003 §2). Only produces intents.
+
+const { SAME_CELL_GUARD_MS, CARD_AFTER_BOARD_MS } = __m["src/core/constants.mjs"];
+const { cellAt } = __m["src/view/layout.mjs"];
+
+const FRAME_SIDE = 6;
+
+function inside(elm, e) {
+  const r = elm.getBoundingClientRect();
+  return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+}
+
+/**
+ * Wires the view's elements to the intent queue.
+ * @param {object} view the view (stage, frame, pauseEl, cardsEl, overlayCards, layout())
+ * @param {{enqueue: function(object): void, getRound: function(): object}} deps
+ */
+function attachInput(view, deps) {
+  const { enqueue, getRound } = deps;
+  let lastBoardTapAt = -1e9;
+  let lastCellKey = '';
+  let lastCellAt = -1e9;
+  let cardDown = null;
+
+  view.frame.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary) return;
+    e.preventDefault();
+    const round = getRound();
+    if (!round || round.boardLocked()) return;
+    const L = view.layout();
+    const rect = view.frame.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / L.scale - FRAME_SIDE;
+    const y = (e.clientY - rect.top) / L.scale;
+    const cell = cellAt(L, x, y);
+    const key = cell.r + ',' + cell.c;
+    if (key === lastCellKey && e.timeStamp - lastCellAt < SAME_CELL_GUARD_MS) return;
+    lastCellKey = key;
+    lastCellAt = e.timeStamp;
+    lastBoardTapAt = e.timeStamp;
+    enqueue({ type: 'cell', row: cell.r, col: cell.c });
+  });
+
+  view.cardsEl.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary) return;
+    const card = e.target.closest('.gcard');
+    cardDown = card ? { card, id: card.getAttribute('data-general'), at: e.timeStamp } : null;
+  });
+  view.cardsEl.addEventListener('pointerup', (e) => {
+    if (!e.isPrimary || !cardDown) return;
+    const down = cardDown;
+    cardDown = null;
+    if (!inside(down.card, e)) return;
+    const round = getRound();
+    if (!round || round.boardLocked()) return;
+    if (down.at - lastBoardTapAt < CARD_AFTER_BOARD_MS) return;
+    enqueue({ type: 'card', general: down.id });
+  });
+  view.cardsEl.addEventListener('pointercancel', () => { cardDown = null; });
+
+  view.pauseEl.addEventListener('pointerup', (e) => {
+    if (!e.isPrimary) return;
+    enqueue({ type: 'pauseStamp' });
+  });
+
+  for (const card of Object.values(view.overlayCards)) {
+    card.addEventListener('pointerup', (e) => {
+      if (!e.isPrimary) return;
+      const btn = e.target.closest('button[data-button]');
+      if (!btn || !inside(btn, e)) return;
+      enqueue({ type: 'button', button: btn.getAttribute('data-button') });
+    });
+  }
+
+  // No double-tap zoom, long-press menu or pull-to-refresh on the stage (rule 14).
+  view.stage.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+  view.stage.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+
+return { attachInput };
+})();
+__m["src/platform/lifecycle.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// Page lifecycle → direct round calls (ADR-0002 §4). Never queued: rAF stops in the background.
+
+/**
+ * @param {{getRound: function(): object, onResize: function(number, number): void}} deps
+ */
+function attachLifecycle(deps) {
+  const { getRound, onResize } = deps;
+  const coarse = window.matchMedia ? window.matchMedia('(pointer: coarse)') : null;
+
+  document.addEventListener('visibilitychange', () => {
+    const r = getRound();
+    if (!r) return;
+    if (document.visibilityState === 'hidden') r.onHidden();
+    else r.onVisible();
+  });
+  window.addEventListener('pagehide', () => { const r = getRound(); if (r) r.onHidden(); });
+  window.addEventListener('pageshow', () => { const r = getRound(); if (r) r.onVisible(); });
+
+  function checkOrientation() {
+    const r = getRound();
+    const landscape = !!(coarse && coarse.matches) && window.innerWidth > window.innerHeight;
+    if (r) r.setLandscape(landscape);
+  }
+
+  let pending = false;
+  window.addEventListener('resize', () => {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(() => {
+      pending = false;
+      onResize(window.innerWidth, window.innerHeight);
+      checkOrientation();
+    });
+  });
+
+  // Android back key, when the host turns it into popstate (ui-interaction rule 24).
+  try { history.pushState({ slice: 1 }, ''); } catch (e) { /* history may be unavailable in some hosts */ }
+  window.addEventListener('popstate', () => {
+    const r = getRound();
+    if (r) r.onBack();
+    try { history.pushState({ slice: 1 }, ''); } catch (e) { /* ignore */ }
+  });
+
+  return { checkOrientation };
+}
+
+return { attachLifecycle };
+})();
+__m["src/main.mjs"] = (function () {
+// VERTICAL SLICE - NOT FOR PRODUCTION
+// Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+// Date: 2026-10-27
+
+// Composition root: flags → chapters → view → screens → lifecycle → loop.
+
+const { readUrlFlags } = __m["src/app/build-flags.mjs"];
+const { startLoop } = __m["src/app/main-loop.mjs"];
+const { createScreens } = __m["src/app/screens.mjs"];
+const { loadChapters } = __m["src/rules/chapter-loader.mjs"];
+const { createProgress } = __m["src/rules/progress-save.mjs"];
+const { CHAPTERS, ENEMIES, TEXTS } = __m["src/data/chapter01.mjs"];
+const { createView } = __m["src/view/view.mjs"];
+const { attachInput } = __m["src/view/input.mjs"];
+const { attachLifecycle } = __m["src/platform/lifecycle.mjs"];
+
+function makeSalt(flags) {
+  if (flags.seed !== null) return flags.seed;
+  try {
+    const a = new Uint32Array(1);
+    window.crypto.getRandomValues(a);
+    return a[0];
+  } catch (e) {
+    return Math.floor(Math.random() * 4294967296);
+  }
+}
+
+const flags = readUrlFlags(window.location.search);
+const loaded = loadChapters({ chapters: CHAPTERS, enemies: ENEMIES }, flags);
+const root = document.getElementById('app');
+const view = createView(root, { texts: TEXTS });
+const queue = [];
+
+if (loaded.chapters.length === 0) {
+  view.showError();
+} else {
+  const screens = createScreens({ chapter: loaded.chapters[0], progress: createProgress(), view, salt: makeSalt(flags) });
+  attachInput(view, { enqueue: (it) => queue.push(it), getRound: () => screens.round() });
+  const life = attachLifecycle({
+    getRound: () => screens.round(),
+    onResize: (w, h) => view.applyLayout(w, h),
+  });
+  screens.startRound();
+  life.checkOrientation();
+  let manual = false;
+  function step(dtReal) {
+    const round = screens.round();
+    if (!round) return;
+    round.frame(dtReal, queue.splice(0, queue.length));
+    const events = round.drainEvents();
+    view.render(dtReal, events);
+    screens.afterFrame(events);
+  }
+  // Dev diagnostics handle for scripted play-testing (slice only; the release build has no such hook):
+  // manual(true) stops the rAF loop from stepping, step(dt) runs one full frame synchronously.
+  window.__slice = {
+    round: () => screens.round(),
+    manual: (on) => { manual = !!on; },
+    step: (dt) => { try { step(dt); } catch (err) { screens.fail(err); throw err; } },
+  };
+  startLoop((dtReal) => { if (!manual) step(dtReal); }, (err) => screens.fail(err));
+}
+
+return {  };
+})();
+
+</script>
+</body>
+</html>

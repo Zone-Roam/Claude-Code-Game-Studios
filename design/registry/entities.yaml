@@ -54,7 +54,7 @@
 #   in any other shape is reported as unsupported layout, with its number.
 
 version: 1
-last_updated: ""
+last_updated: "2026-10-30"
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -65,7 +65,381 @@ last_updated: ""
 # Attribute fields: any key stats that could appear in another GDD
 #   (health, damage, drops, faction, etc.)
 
-entities: []
+entities:
+  - name: guan_yu
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-loadout.md
+      - design/gdd/general-skills.md
+      - design/gdd/chapter-design.md
+      - design/gdd/ui-interaction.md
+      - design/gdd/game-concept.md
+    display: "关羽"
+    charge_kind: "刀"
+    skill: "过关斩将（点选一排斩，连底牌和拒马）"
+    need: 2
+    line: "过五关斩六将！"
+    added: 2026-10-27
+    revised: 2026-10-30
+  - name: zhang_fei
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-loadout.md
+      - design/gdd/general-skills.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/chapter-design.md
+      - design/gdd/ui-interaction.md
+      - design/gdd/game-concept.md
+    display: "张飞"
+    charge_kind: "鼓"
+    skill: "当阳一吼（敌将：退 3 步并震慑 3 步）"
+    need: 3
+    line: "燕人张翼德在此！"
+    added: 2026-10-27
+    revised: 2026-10-30
+  - name: zhao_yun
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-loadout.md
+      - design/gdd/chapter-design.md
+      - design/gdd/general-skills.md
+      - design/gdd/board-link.md
+      - design/gdd/clear-effects.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/ui-interaction.md
+      - design/gdd/game-concept.md
+    display: "赵云"
+    charge_kind: "盾"
+    skill: "七进七出（敌将：护盾挡一次出手；压境、粮草：下一对同种兵必消）"
+    need: 3
+    line: "常山赵子龙在此！"
+    added: 2026-10-27
+    revised: 2026-10-30
+  - name: zhuge_liang
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-loadout.md
+      - design/gdd/chapter-design.md
+      - design/gdd/general-skills.md
+      - design/gdd/board-link.md
+      - design/gdd/clear-effects.md
+      - design/gdd/ui-interaction.md
+      - design/gdd/game-concept.md
+    display: "诸葛亮"
+    charge_kind: "书"
+    skill: "神机妙算（清最多的那种兵，含底牌；敌将二阶段破下一个特技）"
+    need: 4
+    line: "亮已算定。"
+    added: 2026-10-27
+    revised: 2026-10-30
+  - name: lv_bu
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/game-concept.md
+    display: "吕布"
+    role: "敌将（ch02 一段血、ch05 两段血）"  # was: ch01
+    lines: "人中吕布！ / 谁敢挡我！"
+    added: 2026-10-27
+    revised: ""
+  - name: liu_bei
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/chapter-design.md
+      - design/gdd/general-loadout.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/ui-interaction.md
+    display: "刘备"
+    charge_kind: "旗"
+    skill: "仁德（敌将补 1 心 / 粮草补 2 粮封顶 / 压境只送蓄力；其余出阵武将各 +1 格）"
+    need: "3"
+    line: "勿以善小而不为。"
+    added: 2026-10-30
+    revised: ""
+  - name: huang_zhong
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/chapter-design.md
+      - design/gdd/general-loadout.md
+      - design/gdd/ui-interaction.md
+      - design/gdd/board-link.md
+    display: "黄忠"
+    charge_kind: "弓"
+    skill: "老当益壮（点选一列射穿，连底牌和拒马）"
+    need: "3"
+    line: "黄忠在此，看箭！"
+    added: 2026-10-30
+    revised: ""
+  - name: wen_chou
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/battle-pressure.md
+    display: "文丑"
+    role: "敌将（ch03，一段血，无特技）"
+    added: 2026-10-30
+    revised: ""
+  - name: cao_cao
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/battle-pressure.md
+    display: "曹操"
+    role: "敌将（ch09，两段血）"
+    specials: "chain"
+    specialNames: "chain: 铁索连环"
+    added: 2026-10-30
+    revised: ""
+  - name: xiahou_yuan
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/battle-pressure.md
+    display: "夏侯渊"
+    role: "敌将（ch10，两段血）"
+    specials: "charge, roar"
+    specialNames: "charge: 布鹿角"
+    added: 2026-10-30
+    revised: ""
+  - name: effect_fire
+    status: active
+    source: design/gdd/clear-effects.md
+    referenced_by:
+      - design/gdd/clear-effects.md
+      - design/gdd/chapter-design.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/general-skills.md
+    display: "火烧连营"
+    trigger: "火"
+    target: "营"
+    added: 2026-10-27
+    revised: ""
+  - name: effect_cavalry
+    status: active
+    source: design/gdd/clear-effects.md
+    referenced_by:
+      - design/gdd/clear-effects.md
+      - design/gdd/chapter-design.md
+      - design/gdd/battle-pressure.md
+    display: "铁骑冲阵"
+    trigger: "马"
+    target: "弓"
+    added: 2026-10-27
+    revised: ""
+  - name: effect_flood
+    status: active
+    source: design/gdd/clear-effects.md
+    referenced_by:
+      - design/gdd/clear-effects.md
+      - design/gdd/chapter-design.md
+      - design/gdd/battle-pressure.md
+    display: "水淹七军"
+    trigger: "水"
+    target: "城"
+    added: 2026-10-27
+    revised: ""
+  - name: ch01
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/general-loadout.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/progress-save.md
+    title: "斩黄巾英雄首立功"
+    mode: "press"
+    cols: "5"
+    lead: "guan_yu"
+    slots: "1"
+    recommend: "guan_yu"
+    unlock: "zhang_fei"
+    new: "连连看 + 下压"
+    note: "数值见 chapter-design 规则 13，未模拟"
+    added: 2026-10-27
+    revised: 2026-10-30  # 2026-10-30 正式版 10 回重排，id 内容换了
+  - name: ch02
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/general-loadout.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/progress-save.md
+    title: "虎牢关三英战吕布"
+    mode: "boss（lv_bu，一段血）"
+    cols: "5"
+    lead: "zhang_fei"
+    slots: "2"
+    recommend: "zhang_fei, guan_yu"
+    unlock: "—"
+    new: "敌将按步出手"
+    note: "数值见 chapter-design 规则 13，未模拟"
+    added: 2026-10-27
+    revised: 2026-10-30  # 2026-10-30 正式版 10 回重排，id 内容换了
+  - name: ch03
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/general-loadout.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/progress-save.md
+    title: "赵子龙磐河大战"
+    mode: "boss（wen_chou，一段血）"
+    cols: "5"
+    lead: "zhao_yun"
+    slots: "2"
+    recommend: "zhao_yun, guan_yu"
+    unlock: "zhao_yun"
+    new: "层叠"
+    note: "数值见 chapter-design 规则 13，未模拟"
+    added: 2026-10-27
+    revised: 2026-10-30  # 2026-10-30 正式版 10 回重排，id 内容换了
+  - name: ch04
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/general-loadout.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/progress-save.md
+    title: "陶恭祖三让徐州"
+    mode: "food"
+    cols: "5"
+    lead: "liu_bei"
+    slots: "2"
+    recommend: "liu_bei, guan_yu"
+    unlock: "liu_bei"
+    new: "粮草模式"
+    note: "数值见 chapter-design 规则 13，未模拟"
+    added: 2026-10-30
+    revised: ""
+  - name: ch05
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/general-loadout.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/progress-save.md
+    title: "白门楼吕布殒命"
+    mode: "boss（lv_bu，两段血）"
+    cols: "5"
+    lead: "zhang_fei"
+    slots: "3"
+    recommend: "zhang_fei, guan_yu, zhao_yun"
+    unlock: "—"
+    new: "吕布二阶段和特技；第 3 槽"
+    note: "数值见 chapter-design 规则 13，未模拟"
+    added: 2026-10-30
+    revised: ""
+  - name: ch06
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/general-loadout.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/progress-save.md
+    title: "关云长过五关斩将"
+    mode: "press"
+    cols: "5"
+    lead: "guan_yu"
+    slots: "3"
+    recommend: "guan_yu, zhang_fei, zhao_yun"
+    unlock: "—"
+    new: "压境里的拒马"
+    note: "数值见 chapter-design 规则 13，未模拟"
+    added: 2026-10-30
+    revised: ""
+  - name: ch07
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/general-loadout.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/progress-save.md
+    title: "博望坡军师初用兵"
+    mode: "food"
+    cols: "5"
+    lead: "zhuge_liang"
+    slots: "3"
+    recommend: "zhuge_liang, guan_yu, zhang_fei"
+    unlock: "zhuge_liang"
+    new: "火烧连营"
+    note: "数值见 chapter-design 规则 13，未模拟"
+    added: 2026-10-30
+    revised: ""
+  - name: ch08
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/general-loadout.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/progress-save.md
+    title: "赵子龙单骑救主"
+    mode: "press"
+    cols: "5"
+    lead: "zhao_yun"
+    slots: "3"
+    recommend: "zhao_yun, zhang_fei, guan_yu"
+    unlock: "huang_zhong"
+    new: "铁骑冲阵"
+    note: "数值见 chapter-design 规则 13，未模拟"
+    added: 2026-10-30
+    revised: ""
+  - name: ch09
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/general-loadout.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/progress-save.md
+    title: "七星坛诸葛祭风"
+    mode: "boss（cao_cao，两段血）"
+    cols: "5"
+    lead: "zhuge_liang"
+    slots: "3"
+    recommend: "zhuge_liang, guan_yu, zhao_yun"
+    unlock: "—"
+    new: "曹操和铁索连环"
+    note: "数值见 chapter-design 规则 13，未模拟"
+    added: 2026-10-30
+    revised: ""
+  - name: ch10
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/general-loadout.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/progress-save.md
+    title: "定军山黄忠斩夏侯"
+    mode: "boss（xiahou_yuan，两段血）"
+    cols: "5"
+    lead: "huang_zhong"
+    slots: "3"
+    recommend: "huang_zhong, zhuge_liang, zhao_yun"
+    unlock: "—"
+    new: "黄忠当主将；收官"
+    note: "数值见 chapter-design 规则 13，未模拟"
+    added: 2026-10-30
+    revised: ""
 
 # Example (remove when first real entry is added):
 #
@@ -123,7 +497,202 @@ items: []
 #   output_range[min, max], added
 # Optional: expression (the actual formula), notes
 
-formulas: []
+formulas:
+  - name: dt_game
+    status: active
+    source: design/gdd/round-flow.md
+    referenced_by:
+      - design/gdd/round-flow.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/clear-effects.md
+    variables:
+      - dtReal
+      - MAX_STEP_MS
+      - running
+      - BG_GAP_MS
+    output_range: [0, 250]
+    expression: "running ? clamp(dtReal, 0, MAX_STEP_MS) : 0; running = state == 对局 && tokens empty && dtReal <= BG_GAP_MS"  # was: running ? min(dtReal, MAX_STEP_MS) : 0
+    added: 2026-10-27
+    revised: 2026-10-27
+  - name: combo_count
+    status: active
+    source: design/gdd/clear-effects.md
+    referenced_by:
+      - design/gdd/clear-effects.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/general-skills.md
+    variables:
+      - match
+      - miss
+    output_range: [1, 999]
+    expression: "match: combo + 1; miss: 0; effects, skills, reshuffle and enemy attacks leave it unchanged"  # was: gameTime - lastPlayerClearAt <= COMBO_WINDOW_MS ? combo + 1 : 1
+    added: 2026-10-27
+    revised: 2026-10-30
+  - name: press_schedule
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/clear-effects.md
+      - design/gdd/general-skills.md
+    variables:
+      - interval
+      - waves
+      - comboDelay_w
+      - scare
+    output_range: [4000, 999999]
+    expression: "nextPush = gameTime + interval after every push or scared push; nextPush += comboDelay (<= PRESS_DELAY_CAP_MS between pushes); a scare (张飞) cancels the next timed push"  # was: nextPush = gameTime + interval ... + roarDelay (张飞 now scares the next push instead)
+    added: 2026-10-27
+    revised: 2026-10-27
+  - name: food_start
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/chapter-design.md
+    variables:
+      - deck
+      - target
+      - slack
+    output_range: [1, 30]  # was: [1, 40] (max board 24 pairs + slack 6)
+    expression: "pairs - wipePairs + slack"
+    added: 2026-10-27
+    revised: 2026-10-27
+  - name: boss_charge
+    status: deprecated  # 2026-10-30：改为按步出手，见公式 boss_steps（切片第五版）
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/clear-effects.md
+      - design/gdd/general-skills.md
+      - design/gdd/ui-interaction.md
+    variables:
+      - chargeMs
+      - MISS_CHARGE
+      - BOSS_INTERRUPT
+      - dtGame
+      - BOSS_INTERRUPT_CAP
+      - interruptSinceAttack
+    output_range: [0, 100]
+    expression: "per event, clamped [0,100]: tick +100*dtGame/chargeMs; miss +MISS_CHARGE; comboReward -min(BOSS_INTERRUPT, BOSS_INTERRUPT_CAP - interruptSinceAttack, charge); attack at 100 when hp > 0, resets interruptSinceAttack"  # was: per event ... comboReward -BOSS_INTERRUPT (no cap)
+    added: 2026-10-27
+    revised: 2026-10-27
+  - name: boss_steps
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/clear-effects.md
+      - design/gdd/general-skills.md
+      - design/gdd/chapter-design.md
+      - design/gdd/ui-interaction.md
+    variables:
+      - STEP_MATCH
+      - STEP_MISS
+      - COMBO_PUSHBACK
+      - COMBO_PUSHBACK_CAP
+      - ZHANG_PUSHBACK
+      - ZHANG_STUN
+      - steps
+    output_range: [0, 20]
+    expression: "per player action: match +STEP_MATCH, miss +STEP_MISS (stun eats steps); combo >= threshold: -COMBO_PUSHBACK (<= CAP per attack) before the match step; 张飞 -ZHANG_PUSHBACK and stun ZHANG_STUN; attack when count >= steps (phase 2: phase2.steps), then reset to 0"
+    added: 2026-10-30
+    revised: ""
+  - name: huang_cut
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/board-link.md
+    variables:
+      - chosenCol
+      - colTop
+      - colBuried
+      - colBlocks
+      - oddKinds
+    output_range: [0, 32]
+    expression: "玩家点选一列：该列上层块 + 它们的底牌 + 该列拒马；之后每个变单数的兵种补射 1 块（先上层，后底牌）"
+    added: 2026-10-30
+    revised: ""
+  - name: hearts_net
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/progress-save.md
+      - design/gdd/general-skills.md
+    variables:
+      - heartsMax
+      - hearts
+    output_range: [0, 5]
+    expression: "heartsLost = heartsMax - hearts at end（净值，刘备补回的心算回来）"
+    added: 2026-10-30
+    revised: ""
+  - name: chain_convert
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/board-link.md
+    variables:
+      - CHAIN_PAIRS
+      - top cells excluding 营 火 马 水
+    output_range: [0, 4]
+    expression: "把 2x2 共 2·CHAIN_PAIRS 块上层兵就地变营，底牌和拒马不动，每种兵仍是偶数块"
+    added: 2026-10-30
+    revised: ""
+  - name: p_press
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/battle-pressure.md
+    variables:
+      - startRows
+      - cols
+      - waves
+      - wavePairs
+    output_range: [18, 63]
+    expression: "P = startRows * cols / 2 + waves * floor(cols / 2)"
+    added: 2026-10-30
+    revised: ""
+  - name: guan_cut
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/board-link.md
+    variables:
+      - chosenRow
+      - rowTop
+      - rowBuried
+      - rowBlocks
+      - oddKinds
+    output_range: [0, 20]  # was: [2, 12]; 5 列时上限 4·cols
+    expression: "玩家点选一行：该行上层块 + 它们的底牌 + 该行拒马；之后每个变单数的兵种补斩 1 块（先上层，后底牌）"  # was: rowCells + number of kinds with odd rowCount（最下一排）
+    added: 2026-10-27
+    revised: 2026-10-30
+  - name: stars
+    status: active
+    source: design/gdd/progress-save.md
+    referenced_by:
+      - design/gdd/progress-save.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/chapter-design.md
+      - design/gdd/ui-interaction.md
+    variables:
+      - heartsLost
+      - dangerMs
+      - misses
+      - foodLeft
+      - t3
+      - t2
+      - foodT3
+      - missT2
+    output_range: [0, 3]
+    expression: "win ? (boss/press: risk <= t3 ? 3 : risk <= t2 ? 2 : 1; food: misses == 0 && foodLeft >= foodT3 ? 3 : misses <= missT2 ? 2 : 1) : 0"  # was: win ? (risk <= t3 ? 3 : risk <= t2 ? 2 : 1) : 0
+    added: 2026-10-27
+    revised: 2026-10-27
 
 # Example:
 #
@@ -156,7 +725,813 @@ formulas: []
 #
 # Required fields: name, status, source, referenced_by, value, unit, added
 
-constants: []
+constants:
+  - name: board_cols
+    status: active
+    source: design/gdd/board-link.md
+    referenced_by:
+      - design/gdd/general-loadout.md
+      - design/gdd/board-link.md
+      - design/gdd/chapter-design.md
+      - design/gdd/general-skills.md
+      - design/gdd/ui-interaction.md
+    value: "5–6（回目字段 cols，缺省 6；正式版默认 5）"  # was: 6
+    unit: cells
+    added: 2026-10-27
+    revised: 2026-10-30
+  - name: max_turns
+    status: active
+    source: design/gdd/board-link.md
+    referenced_by:
+      - design/gdd/board-link.md
+    value: 2
+    unit: turns
+    added: 2026-10-27
+    revised: ""
+  - name: tile_kind_order
+    status: active
+    source: design/gdd/board-link.md
+    referenced_by:
+      - design/gdd/board-link.md
+      - design/gdd/general-skills.md
+      - design/gdd/chapter-design.md
+    value: "火 营 马 弓 水 城 刀 鼓 盾 书 旗 酒"
+    unit: kinds
+    added: 2026-10-27
+    revised: ""
+  - name: press_rows
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/chapter-design.md
+      - design/gdd/ui-interaction.md
+    value: 8
+    unit: rows
+    added: 2026-10-27
+    revised: ""
+  - name: combo_window_ms
+    status: deprecated  # 2026-10-30：连斩改为“不连错的连续消”，不再按时间窗（切片第五版）
+    source: design/gdd/clear-effects.md
+    referenced_by:
+      - design/gdd/clear-effects.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/general-skills.md
+    value: 3000
+    unit: ms
+    added: 2026-10-27
+    revised: 2026-10-30
+  - name: combo_threshold
+    status: active
+    source: design/gdd/clear-effects.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/clear-effects.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/ui-interaction.md
+    value: 3
+    unit: clears
+    added: 2026-10-27
+    revised: ""
+  - name: boss_interrupt
+    status: deprecated  # 2026-10-30：连斩改为让敌将退步，见 combo_pushback（切片第五版）
+    source: design/gdd/clear-effects.md
+    referenced_by:
+      - design/gdd/clear-effects.md
+      - design/gdd/battle-pressure.md
+    value: 25
+    unit: charge
+    added: 2026-10-27
+    revised: 2026-10-30
+  - name: press_delay_ms
+    status: active
+    source: design/gdd/clear-effects.md
+    referenced_by:
+      - design/gdd/clear-effects.md
+      - design/gdd/battle-pressure.md
+    value: 1000
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: press_delay_cap_ms
+    status: active
+    source: design/gdd/clear-effects.md
+    referenced_by:
+      - design/gdd/clear-effects.md
+      - design/gdd/battle-pressure.md
+    value: 3000
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: effect_highlight_ms
+    status: active
+    source: design/gdd/clear-effects.md
+    referenced_by:
+      - design/gdd/round-flow.md
+      - design/gdd/clear-effects.md
+      - design/gdd/ui-interaction.md
+    value: 380
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: miss_charge
+    status: deprecated  # 2026-10-30：敌将改为按步出手，连错 +2 步，见 step_miss（切片第五版）
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/ui-interaction.md
+    value: 15
+    unit: charge
+    added: 2026-10-27
+    revised: 2026-10-30
+  - name: boss_add_pairs
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/chapter-design.md
+    value: 2
+    unit: pairs
+    added: 2026-10-27
+    revised: ""
+  - name: boss_hearts
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/ui-interaction.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/chapter-design.md
+      - design/gdd/progress-save.md
+    value: 3
+    unit: hearts
+    added: 2026-10-27
+    revised: ""
+  - name: boss_charge_warn
+    status: deprecated  # 2026-10-30：预警改为按剩余步数，见 boss_warn_steps_1（切片第五版）
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/ui-interaction.md
+    value: 70
+    unit: charge
+    added: 2026-10-27
+    revised: 2026-10-30
+  - name: host_attack_ms
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/round-flow.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/ui-interaction.md
+    value: 600
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: food_slack
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/chapter-design.md
+    value: 2
+    unit: grain
+    added: 2026-10-27
+    revised: ""
+  - name: general_need
+    status: deprecated  # 2026-10-30：按武将分快慢，见 general_need_* 四条（切片第五版）
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/chapter-design.md
+      - design/gdd/game-concept.md
+    value: 2
+    unit: pairs
+    added: 2026-10-27
+    revised: 2026-10-30
+  - name: skill_show_ms
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/round-flow.md
+      - design/gdd/ui-interaction.md
+    value: 950
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: roar_press_delay_ms
+    status: deprecated  # 2026-10-27：张飞在压境改为“吓退追兵”（用户决定），不再有推迟秒数
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/battle-pressure.md
+    value: 10000
+    unit: ms
+    added: 2026-10-27
+    revised: 2026-10-27
+  - name: roar_food
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/battle-pressure.md
+    value: 3
+    unit: grain
+    added: 2026-10-27
+    revised: ""
+  - name: max_step_ms
+    status: active
+    source: design/gdd/round-flow.md
+    referenced_by:
+      - design/gdd/round-flow.md
+      - design/gdd/battle-pressure.md
+    value: 250
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: card_guard_ms
+    status: active
+    source: design/gdd/round-flow.md
+    referenced_by:
+      - design/gdd/round-flow.md
+      - design/gdd/ui-interaction.md
+    value: 500
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: open_fade_ms
+    status: active
+    source: design/gdd/round-flow.md
+    referenced_by:
+      - design/gdd/round-flow.md
+      - docs/architecture/adr-0002-main-loop-round-clock.md
+    value: 150
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: ending_win_ms
+    status: active
+    source: design/gdd/round-flow.md
+    referenced_by:
+      - design/gdd/round-flow.md
+      - docs/architecture/adr-0002-main-loop-round-clock.md
+    value: 2000  # was: 1100
+    unit: ms
+    added: 2026-10-27
+    revised: 2026-10-30
+  - name: ending_lose_ms
+    status: active
+    source: design/gdd/round-flow.md
+    referenced_by:
+      - design/gdd/round-flow.md
+      - docs/architecture/adr-0002-main-loop-round-clock.md
+    value: 300
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: token_max_ms
+    status: active
+    source: design/gdd/round-flow.md
+    referenced_by:
+      - design/gdd/round-flow.md
+      - design/gdd/general-skills.md
+    value: 5000
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: reshuffle_show_ms
+    status: active
+    source: design/gdd/board-link.md
+    referenced_by:
+      - design/gdd/board-link.md
+      - design/gdd/round-flow.md
+      - design/gdd/ui-interaction.md
+    value: 400
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: bg_gap_ms
+    status: active
+    source: design/gdd/round-flow.md
+    referenced_by:
+      - design/gdd/round-flow.md
+    value: 1000
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: boss_charge_warn_2
+    status: deprecated  # 2026-10-30：见 boss_warn_steps_2（切片第五版）
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/ui-interaction.md
+    value: 90
+    unit: charge
+    added: 2026-10-27
+    revised: 2026-10-30
+  - name: press_warn_ms
+    status: active
+    source: design/gdd/ui-interaction.md
+    referenced_by:
+      - design/gdd/ui-interaction.md
+      - design/gdd/battle-pressure.md
+    value: 3000
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: food_warn
+    status: active
+    source: design/gdd/ui-interaction.md
+    referenced_by:
+      - design/gdd/ui-interaction.md
+      - design/gdd/battle-pressure.md
+    value: 3
+    unit: grain
+    added: 2026-10-27
+    revised: ""
+  - name: shout_ms
+    status: active
+    source: design/gdd/ui-interaction.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/ui-interaction.md
+      - design/gdd/clear-effects.md
+      - design/gdd/general-skills.md
+    value: 1200
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: unready_hint_ms
+    status: active
+    source: design/gdd/ui-interaction.md
+    referenced_by:
+      - design/gdd/ui-interaction.md
+      - design/gdd/general-skills.md
+    value: 1500
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: card_after_board_ms
+    status: active
+    source: design/gdd/ui-interaction.md
+    referenced_by:
+      - design/gdd/ui-interaction.md
+    value: 250
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: star_boss_t3_t2
+    status: active
+    source: design/gdd/progress-save.md
+    referenced_by:
+      - design/gdd/progress-save.md
+      - design/gdd/chapter-design.md
+    value: "0 / 1"
+    unit: hearts lost
+    added: 2026-10-27
+    revised: ""
+  - name: star_press_t3_t2
+    status: active
+    source: design/gdd/progress-save.md
+    referenced_by:
+      - design/gdd/progress-save.md
+      - design/gdd/chapter-design.md
+    value: "2000 / 8000"
+    unit: ms
+    added: 2026-10-27
+    revised: ""
+  - name: star_food_t3_miss_t2
+    status: active
+    source: design/gdd/progress-save.md
+    referenced_by:
+      - design/gdd/progress-save.md
+      - design/gdd/chapter-design.md
+    value: "2 / 2"
+    unit: grain / misses
+    added: 2026-10-27
+    revised: ""
+  - name: boss_interrupt_cap
+    status: deprecated  # 2026-10-30：见 combo_pushback_cap（切片第五版）
+    source: design/gdd/clear-effects.md
+    referenced_by:
+      - design/gdd/clear-effects.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/chapter-design.md
+      - design/gdd/game-concept.md
+    value: 50
+    unit: charge
+    added: 2026-10-27
+    revised: 2026-10-30
+
+  - name: stack_depth
+    status: active
+    source: design/gdd/board-link.md
+    referenced_by:
+      - design/gdd/board-link.md
+      - design/gdd/chapter-design.md
+      - design/gdd/ui-interaction.md
+    value: 1
+    unit: tiles per cell
+    added: 2026-10-30
+    revised: ""
+  - name: step_match
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/round-flow.md
+    value: 1
+    unit: steps
+    added: 2026-10-30
+    revised: ""
+  - name: step_miss
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/ui-interaction.md
+    value: 2
+    unit: steps
+    added: 2026-10-30
+    revised: ""
+  - name: boss_steps
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/chapter-design.md
+      - design/gdd/ui-interaction.md
+    value: 8
+    unit: steps
+    range: "3–20（安全 5–12），第一回 8"
+    added: 2026-10-30
+    revised: ""
+  - name: phase2_steps
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/chapter-design.md
+    value: 6
+    unit: steps
+    range: "3–20（安全 4–10），第一回 6"
+    added: 2026-10-30
+    revised: ""
+  - name: boss_hp
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/chapter-design.md
+    value: 12
+    unit: pairs
+    note: "缺省为开局总对数；第一回 12"
+    added: 2026-10-30
+    revised: ""
+  - name: phase2_hp
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/chapter-design.md
+    value: 18
+    unit: pairs
+    range: "1–60"
+    added: 2026-10-30
+    revised: ""
+  - name: combo_pushback
+    status: active
+    source: design/gdd/clear-effects.md
+    referenced_by:
+      - design/gdd/clear-effects.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/round-flow.md
+    value: 1
+    unit: steps
+    range: "1–2"
+    note: "三连斩起每对退 1 步；先退后涨，那一对净不涨（用户决定 2026-10-30，照切片）"
+    added: 2026-10-30
+    revised: ""
+  - name: combo_pushback_cap
+    status: active
+    source: design/gdd/clear-effects.md
+    referenced_by:
+      - design/gdd/clear-effects.md
+      - design/gdd/battle-pressure.md
+    value: 2
+    unit: steps per attack
+    range: "1–4"
+    added: 2026-10-30
+    revised: ""
+  - name: zhang_pushback
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/chapter-design.md
+    value: 3
+    unit: steps
+    added: 2026-10-30
+    revised: ""
+  - name: zhang_stun
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/battle-pressure.md
+      - design/gdd/ui-interaction.md
+    value: 3
+    unit: steps
+    note: "设为 3，不累加"
+    added: 2026-10-30
+    revised: ""
+  - name: roar_seal
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/general-skills.md
+      - design/gdd/ui-interaction.md
+    value: 3
+    unit: steps
+    added: 2026-10-30
+    revised: ""
+  - name: forecast_steps
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/general-skills.md
+      - design/gdd/ui-interaction.md
+    value: 2
+    unit: steps
+    added: 2026-10-30
+    revised: ""
+  - name: charge_blocks
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/board-link.md
+    value: 2
+    unit: blocks
+    added: 2026-10-30
+    revised: ""
+  - name: boss_specials
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/general-skills.md
+      - design/gdd/ui-interaction.md
+    value: "画戟横扫 → 赤兔冲阵 → 虎啸（轮换；二阶段特技与普通出手交替，特技先出）"
+    unit: order
+    added: 2026-10-30
+    revised: ""
+  - name: boss_warn_steps_1
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/ui-interaction.md
+    value: 2
+    unit: steps left
+    added: 2026-10-30
+    revised: ""
+  - name: boss_warn_steps_2
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/ui-interaction.md
+    value: 1
+    unit: steps left
+    added: 2026-10-30
+    revised: ""
+  - name: phase_show_ms
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/round-flow.md
+      - design/gdd/ui-interaction.md
+    value: 1400
+    unit: ms
+    added: 2026-10-30
+    revised: ""
+  - name: slow_steps_factor
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/battle-pressure.md
+    value: 1.5
+    unit: x
+    note: "slow=1 时步数 ×1.5 四舍五入（8→12，6→9）；取代 chargeMs ×1.5"
+    added: 2026-10-30
+    revised: ""
+  - name: general_need_guan_yu
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/chapter-design.md
+    value: 2
+    unit: pairs
+    range: "1–4"
+    added: 2026-10-30
+    revised: ""
+  - name: general_need_zhang_fei
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/chapter-design.md
+    value: 3
+    unit: pairs
+    range: "1–4"
+    added: 2026-10-30
+    revised: ""
+  - name: general_need_zhao_yun
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/chapter-design.md
+    value: 3
+    unit: pairs
+    range: "1–4"
+    added: 2026-10-30
+    revised: ""
+  - name: general_need_zhuge_liang
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/chapter-design.md
+    value: 4
+    unit: pairs
+    range: "2–4"
+    added: 2026-10-30
+    revised: ""
+  - name: slot_max
+    status: active
+    source: design/gdd/general-loadout.md
+    referenced_by:
+      - design/gdd/general-loadout.md
+      - design/gdd/general-skills.md
+      - design/gdd/progress-save.md
+      - design/gdd/ui-interaction.md
+    value: 3
+    unit: slots
+    added: 2026-10-30
+    revised: ""
+  - name: cell_max
+    status: active
+    source: design/gdd/ui-interaction.md
+    referenced_by:
+      - design/gdd/ui-interaction.md
+      - design/gdd/board-link.md
+    value: 72
+    unit: px
+    note: "5 列时上限；6 列仍是 53；下限 CELL_MIN 52"
+    added: 2026-10-30
+    revised: ""
+  - name: reveal_ms
+    status: active
+    source: design/gdd/ui-interaction.md
+    referenced_by:
+      - design/gdd/ui-interaction.md
+      - design/gdd/board-link.md
+    value: 340
+    unit: ms
+    added: 2026-10-30
+    revised: ""
+
+  - name: starters
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/general-loadout.md
+      - design/gdd/progress-save.md
+    value: "guan_yu"
+    unit: generals
+    added: 2026-10-30
+    revised: ""
+  - name: chain_pairs
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/board-link.md
+    value: 2
+    unit: pairs
+    range: "1–3"
+    added: 2026-10-30
+    revised: ""
+  - name: boss_specials_default
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/chapter-design.md
+    value: "sweep, charge, roar"
+    unit: order
+    note: "回目 boss.phase2.specials 可覆盖；合法 id 还有 chain"
+    added: 2026-10-30
+    revised: ""
+  - name: special_names_default
+    status: active
+    source: design/gdd/battle-pressure.md
+    referenced_by:
+      - design/gdd/battle-pressure.md
+      - design/gdd/chapter-design.md
+      - design/gdd/ui-interaction.md
+    value: "sweep 画戟横扫 / charge 赤兔冲阵 / roar 虎啸 / chain 铁索连环"
+    unit: names
+    note: "enemies[id].specialNames 可覆盖"
+    added: 2026-10-30
+    revised: ""
+  - name: liu_heal
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/battle-pressure.md
+    value: 1
+    unit: hearts
+    added: 2026-10-30
+    revised: ""
+  - name: liu_gift
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/ui-interaction.md
+    value: 1
+    unit: charge per general
+    range: "1–2"
+    added: 2026-10-30
+    revised: ""
+  - name: liu_food
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/battle-pressure.md
+    value: 2
+    unit: grain
+    range: "1–4"
+    note: "封顶到开局粮数，和张飞 roar_food 可超过分开"
+    added: 2026-10-30
+    revised: ""
+  - name: general_need_liu_bei
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/chapter-design.md
+    value: 3
+    unit: pairs
+    range: "3–4"
+    added: 2026-10-30
+    revised: ""
+  - name: general_need_huang_zhong
+    status: active
+    source: design/gdd/general-skills.md
+    referenced_by:
+      - design/gdd/general-skills.md
+      - design/gdd/chapter-design.md
+    value: 3
+    unit: pairs
+    range: "2–4"
+    note: "3 还是 4 等模拟器定"
+    added: 2026-10-30
+    revised: ""
+  - name: pick_card_w
+    status: active
+    source: design/gdd/ui-interaction.md
+    referenced_by:
+      - design/gdd/ui-interaction.md
+      - design/gdd/general-loadout.md
+    value: 64
+    unit: px
+    range: "56–80"
+    added: 2026-10-30
+    revised: ""
+  - name: press_interval_tiers
+    status: active
+    source: design/gdd/chapter-design.md
+    referenced_by:
+      - design/gdd/chapter-design.md
+      - design/gdd/battle-pressure.md
+    value: "10000 / 8000 / 7000"
+    unit: ms
+    note: "5 列版收紧顺序（ch01 / ch06 / ch08）"
+    added: 2026-10-30
+    revised: ""
 
 # Example:
 #

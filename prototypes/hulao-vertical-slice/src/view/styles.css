@@ -1,0 +1,385 @@
+/* VERTICAL SLICE - NOT FOR PRODUCTION
+   Validation Question: 没玩过的人 2 分钟内会玩、在第一回里感到“将在人为”；按新规则做出像样的一回要多久
+   Date: 2026-10-27 */
+
+/* Colours are the art bible §4 tokens; animations touch transform and opacity only (ADR-0003). */
+:root {
+  color-scheme: light;
+  --paper: #f6ecd6;
+  --paper-hi: #fffaf0;
+  --stage: #eadbbd;
+  --ink: #2a2018;
+  --ink-soft: #6b5a43;
+  --zhu: #b33a22;
+  --zhu-deep: #9a2e1c;
+  --qing: #1f4e5a;
+  --qing-soft: #cfdcdc;
+  --gold: #c99a2e;
+  --wood: #6e4a2e;
+  --ochre: #b58553;
+  --iron: #9a9286;
+  --jade: #7fa08a;
+  --plum: #5a3270;
+  --font: -apple-system, "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif;
+  --effect-ms: 380ms;
+  --skill-ms: 950ms;
+  --host-ms: 600ms;
+  --reshuffle-ms: 400ms;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app { position: fixed; inset: 0; overflow: hidden; }
+
+#stage {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform-origin: 50% 0;
+  touch-action: none;
+}
+
+/* ── top band (台眉) ── */
+#top { position: absolute; left: 0; right: 0; top: 0; }
+#pause-stamp {
+  position: absolute; left: 6px; top: 0; width: 44px; height: 44px;
+  border: 2px solid var(--ink); border-radius: 4px; background: var(--paper-hi);
+  display: flex; align-items: center; justify-content: center; gap: 6px; z-index: 30;
+}
+#pause-stamp i { display: block; width: 5px; height: 18px; background: var(--ink); border-radius: 1px; }
+#plaque {
+  position: absolute; left: 58px; right: 92px; top: 0; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; color: var(--zhu-deep); white-space: nowrap; overflow: hidden;
+}
+#plaque .shout { font-size: 24px; color: var(--ink); }
+#plaque .read { font-size: 18px; color: var(--ink); font-weight: 600; }
+#pairs { position: absolute; right: 8px; top: 0; height: 44px; line-height: 44px; font-size: 18px; color: var(--ink); }
+#banner {
+  position: absolute; left: 0; right: 0; top: 0; height: 44px; z-index: 25; box-sizing: border-box;
+  padding: 0 8px 0 58px; /* the pause stamp stays on top at the left (ui-interaction rule 19) */
+  display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;
+  font-size: 26px; font-weight: 800; letter-spacing: 1px; opacity: 0; pointer-events: none;
+}
+#banner.on { opacity: 1; }
+#banner.paper { background: var(--paper-hi); color: var(--zhu-deep); border-top: 2px solid var(--zhu); border-bottom: 2px solid var(--zhu); }
+#banner.ink { background: var(--ink); color: var(--paper-hi); }
+#banner.qing { background: var(--qing); color: var(--paper-hi); }
+#banner .seal { font-size: 14px; background: var(--zhu-deep); color: var(--paper-hi); padding: 2px 5px; border-radius: 2px; letter-spacing: 0; flex: none; }
+
+#hud { position: absolute; left: 0; right: 0; top: 50px; height: 60px; }
+#hearts {
+  position: absolute; left: 8px; top: 8px; height: 40px; padding: 0 8px; border-radius: 20px;
+  background: var(--paper-hi); display: flex; align-items: center; gap: 4px;
+}
+#hearts svg { width: 26px; height: 26px; }
+#hearts .lost path { fill: none; stroke: var(--zhu); stroke-dasharray: 3 3; }
+#charge-box { position: absolute; left: 118px; right: 112px; top: 20px; height: 20px; }
+#charge-label { position: absolute; left: 0; top: -18px; font-size: 14px; color: var(--ink-soft); }
+#charge-track { position: absolute; left: 0; right: 0; top: 4px; height: 12px; background: var(--paper-hi); border: 2px solid var(--qing); border-radius: 2px; overflow: hidden; }
+#charge-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: var(--qing); transform-origin: 0 50%; transform: scaleX(0); }
+#charge-box.t2 #charge-track { border-width: 3px; }
+#charge-box.t3 #charge-track { border-width: 4px; }
+#slash {
+  position: absolute; left: -6px; right: -6px; top: 8px; height: 4px; background: var(--zhu);
+  transform: rotate(-8deg) scaleX(0); transform-origin: 0 50%; opacity: 0;
+}
+#slash.go { animation: slash 420ms ease-out; }
+@keyframes slash { 0% { transform: rotate(-8deg) scaleX(0); opacity: 1; } 50% { transform: rotate(-8deg) scaleX(1); opacity: 1; } 100% { transform: rotate(-8deg) scaleX(1); opacity: 0; } }
+
+#foe {
+  position: absolute; right: 8px; top: 0; width: 96px; height: 60px; border: 2px solid var(--qing);
+  border-radius: 4px; background: var(--paper-hi); box-sizing: border-box; padding: 2px 6px 0 6px;
+}
+#foe .name { font-size: 18px; font-weight: 700; color: var(--qing); line-height: 24px; }
+#foe .face { position: absolute; right: 4px; top: 3px; width: 28px; height: 28px; border-radius: 50%; background: var(--plum) center / cover no-repeat; border: 2px solid var(--qing); box-sizing: border-box; color: var(--paper-hi); font-size: 14px; line-height: 24px; text-align: center; }
+#foe .hp { font-size: 16px; color: var(--ink); line-height: 20px; }
+#foe .hpbar { position: absolute; left: 6px; right: 6px; bottom: 4px; height: 5px; background: var(--qing-soft); }
+#title {
+  position: absolute; left: 0; right: 0; top: 0; height: 44px; display: none; align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 800; color: var(--zhu-deep); letter-spacing: 2px; border-bottom: 2px solid var(--wood);
+}
+#title.on { display: flex; }
+#foe .hpbar i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: var(--qing); transform-origin: 0 50%; }
+#foe.t2 { transform: translateY(4px); border-width: 3px; }
+#foe.t3 { transform: translateY(4px); border-width: 4px; }
+
+/* ── board (台面) ── */
+#board-frame { position: absolute; background: var(--stage); border-left: 6px solid var(--wood); border-right: 6px solid var(--wood); box-sizing: content-box; }
+#board { position: absolute; left: 0; top: 0; transition: transform 180ms ease, opacity 180ms ease; }
+#board.out { transform: translateY(-12px); opacity: 0; }
+/* One tile = div + svg + use (≤ 3 nodes, ui-interaction rule 32); the div is the tile face. */
+.tile {
+  position: absolute; box-sizing: border-box;
+  background: var(--paper-hi); border: 2px solid var(--ink); border-radius: 6px;
+  box-shadow: 0 3px 0 var(--ink-soft);
+  transition: transform 140ms ease, opacity 140ms ease;
+}
+.tile img { position: absolute; left: 7%; top: 5%; width: 86%; height: 86%; object-fit: contain; pointer-events: none; }
+.tile[data-ch]:not([data-ch=""])::before { content: attr(data-ch); position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; }
+.tile.empty { opacity: 0; transform: scale(0.7); pointer-events: none; }
+.tile.sel { z-index: 2; transform: translateY(-3px); border-color: var(--zhu); border-width: 3px; }
+.tile.fx { border: 4px double var(--zhu); }
+.tile.fx img { left: 4%; top: 2%; width: 66%; height: 66%; }
+.tile.fx::after {
+  content: attr(data-seal); position: absolute; right: 2px; bottom: 2px; width: 22px; height: 22px;
+  background: var(--zhu); color: var(--paper-hi); font-size: 15px; font-weight: 700; line-height: 22px;
+  text-align: center; border-radius: 2px;
+}
+.tile.fx.notarget::after { background: transparent; color: var(--zhu); border: 2px dashed var(--zhu); line-height: 18px; box-sizing: border-box; }
+.tile.pv::before {
+  content: ""; position: absolute; left: 9px; top: 9px; right: 9px; bottom: 9px;
+  border: 3px dashed var(--zhu); border-radius: 50%; z-index: 3;
+}
+.tile.hl { z-index: 2; border-color: var(--zhu); border-width: 4px; transform: scale(1.06); }
+.tile.shake { animation: shake 160ms linear; }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+
+#links { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+/* link (slice v4): paper halo + ink core drawn with a running head, then erased from the start */
+#links polyline { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 1; stroke-dashoffset: 1; }
+#links .halo { stroke: var(--paper-hi); stroke-width: 13; opacity: 0.9; }
+#links .core { stroke: var(--ink); stroke-width: 6; }
+#links .red .core, #links .forced .core { stroke: var(--zhu); }
+#links .red .halo { stroke: #ffe9b8; }
+#links .drawn polyline { stroke-dashoffset: 0; transition: stroke-dashoffset 150ms linear; }
+#links .erase polyline { stroke-dashoffset: -1; transition: stroke-dashoffset 220ms ease-in; }
+#links .head { fill: var(--paper-hi); stroke: var(--ink); stroke-width: 3; }
+#links .red .head, #links .forced .head { stroke: var(--zhu); fill: #ffe9b8; }
+#links .erase .head { opacity: 0; transition: opacity 120ms ease; }
+
+/* match juice (transform / opacity only; ≤ 24 moving elements at the climax) */
+.dot { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); pointer-events: none; transition: transform 320ms ease-out, opacity 320ms ease-in; z-index: 5; }
+.dot.red { background: var(--zhu); }
+.ghost {
+  position: absolute; box-sizing: border-box; background: var(--paper-hi); border: 2px solid var(--ink); border-radius: 6px;
+  pointer-events: none; z-index: 6; transition: transform 70ms ease-out;
+}
+.ghost img { position: absolute; left: 7%; top: 5%; width: 86%; height: 86%; object-fit: contain; }
+.ghost.pop { transform: scale(1.18); }
+.ghost.fly { transition: transform 380ms cubic-bezier(0.55, -0.3, 0.75, 0.5), opacity 380ms ease-in; }
+#foe .hpbar i { transition: transform 260ms ease-out; }
+#foe.hit .face { animation: foehit 260ms ease-out; }
+#foe.hit .hp { animation: foehp 260ms ease-out; }
+@keyframes foehit { 0% { transform: scale(1); } 30% { transform: scale(1.25) rotate(-8deg); } 60% { transform: scale(0.95) rotate(4deg); } 100% { transform: scale(1); } }
+@keyframes foehp { 0% { transform: scale(1); } 35% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.dmg {
+  position: absolute; right: 22px; z-index: 26; font-size: 28px; font-weight: 800; color: var(--zhu-deep); pointer-events: none;
+  text-shadow: 0 0 4px var(--paper-hi), 0 0 2px var(--paper-hi); opacity: 0;
+}
+.dmg.go { animation: dmgup 680ms ease-out forwards; }
+@keyframes dmgup { 0% { opacity: 0; transform: translateY(8px) scale(0.7); } 18% { opacity: 1; transform: translateY(0) scale(1.15); } 70% { opacity: 1; transform: translateY(-14px) scale(1); } 100% { opacity: 0; transform: translateY(-22px) scale(1); } }
+
+.combo {
+  position: absolute; font-size: 36px; font-weight: 800; color: var(--zhu-deep); white-space: nowrap;
+  pointer-events: none; text-shadow: 0 0 6px var(--paper-hi), 0 0 2px var(--paper-hi);
+  animation: rise 900ms ease-out forwards;
+}
+@keyframes rise { 0% { transform: translate(-50%, 6px) scale(calc(var(--grow, 1) * 0.6)); opacity: 0; } 15% { transform: translate(-50%, 0) scale(calc(var(--grow, 1) * 1.15)); opacity: 1; } 30% { transform: translate(-50%, 0) scale(var(--grow, 1)); } 75% { opacity: 1; } 100% { transform: translate(-50%, -14px) scale(var(--grow, 1)); opacity: 0; } }
+.combo.big { color: var(--paper-hi); background: var(--zhu-deep); padding: 0 10px; border-radius: 4px; text-shadow: none; box-shadow: 0 0 0 2px var(--paper-hi), 0 0 0 4px var(--zhu-deep); }
+.tick { position: absolute; pointer-events: none; animation: tickfade 500ms ease-in forwards; }
+.tick svg { width: 100%; height: 100%; }
+@keyframes tickfade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+
+#deadzone { position: absolute; left: 0; right: 0; height: 20px; background: var(--wood); }
+
+/* ── general cards (桌沿) ── */
+#cards { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; }
+.gcard {
+  position: relative; box-sizing: border-box; border: 2px solid var(--ink); border-radius: 6px;
+  background: var(--paper-hi); text-align: center; transition: transform 160ms ease;
+}
+.gcard .gname { font-size: 18px; font-weight: 700; margin-top: 2px; line-height: 22px; white-space: nowrap; }
+.gcard .avatar { display: block; width: 34px; height: 34px; margin: 4px auto 0; border-radius: 50%; border: 2px solid var(--ink); background: var(--stage); object-fit: cover; }
+.gcard .pips { font-size: 16px; margin-top: 1px; line-height: 20px; color: var(--ink); }
+.gcard .pips b { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--ink); margin-left: 3px; vertical-align: -1px; }
+.gcard .pips b.on { background: var(--ink); }
+.gcard.ready { transform: translateY(-4px); border: 3px solid var(--gold); box-shadow: 0 0 0 2px var(--ink); }
+.gcard.ready .gname { color: var(--zhu-deep); font-size: 16px; letter-spacing: -1px; }
+.gcard .token { display: none; position: absolute; right: -6px; top: -8px; width: 20px; height: 20px; border-radius: 50%; background: var(--gold); border: 2px solid var(--ink); font-size: 12px; line-height: 20px; font-weight: 700; }
+.gcard.ready .token { display: block; }
+.gcard.armed { border: 3px dashed var(--zhu); }
+.gcard .hint {
+  position: absolute; inset: 0; background: var(--ink); color: var(--paper-hi); border-radius: 4px;
+  font-size: 16px; display: flex; align-items: center; justify-content: center; padding: 4px; opacity: 0;
+  transition: opacity 120ms ease; text-align: center; line-height: 1.3;
+}
+.gcard.hinting .hint { opacity: 1; }
+
+/* ── skill show and masks ── */
+#mask { position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: var(--ink); opacity: 0; pointer-events: none; transition: opacity 100ms ease; z-index: 20; }
+#mask.skill { opacity: 0.6; }
+#mask.dim { opacity: 0.55; transition-duration: 150ms; }
+#mask.lose { opacity: 0.4; transition-duration: 300ms; }
+#mask.win { opacity: 0.15; transition-duration: 300ms; }
+#hero { position: absolute; left: 50%; width: 150px; height: 150px; margin-left: -75px; z-index: 22; opacity: 0; pointer-events: none; transition: opacity 150ms ease; }
+#hero.on { opacity: 1; transition-duration: 100ms; }
+#hero .blot { position: absolute; inset: 0; border-radius: 47% 53% 44% 56%; background: var(--zhu); transform: scale(0.4); }
+#hero .who { position: absolute; left: 15px; top: 15px; width: 120px; height: 120px; border-radius: 50%; border: 4px solid var(--paper-hi); box-shadow: 0 0 0 2px var(--ink); background: var(--ink) center / cover no-repeat; color: var(--paper-hi); font-size: 48px; font-weight: 800; line-height: 120px; text-align: center; transform: scale(0.4); }
+#hero .blot, #hero .who { transition: transform 220ms ease-out; }
+#hero.on .blot, #hero.on .who { transform: scale(1); }
+
+/* ── overlay cards ── */
+.card {
+  position: absolute; left: 16px; right: 16px; z-index: 40; background: var(--paper-hi); border: 3px solid var(--ink);
+  border-radius: 8px; padding: 18px 16px 16px; box-sizing: border-box; text-align: center;
+  opacity: 0; pointer-events: none; transition: opacity 150ms ease, transform 150ms ease; transform: translateY(8px);
+}
+.card.on { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.card h1 { margin: 0; font-size: 18px; color: var(--ink-soft); font-weight: 600; }
+.card h2 { margin: 4px 0 10px; font-size: 32px; color: var(--zhu-deep); font-weight: 800; letter-spacing: 2px; }
+.card p { margin: 6px 0; font-size: 18px; line-height: 1.45; }
+.card .small { font-size: 16px; color: var(--ink); }
+.card .roster { text-align: left; margin: 10px 4px; }
+.card .roster div { font-size: 16px; line-height: 1.35; display: grid; grid-template-columns: 30px 58px 1fr; column-gap: 6px; align-items: center; margin: 4px 0; }
+.card .roster b { font-size: 18px; }
+.card .roster .rface { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--ink); box-sizing: border-box; }
+.card .btns { margin-top: 14px; display: flex; gap: 10px; justify-content: center; }
+.card button {
+  font: inherit; font-size: 20px; font-weight: 700; min-width: 128px; min-height: 52px; border-radius: 6px;
+  border: 2px solid var(--ink); background: var(--paper-hi); color: var(--ink);
+}
+.card button.primary { background: var(--zhu-deep); color: var(--paper-hi); border-color: var(--zhu-deep); }
+.card .btns.wait { visibility: hidden; }
+/* Stamps settle by transition, so they still end up visible where animations do not run. */
+.stamp {
+  width: 96px; height: 96px; margin: 0 auto; background: var(--zhu-deep); color: var(--paper-hi); border-radius: 6px;
+  font-size: 60px; font-weight: 800; line-height: 96px; transform: scale(1.6); opacity: 0;
+  transition: transform 260ms ease-in, opacity 180ms ease-in;
+}
+.stamp.go { transform: scale(1); opacity: 1; }
+.stars { margin: 10px 0 4px; font-size: 0; }
+.stars span { display: inline-block; width: 36px; height: 36px; margin: 0 6px; opacity: 0; transform: scale(1.5); transition: transform 200ms ease-in, opacity 150ms ease-in; }
+.stars span.go { transform: scale(1); opacity: 1; }
+.stars svg { width: 36px; height: 36px; }
+.stars .off path { fill: none; stroke: var(--ink-soft); stroke-dasharray: 3 3; stroke-width: 2; }
+.stars .on path { fill: var(--gold); stroke: var(--ink); stroke-width: 2; }
+#error { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 20px; background: var(--paper); z-index: 99; }
+
+/* landing spark: 4 rays + a ring at the second tile */
+.spark { position: absolute; width: 0; height: 0; pointer-events: none; z-index: 6; }
+.spark i { position: absolute; left: -2px; top: -22px; width: 4px; height: 44px; border-radius: 2px; background: var(--ink); }
+.spark.red i { background: var(--zhu); }
+.spark b { position: absolute; left: -18px; top: -18px; width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--ink); box-sizing: border-box; transform: scale(0.3); opacity: 1; }
+.spark.red b { border-color: var(--zhu); }
+.spark.go { animation: sparkpop 340ms ease-out forwards; }
+.spark.go b { transform: scale(1.5); opacity: 0; transition: transform 320ms ease-out, opacity 320ms ease-in; }
+@keyframes sparkpop { 0% { transform: scale(0.2); opacity: 1; } 40% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.25); opacity: 0; } }
+
+/* boss phase 2 (slice experiment): 青 hero blot, board quake, the enemy frame turns heavy */
+#hero.foe .blot { background: var(--qing); }
+#hero.foe .who { border-color: var(--zhu); }
+#board-frame.quake { animation: quake 420ms ease-out; }
+@keyframes quake { 0%, 100% { transform: translate(0, 0); } 15% { transform: translate(-6px, 3px); } 30% { transform: translate(5px, -4px); } 45% { transform: translate(-4px, 2px); } 60% { transform: translate(3px, -2px); } 80% { transform: translate(-1px, 1px); } }
+#foe.rage { border-color: var(--zhu); border-width: 3px; }
+#foe.rage .face { border-color: var(--zhu); }
+#foe.rage .hpbar i { background: var(--zhu); }
+
+/* win ending (slice experiment): tiles burst outward, the enemy portrait cracks and shatters */
+.tile.smashed { opacity: 0; transition: transform 380ms cubic-bezier(0.2, 0.7, 0.4, 1), opacity 380ms ease-in; }
+#smash { position: absolute; z-index: 23; pointer-events: none; opacity: 0; transform: scale(0.6); }
+#smash.in { opacity: 1; transform: scale(1); transition: transform 260ms cubic-bezier(0.2, 1.4, 0.4, 1), opacity 160ms ease; }
+#smash.quake { animation: smashquake 300ms linear; }
+@keyframes smashquake { 0%, 100% { transform: scale(1); } 20% { transform: translate(-5px, 2px) scale(1.02); } 40% { transform: translate(4px, -3px) scale(1.03); } 60% { transform: translate(-3px, 3px) scale(1.04); } 80% { transform: translate(2px, -1px) scale(1.05); } }
+#smash .shard { position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 50%; background: var(--plum) center / cover no-repeat; box-shadow: inset 0 0 0 5px var(--qing); }
+#smash.broken .shard { transition: transform 560ms cubic-bezier(0.3, 0.6, 0.6, 1), opacity 560ms ease-in; }
+#smash .crack { position: absolute; left: 0; top: 0; width: 100%; height: 100%; clip-path: circle(47% at 50% 50%); }
+#smash .crack polyline { fill: none; stroke: var(--paper-hi); stroke-width: 1.8; stroke-linejoin: round; stroke-dasharray: 1 1; stroke-dashoffset: 1; }
+#smash.cracked .crack polyline { stroke-dashoffset: 0; transition: stroke-dashoffset 220ms ease-out; }
+#smash.broken .crack { opacity: 0; }
+#flash { position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: var(--paper-hi); opacity: 0; pointer-events: none; z-index: 24; }
+#flash.go { animation: flashgo 420ms ease-out; }
+@keyframes flashgo { 0% { opacity: 0.85; } 100% { opacity: 0; } }
+#mask.smash { opacity: 0.5; transition-duration: 200ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tile, #board, .card, #mask { transition-duration: 0ms; }
+  .combo { animation: none; transform: translate(-50%, 0); }
+  .dot, .ghost, .spark, #links .head, #flash { display: none; }
+  #board-frame.quake, #smash.quake { animation: none; }
+  .tile.smashed { transform: none; }
+  #smash.broken .shard { transition: opacity 300ms ease; transform: none; }
+  #foe.hit .face, #foe.hit .hp { animation: none; }
+  #hero .blot, #hero .who { transition: none; transform: scale(1); }
+}
+
+/* ── generated UI skin (EvoMeme 游戏 UI 组件, see ui-assets.mjs); falls back to the flat CSS above ── */
+.card {
+  border-style: solid; border-color: transparent; border-width: 46px 12px 22px 12px; left: 10px; right: 10px;
+  border-image: var(--ui-panel) 60 26 30 26 fill / 46px 12px 22px 12px stretch;
+  background: transparent; border-radius: 0; padding: 4px 6px 10px;
+}
+.card button.primary { background: var(--ui-btn-primary) center / 100% 100% no-repeat; border: none; color: var(--paper-hi); }
+.card button:not(.primary) { background: var(--ui-btn-secondary) center / 100% 100% no-repeat; border: none; color: var(--ink); }
+#title {
+  left: 50%; right: auto; width: 352px; margin-left: -176px; border-bottom: none; white-space: nowrap;
+  border-style: solid; border-color: transparent; border-width: 0 34px;
+  border-image: var(--ui-plaque) 0 90 fill / 0 34px stretch; box-sizing: border-box; font-size: 18px; letter-spacing: 0;
+}
+#deadzone {
+  background: transparent; border-style: solid; border-color: transparent; border-width: 0 34px;
+  border-image: var(--ui-beam) 0 90 fill / 0 34px stretch; box-sizing: border-box;
+}
+#pause-stamp { background: var(--ui-seal) center / 100% 100% no-repeat; border: none; }
+#pause-stamp i { background: var(--paper-hi); }
+.gcard { background: var(--ui-card) center / 100% 100% no-repeat; border: none; border-radius: 8px; }
+.gcard.ready { background-image: var(--ui-card-ready); border: none; box-shadow: none; }
+.gcard.armed { border: none; outline: 3px dashed var(--zhu); outline-offset: -5px; }
+.gcard .avatar { margin-top: 8px; width: 30px; height: 30px; }
+.gcard .gname { margin-top: 0; }
+.gcard .pips { line-height: 18px; margin-top: 0; }
+
+/* slice v5 (DESIGN-v5.md): step dots, forecast, status chips, the strike to a heart, barricades, sealed cards */
+#charge-track { display: flex; gap: 3px; align-items: center; background: none; border: none; overflow: visible; height: 14px; }
+#charge-track i { flex: 1; height: 12px; border: 2px solid var(--qing); border-radius: 3px; background: var(--paper-hi); box-sizing: border-box; transition: transform 160ms ease; }
+#charge-track i.on { background: var(--qing); transform: scaleY(1.15); }
+#charge-box.t2 #charge-track i.on { background: var(--zhu-deep); border-color: var(--zhu-deep); }
+#charge-box.t3 #charge-track i { border-color: var(--zhu); }
+#charge-box.t3 #charge-track i.on { background: var(--zhu); }
+#charge-box.t2 #charge-track, #charge-box.t3 #charge-track { border: none; }
+#charge-label { white-space: nowrap; }
+#charge-label.warn { color: var(--zhu); font-weight: 700; }
+.bump { position: absolute; right: 0; top: -20px; font-size: 16px; font-weight: 700; color: var(--qing); opacity: 0; pointer-events: none; }
+.bump.red { color: var(--zhu); }
+.bump.go { animation: bumpup 680ms ease-out forwards; }
+@keyframes bumpup { 0% { opacity: 0; transform: translateY(6px) scale(0.7); } 20% { opacity: 1; transform: translateY(0) scale(1.15); } 70% { opacity: 1; transform: translateY(-8px) scale(1); } 100% { opacity: 0; transform: translateY(-14px); } }
+#shield { position: absolute; left: 6px; top: 46px; width: 22px; height: 22px; border-radius: 4px; background: var(--qing); color: var(--paper-hi); font-size: 14px; font-weight: 700; line-height: 22px; text-align: center; opacity: 0; transform: scale(0.5); transition: transform 160ms ease, opacity 160ms ease; pointer-events: none; }
+#shield.on { opacity: 1; transform: scale(1); }
+#shield.hit { animation: shieldhit 420ms ease-out; }
+@keyframes shieldhit { 0% { opacity: 1; transform: scale(1); } 40% { opacity: 1; transform: scale(1.8); } 100% { opacity: 0; transform: scale(2.2); } }
+#stun { position: absolute; right: 8px; top: 62px; padding: 0 5px; border-radius: 4px; background: var(--ink); color: var(--paper-hi); font-size: 14px; line-height: 20px; opacity: 0; transition: opacity 160ms ease; pointer-events: none; }
+#stun.on { opacity: 1; }
+.strike { position: absolute; width: 60px; height: 8px; border-radius: 4px; background: var(--zhu); z-index: 25; pointer-events: none; transform: rotate(-20deg); transition: transform 220ms cubic-bezier(0.5, 0, 0.9, 0.6), opacity 160ms ease; }
+#hearts svg.crack { animation: heartcrack 420ms ease-out; }
+@keyframes heartcrack { 0% { transform: scale(1); } 30% { transform: scale(1.5) rotate(-12deg); } 60% { transform: scale(0.8) rotate(8deg); } 100% { transform: scale(1); } }
+.tile.block { background: var(--wood); border-color: var(--ink); box-shadow: 0 3px 0 var(--ink); }
+.tile.block::before { color: var(--paper-hi); font-size: 24px; }
+.gcard.sealed { opacity: 0.6; }
+.gcard.sealed .gname { color: var(--qing); }
+.gcard.shake { animation: shake 200ms 2; }
+@media (prefers-reduced-motion: reduce) {
+  .strike, .bump { display: none; }
+  #shield.hit, #hearts svg.crack, .gcard.shake { animation: none; }
+}
+/* slice v5: up to 4 pips (诸葛亮 needs 4 pairs) must fit on one line */
+.gcard .pips { white-space: nowrap; }
+.gcard .pips b { width: 7px; height: 7px; margin-left: 2px; }
+
+/* slice v6 (DESIGN-v6.md): a stacked cell shows a second tile edge below it; a buried tile pops in when uncovered */
+.tile.stack { box-shadow: 4px 5px 0 0 var(--wood), 4px 5px 0 2px var(--ink); }
+.tile.reveal { animation: reveal 340ms ease-out; }
+@keyframes reveal { 0% { transform: scale(0.55); opacity: 0.2; } 70% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .tile.reveal { animation: none; } }

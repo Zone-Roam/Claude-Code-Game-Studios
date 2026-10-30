@@ -25,3 +25,9 @@
 ```
 
 同一个概念一共转向（PIVOT）了 2 次（#2 → 变体，变体 → 压力），没有触发模板“转向 3 次就强制考虑放弃”的规则。
+
+## Vertical slices
+
+| # | Concept | Date | Path | Verdict | Report |
+|---|---------|------|------|---------|--------|
+| 1 | 第一回 虎牢关三英战吕布（第一次切片，不是转向后的重做） | 2026-10-30 | HTML（单文件 play.html） | **PROCEED** | [REPORT](hulao-vertical-slice/REPORT.md) |

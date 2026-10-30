@@ -1,0 +1,30 @@
+name: Automated Tests
+
+# No engine (ADR-0001): tests use Node's built-in node:test, nothing to install.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run node:test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Node 24 is required: `node --test` with a glob pattern needs Node 21+.
+      # Check the latest setup-node major before the first push.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Run tests
+        run: node --test "tests/**/*.test.mjs"

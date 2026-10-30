@@ -5,14 +5,19 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 ## Technology Stack
 
-- **Engine**: [CHOOSE: Godot 4 / Unity / Unreal Engine 5]
-- **Language**: [CHOOSE: GDScript / C# / C++ / Blueprint]
+- **Engine**: None — native H5 running offline in the Xiaohongshu "小工具" WebView
+  (`docs/architecture/adr-0001-no-engine-native-h5.md`)
+- **Language**: JavaScript, ES2017 baseline; ES modules in development, bundled
+  into one classic script inside one HTML file for release; no third-party
+  libraries in the shipped package
 - **Version Control**: Git with trunk-based development
-- **Build System**: [SPECIFY after choosing engine]
-- **Asset Pipeline**: [SPECIFY after choosing engine]
+- **Build System**: Node 24 built-ins only (`tools/build/`, dev-only, never shipped)
+- **Asset Pipeline**: hand-made SVG in an inline `<symbol>` sprite, with
+  build-time size and banned-feature checks (art bible §8)
 
-> **Note**: Engine-specialist agents exist for Godot, Unity, and Unreal with
-> dedicated sub-specialists. Use the set matching your engine.
+> **Note**: No engine-specialist agent applies. Skills that stop on "no engine
+> configured" are NOT APPLICABLE here: follow their structure with the H5 stack
+> above and record the skip (see the `project.yaml` comment).
 
 ## Project Structure
 
@@ -25,8 +30,10 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
      engine, so a Unity or Unreal project stops loading the Godot reference every
      session. It defaults to Godot (the template's example engine); skills that
      need the pinned version read docs/engine-reference/<engine>/VERSION.md on
-     demand regardless of this import. -->
-@docs/engine-reference/godot/VERSION.md
+     demand regardless of this import.
+     This project has no engine: the import points at the H5 platform reference
+     instead (user-approved 2026-10-27). -->
+@docs/engine-reference/web-h5/VERSION.md
 
 
 ## Technical Preferences

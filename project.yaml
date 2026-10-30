@@ -8,7 +8,7 @@ framework:
   last_upgraded: 2026-10-19
 
 project:
-  stage: Concept
+  stage: Pre-Production
 
 # NOTE: this template ships with no `modes:` block, and the six knobs below must
 # never be added to one.
@@ -32,3 +32,51 @@ project:
 modes:
   rigor: standard
   automation: guided
+
+# NO GAME ENGINE — deliberate, user hard constraint (2026-10-26).
+# The game is native HTML/CSS/JS running in the Xiaohongshu "小工具" WebView,
+# offline, <= 2 MB, no third-party libraries in the shipped package.
+# `engine.name` only accepts Godot|Unity|Unreal, so it is left UNSET on purpose:
+# skills that stop on "no engine configured" are handled as NOT APPLICABLE, with
+# the reason recorded. Code root: src/. Tests: tests/ (Node 24 built-in node:test,
+# dev-only, never shipped). Decision record: docs/architecture/adr-0001-no-engine-native-h5.md.
+# Platform reference (stands in for docs/engine-reference/<engine>/):
+# docs/engine-reference/web-h5/VERSION.md.
+
+platform:
+  multiplayer: false
+  online: false                # fully offline: no network, no telemetry (progress-save rule 20)
+  targets: [Mobile]            # Xiaohongshu "小工具" WebView, portrait, single finger
+  primary_input: "Touch"
+  gamepad_support: "None"
+  touch_support: "Full"
+  cert_tier: none
+
+# JavaScript conventions (ADR-0001). Events are plain result objects with a
+# `type` field (ADR-0003), so `signals` names their type strings.
+naming:
+  classes: PascalCase
+  variables: camelCase
+  constants: SCREAMING_SNAKE
+  signals: camelCase           # event `type` strings: match, miss, push, hostAttack, tokenStart ... (ADR-0003)
+  files: kebab-case            # board-link.mjs, round-flow.mjs
+  scenes: camelCase            # screens: catalog, round, error; overlays: open, resume, pause, landscape, win, lose (ADR-0002)
+
+# Budgets from art bible §8, made binding by the user on 2026-10-27. No engine,
+# so draw calls do not apply and WebView memory cannot be read yet: both null.
+# H5-specific budgets (no project.yaml key exists for them) are in
+# docs/architecture/architecture.md "Performance Budgets": package <= 2,000,000
+# bytes, tap-to-feedback <= 100 ms, deal <= 200 ms, cold start to the title card
+# <= 2 s, visible DOM nodes in a round <= 500, P95 frame time <= 20 ms.
+performance:
+  target_framerate: 60
+  frame_budget_ms: 16.67
+  draw_call_limit: null
+  memory_ceiling_mb: null
+  enforce: warn
+
+testing:
+  framework: node-test
+
+commands:
+  test: node --test "tests/**/*.test.mjs"
