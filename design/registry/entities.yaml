@@ -159,7 +159,7 @@ entities:
     display: "刘备"
     charge_kind: "旗"
     skill: "仁德（敌将补 1 心 / 粮草补 2 粮封顶 / 压境只送蓄力；其余出阵武将各 +1 格）"
-    need: "3"
+    need: 3
     line: "勿以善小而不为。"
     added: 2026-10-30
     revised: ""
@@ -175,7 +175,7 @@ entities:
     display: "黄忠"
     charge_kind: "弓"
     skill: "老当益壮（点选一列射穿，连底牌和拒马）"
-    need: "3"
+    need: 3
     line: "黄忠在此，看箭！"
     added: 2026-10-30
     revised: ""
@@ -266,7 +266,7 @@ entities:
     recommend: "guan_yu"
     unlock: "zhang_fei"
     new: "连连看 + 下压"
-    note: "数值见 chapter-design 规则 13，未模拟"
+    note: "数值见 chapter-design 规则 13，已模拟 2026-10-30，待试玩"
     added: 2026-10-27
     revised: 2026-10-30  # 2026-10-30 正式版 10 回重排，id 内容换了
   - name: ch02
@@ -285,7 +285,7 @@ entities:
     recommend: "zhang_fei, guan_yu"
     unlock: "—"
     new: "敌将按步出手"
-    note: "数值见 chapter-design 规则 13，未模拟"
+    note: "数值见 chapter-design 规则 13，已模拟 2026-10-30，待试玩"
     added: 2026-10-27
     revised: 2026-10-30  # 2026-10-30 正式版 10 回重排，id 内容换了
   - name: ch03
@@ -304,7 +304,7 @@ entities:
     recommend: "zhao_yun, guan_yu"
     unlock: "zhao_yun"
     new: "层叠"
-    note: "数值见 chapter-design 规则 13，未模拟"
+    note: "数值见 chapter-design 规则 13，已模拟 2026-10-30，待试玩"
     added: 2026-10-27
     revised: 2026-10-30  # 2026-10-30 正式版 10 回重排，id 内容换了
   - name: ch04
@@ -323,7 +323,7 @@ entities:
     recommend: "liu_bei, guan_yu"
     unlock: "liu_bei"
     new: "粮草模式"
-    note: "数值见 chapter-design 规则 13，未模拟"
+    note: "数值见 chapter-design 规则 13，已模拟 2026-10-30，待试玩"
     added: 2026-10-30
     revised: ""
   - name: ch05
@@ -342,7 +342,7 @@ entities:
     recommend: "zhang_fei, guan_yu, zhao_yun"
     unlock: "—"
     new: "吕布二阶段和特技；第 3 槽"
-    note: "数值见 chapter-design 规则 13，未模拟"
+    note: "数值见 chapter-design 规则 13，已模拟 2026-10-30，待试玩"
     added: 2026-10-30
     revised: ""
   - name: ch06
@@ -361,7 +361,7 @@ entities:
     recommend: "guan_yu, zhang_fei, zhao_yun"
     unlock: "—"
     new: "压境里的拒马"
-    note: "数值见 chapter-design 规则 13，未模拟"
+    note: "数值见 chapter-design 规则 13，已模拟 2026-10-30，待试玩"
     added: 2026-10-30
     revised: ""
   - name: ch07
@@ -380,7 +380,7 @@ entities:
     recommend: "zhuge_liang, guan_yu, zhang_fei"
     unlock: "zhuge_liang"
     new: "火烧连营"
-    note: "数值见 chapter-design 规则 13，未模拟"
+    note: "数值见 chapter-design 规则 13，已模拟 2026-10-30，待试玩"
     added: 2026-10-30
     revised: ""
   - name: ch08
@@ -399,7 +399,7 @@ entities:
     recommend: "zhao_yun, zhang_fei, guan_yu"
     unlock: "huang_zhong"
     new: "铁骑冲阵"
-    note: "数值见 chapter-design 规则 13，未模拟"
+    note: "数值见 chapter-design 规则 13，已模拟 2026-10-30，待试玩"
     added: 2026-10-30
     revised: ""
   - name: ch09
@@ -418,7 +418,7 @@ entities:
     recommend: "zhuge_liang, guan_yu, zhao_yun"
     unlock: "—"
     new: "曹操和铁索连环"
-    note: "数值见 chapter-design 规则 13，未模拟"
+    note: "数值见 chapter-design 规则 13，已模拟 2026-10-30，待试玩"
     added: 2026-10-30
     revised: ""
   - name: ch10
@@ -437,7 +437,7 @@ entities:
     recommend: "huang_zhong, zhuge_liang, zhao_yun"
     unlock: "—"
     new: "黄忠当主将；收官"
-    note: "数值见 chapter-design 规则 13，未模拟"
+    note: "数值见 chapter-design 规则 13，已模拟 2026-10-30，待试玩"
     added: 2026-10-30
     revised: ""
 
@@ -524,7 +524,7 @@ formulas:
     variables:
       - match
       - miss
-    output_range: [1, 999]
+    output_range: [0, 999]  # 0 = 开局或刚连错；实现封顶 999，永远打不到
     expression: "match: combo + 1; miss: 0; effects, skills, reshuffle and enemy attacks leave it unchanged"  # was: gameTime - lastPlayerClearAt <= COMBO_WINDOW_MS ? combo + 1 : 1
     added: 2026-10-27
     revised: 2026-10-30
@@ -652,7 +652,7 @@ formulas:
       - cols
       - waves
       - wavePairs
-    output_range: [18, 63]
+    output_range: [22, 34]  # 5 列、startRows 4、waves 6–12：10 + 2 × waves（chapter-design Formulas）
     expression: "P = startRows * cols / 2 + waves * floor(cols / 2)"
     added: 2026-10-30
     revised: ""
@@ -691,8 +691,9 @@ formulas:
       - missT2
     output_range: [0, 3]
     expression: "win ? (boss/press: risk <= t3 ? 3 : risk <= t2 ? 2 : 1; food: misses == 0 && foodLeft >= foodT3 ? 3 : misses <= missT2 ? 2 : 1) : 0"  # was: win ? (risk <= t3 ? 3 : risk <= t2 ? 2 : 1) : 0
+    note: "risk 的单位按模式不同：敌将 heartsLost（颗心）、压境 dangerMs（ms）、粮草 misses / foodLeft（次数 / 份）；foodT3、missT2 是粮草的阈值（次数）"
     added: 2026-10-27
-    revised: 2026-10-27
+    revised: 2026-10-30
 
 # Example:
 #
@@ -1154,7 +1155,7 @@ constants:
     unit: steps
     added: 2026-10-30
     revised: ""
-  - name: boss_steps
+  - name: boss_steps_default  # 原名 boss_steps，与上面的公式 boss_steps 重名，2026-10-30 改名
     status: active
     source: design/gdd/battle-pressure.md
     referenced_by:
@@ -1163,7 +1164,8 @@ constants:
       - design/gdd/ui-interaction.md
     value: 8
     unit: steps
-    range: "3–20（安全 5–12），第一回 8"
+    range: "3–20（安全 5–12）"
+    note: "缺省值；各回以回目数据为准：ch02、ch03 为 8，ch05 为 6，ch09、ch10 为 7（chapter-design 规则 13）"
     added: 2026-10-30
     revised: ""
   - name: phase2_steps
@@ -1174,7 +1176,8 @@ constants:
       - design/gdd/chapter-design.md
     value: 6
     unit: steps
-    range: "3–20（安全 4–10），第一回 6"
+    range: "3–20（安全 4–10）"
+    note: "缺省值；各回以回目数据为准：ch05 为 5，ch09、ch10 为 6（chapter-design 规则 13）"
     added: 2026-10-30
     revised: ""
   - name: boss_hp
@@ -1185,7 +1188,7 @@ constants:
       - design/gdd/chapter-design.md
     value: 12
     unit: pairs
-    note: "缺省为开局总对数；第一回 12"
+    note: "缺省为开局总对数；各回以回目数据为准：ch02 15、ch03 18、ch05 12、ch09 14、ch10 16"
     added: 2026-10-30
     revised: ""
   - name: phase2_hp
@@ -1197,6 +1200,7 @@ constants:
     value: 18
     unit: pairs
     range: "1–60"
+    note: "各回以回目数据为准：ch05 18、ch09 24、ch10 18"
     added: 2026-10-30
     revised: ""
   - name: combo_pushback

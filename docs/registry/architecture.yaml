@@ -40,7 +40,7 @@
 #   unsupported layout, with its number.
 
 version: 1
-last_updated: "2026-10-27"
+last_updated: "2026-10-30"
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -136,12 +136,12 @@ interfaces:
       - battle-pressure
       - ui-interaction
     adr: docs/architecture/adr-0002-main-loop-round-clock.md
-    signal_signature: "effects.onMatch(match) -> skills.onMatch(match) -> pressure.onMatch(match)/onMiss(miss) -> emit(match|miss), fixed order, synchronous"
+    signal_signature: "effects.onMatch(match) [-> pressure.comboReward() when combo >= threshold] -> skills.onMatch(match) -> pressure.onMatch(match)/onMiss(miss) -> emit(match|miss), fixed order, synchronous"
     referenced_by:
       - docs/architecture/adr-0002-main-loop-round-clock.md
       - docs/architecture/adr-0003-rules-view-channel.md
     added: 2026-10-27
-    revised: ""
+    revised: "2026-10-30"
   - contract: rules_to_view_events
     status: active
     pattern: shared_resource
@@ -153,7 +153,7 @@ interfaces:
     referenced_by:
       - docs/architecture/adr-0003-rules-view-channel.md
     added: 2026-10-27
-    revised: ""
+    revised: "2026-10-30"
   - contract: view_to_rules_intents
     status: active
     pattern: shared_resource
@@ -161,12 +161,12 @@ interfaces:
     consumers:
       - round-flow
     adr: docs/architecture/adr-0003-rules-view-channel.md
-    signal_signature: "input queue of {type: 'cell'|'card'|'pauseStamp'|'button', ...} processed in round.frame step 2 in arrival order"
+    signal_signature: "input queue of {type: 'cell'|'card'|'offBoard'|'pauseStamp'|'button', ...} processed in round.frame step 2 in arrival order; cell/card/offBoard route to skills while a row/column pick is open (round-flow rule 5a)"
     referenced_by:
       - docs/architecture/adr-0003-rules-view-channel.md
       - docs/architecture/adr-0002-main-loop-round-clock.md
     added: 2026-10-27
-    revised: ""
+    revised: "2026-10-30"
   - contract: lifecycle_entry_points
     status: active
     pattern: direct_call
@@ -191,6 +191,19 @@ interfaces:
     referenced_by:
       - docs/architecture/adr-0004-local-save.md
     added: 2026-10-27
+    revised: ""
+  - contract: skills_to_pressure_calls
+    status: active
+    pattern: direct_call
+    producer: general-skills
+    consumers:
+      - battle-pressure
+    adr: docs/architecture/adr-0002-main-loop-round-clock.md
+    signal_signature: "on skill token end: scareNextPush/canScare, addFood, roarBack, raiseShield/hasShield, breakSpecial, healHeart(n)/canHeal, refillFood(n)/canRefill; pressure emits heal/foodRefill itself"
+    referenced_by:
+      - docs/architecture/adr-0002-main-loop-round-clock.md
+      - docs/architecture/adr-0003-rules-view-channel.md
+    added: 2026-10-30
     revised: ""
 
 # Example:

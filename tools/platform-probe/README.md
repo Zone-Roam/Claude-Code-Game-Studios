@@ -28,5 +28,6 @@
 | `font16pxComputed` | 宿主会不会放大字号 | 字号规则（美术圣经第 7 节） |
 | `darkScheme`、`bodyBgComputed` | 会不会被强制深色反转 | 对比度是否有效 |
 | `reducedMotion`、`pointerCoarse` | 系统“减弱动态效果”能不能读到、是不是触屏 | 少动版本、横屏判断 |
+| `vibrate` | 有没有 `navigator.vibrate`、调用会不会被拦（`type`、`call`） | 暴怒、击碎的震动（“界面与交互”规则 21d）；没有就只做视觉 |
 | `fps3s` | 3 秒内的帧率和最长卡顿 | 性能预算 |
 | `fonts` | 苹方、思源/Noto、微软雅黑、楷体在不在 | 读的字的字体栈 |

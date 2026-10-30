@@ -130,3 +130,30 @@ Reviewed-Content-Hash: design/gdd/round-flow.md ae0b1fc55a036510e040d582fbe2b9ff
 Reviewed-Content-Hash: design/gdd/clear-effects.md 17767f552b65433fcdfb18f9fdbc00f0ac50a13e
 Reviewed-Content-Hash: design/gdd/board-link.md ddfd01864cea1b2a0bf9e7a0fffb4a2c60770eb1
 Reviewed-Content-Hash: design/gdd/systems-index.md 48a678a841e1908f33a28baea23fc296f47c6378
+
+## Review — 2026-10-30 — Verdict: NEEDS REVISION
+Review mode: lean · Workflow: standard
+Scope signal: L
+Specialists: none (lean)
+Blocking items: 2 | Recommended: 11
+Summary: 2026-10-30 的大改（关羽选排、刘备、黄忠、选将、赵云护盾、诸葛亮破特技）此前没有审查记录，本次是第一次审查。两个阻塞都是机械对齐：验收里写死的 7000 ms，以及黄忠依赖的列查询接口在盘面文档里不存在。
+Prior verdict resolved: Yes
+Findings:
+- [BLOCKING] AC 张飞·压境: 硬写 7000 ms，与 12000 ms 冲突 — 已修（改为一个完整 `interval`，从回目数据读）
+- [BLOCKING] Interactions 盘面行: `rowCells`/`colCells`/`buriedOf` 与盘面接口名不符 — 已修（统一为 `rowContents`/`colContents`/`buriedCells`/`depthAt`；盘面侧同步补 `colContents`）
+- [RECOMMENDED] 1 Open Questions 压境无拒马的旧说法 — 已修
+- [RECOMMENDED] 2 chapter-design 陈旧注释 — 未改（不在本文，属 chapter-design）
+- [RECOMMENDED] 3 `need` 合法范围两边不一致 — 未改（留待复审）
+- [RECOMMENDED] 4 诸葛亮横幅长度 — 未改（留待复审）
+- [RECOMMENDED] 5 补验收 — 未改（留待复审）
+- [RECOMMENDED] 6 AC 487 “照常”不可判定 — 未改（留待复审）
+- [RECOMMENDED] 7 登记表 need 类型 — 未改（登记表不在本文）
+- [RECOMMENDED] 8 事件名 `gift`/`skillResult` 未定 — 未改（留待 ADR-0003 同步）
+- [RECOMMENDED] 9 Last Verified 与「四位武将」旧说法 — 已修（本文头部；systems-index、game-concept 在别的文件）
+- [RECOMMENDED] 10 旗的对数 “3 对” 改 “至少 3 对” — 已修
+- [RECOMMENDED] 11 只有拒马的行列陷阱 — 未改（需设计取向）
+- 另（用户决定 D5）: 赵云挡下横幅统一为「赵云挡下！」 — 已修（Visual/Audio 赵云护盾条）
+Reviewed-Content-Hash: design/gdd/general-skills.md 30e31e9afa9e7a96e81b16e9b2cbe2fbe4b8614a
+Reviewed-Content-Hash: design/registry/entities.yaml 9b88f1c949f5e636c3d0ba131a4bc5616d38c526
+Reviewed-Content-Hash: .claude/skills/design-review/SKILL.md a63d8fba9b7142eeb43791f061e2e1533c429b43
+（以上哈希取修订前的 git 版本 f3a96f9，即本次审查读到的版本；由主会话补填）

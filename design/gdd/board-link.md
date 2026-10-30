@@ -1,9 +1,9 @@
 # 盘面与连通
 
-> **Status**: Revised（2026-10-30，并入切片第四至六版和选将；同日并入压境拒马和 `convertBlocks`；待重新审查）
+> **Status**: In Review（2026-10-30 按 /design-review 修订，待复审）
 > **Author**: 用户 + 主会话（lean 模式）
 > **Last Updated**: 2026-10-30
-> **Last Verified**: 2026-10-27
+> **Last Verified**: 2026-10-30
 > **Implements Pillar**: 4 一看就会、1 一回一乐、2 将在人为
 
 ## Summary
@@ -85,7 +85,7 @@
     - **第一级，重排**：把全部牌（上层和底层一起）在它们**当前占的位置里**用 `shuffle` 流重新排列：每个“位置”是某格的上层或某格底层的某一张，位置集合不变，所以叠的形状不变，拒马不动。排完看上层有没有可连对，没有就再排，最多试 `RESHUFFLE_TRIES` 次。
     - **第二级，对调**（确定性，不用随机数）：按行优先顺序找第一对“当作同种时能连通”的上层已占格 (p, q)；再按“位置顺序”（行优先逐格，每格先上层、后底层）找第一张与 p 同种、且不是 p 的上层的牌 r（可以是底牌），把 q 的上层和 r 对调。对调后 p、q 同种且连通，位置集合不变，I1 不受影响。
     - **第三级，挪牌**（切片第六版）：找不到 (p, q)（例如上层只剩一块、最后一对叠在同一格里），就把底牌挪到空格上：按行优先逐格，把底牌一张张翻到当时行优先的第一个空格的上层，直到底牌挪完或没有空格。挪过牌后上层有可连对就结束；没有就从第一级重来一次（这一次底牌已经挪出来，不会再走到第三级）。
-    - **第四级，清盘**：挪牌也救不回来（没有底牌可挪，或上层块被拒马围死），开发版断言失败；正式版先把全部拒马碎掉再从第一级试一次，仍不行就把剩下的块全部清掉，返回 `clear {source: 'reshuffle', cells, buried, pairs}`，由对局流程像其他清除一样分发，避免卡死。（“先碎拒马”是合并时补的兜底，切片代码里没有，待用户确认。）
+    - **第四级，清盘**：挪牌也救不回来（没有底牌可挪，或上层块被拒马围死），开发版断言失败；正式版先把全部拒马碎掉（用户决定，2026-10-30：接受，先碎拒马；这是规则 9“洗牌不碎拒马”的唯一例外，只在第一至三级都救不回来时发生）再从第一级试一次，仍不行就把剩下的块全部清掉，返回 `clear {source: 'reshuffle', cells, buried, blocks, pairs}`（`blocks` 记下碎掉的拒马），由对局流程像其他清除一样分发，避免卡死。
     - `ensurePlayable()` **当场**改好盘面数据，返回 `reshuffle {fallback}`（第二、三级为 `fallback = true`）；不需要洗牌时返回 `null`。本系统不申请令牌：对局流程收到 `reshuffle` 后代为申请 `reshuffle` 令牌 `RESHUFFLE_SHOW_MS`（默认 400 ms），界面在这段时间里播放演出：整盘作为一个容器被抽走（淡出并上移，占令牌时长的 45%），停 10%，在新位置排好后整盘落下（45%）；默认就是 180 / 40 / 180 ms。整盘一个容器，同时动的元素只有 1 个。少动设置下块直接换位，令牌时长不变。喊字位用读的字显示“重新布阵”。令牌期间停钟、锁盘。
     - 洗牌后，选中一律清空。
     - 洗牌次数只写开发版日志，不进结果对象。
@@ -109,12 +109,13 @@
     - `convertBlocks` 的 I1 检查按改动前后逐兵种计数（全部牌，含底层）：每种兵的增减必须是偶数。调用方（铁索连环）每次传同一种兵的 2 格，所以总是成立；开发版照常断言。不检查 I2（留到结算点）。目标格本来就是 `kind` 时，这一格 `from = kind`，等于没改。
     - `clear` 就是其他文档说的“非玩家清除”，**只由本系统产生**。
 14. **赵云待命**（`forceNext` 为真时；只在压境、粮草模式里用，敌将模式的赵云是护盾，不经过本系统，见“武将技能”）：玩家选中两块**同种**的兵，不管连不连得通，都按“消除”处理，`forced = true`，并关掉待命（用户决定，2026-10-27：“下一对必用掉”）。能连通时 `path` 是正常折线；连不通时 `path` 是两块中心之间的一条直线。界面把赵云的一对一律画成朱虚线（沿 `path`）。待命期间不会产生“连不上”。选中两块不同种的兵不消耗待命。
-15. **关羽选排要用的盘面接口**（规则归“武将技能”，本系统只提供数据和清除）：
+15. **关羽选排、黄忠选列要用的盘面接口**（规则归“武将技能”规则 14、14b，本系统只提供数据和清除）：
     - `rowContents(r)`：返回第 `r` 行的上层兵 `{r, c, kind}`、底牌 `{r, c, kind}`、拒马格 `{r, c}` 三张表。武将技能据此判断“这一行有没有块”、算出要斩的目标。
+    - `colContents(c)`：返回第 `c` 列的上层兵 `{r, c, kind}`、底牌 `{r, c, kind}`、拒马格 `{r, c}` 三张表，形状与 `rowContents` 相同。黄忠据此判断“这一列有没有块”、算出要射的目标。
     - `buriedCells(kind)`：按行优先返回底层最上面那张是 `kind` 的全部格子，供补斩在上层找不到同种时斩底牌。
-    - 斩一行的典型调用：这一行每个有兵的格给 `stack`、每个拒马格给 `block`，加上补斩的格（上层给 `top`、底牌给 `under`），一次 `clearCells` 交给本系统。补斩规则保证 I1 成立；本系统照常检查，不合就拒绝。
+    - 斩一行的典型调用：这一行每个有兵的格给 `stack`、每个拒马格给 `block`，加上补斩的格（上层给 `top`、底牌给 `under`），一次 `clearCells` 交给本系统。射一列同理：用 `colContents` 取目标，一次 `clearCells`。补斩规则保证 I1 成立；本系统照常检查，不合就拒绝。
 16. **推行与选中**：`pushRowFromTop` 成功时，已选中的块跟着块一起下移，选中坐标随之加一行。压境不叠，推行只动上层：兵和拒马一起下移；最下一行只有拒马（或全空）时推行照常成功，那一行的拒马移出盘面（规则 9）。选中的块不会被推出盘面（最下一行有兵时推行被拒）。
-17. **查询接口**：`isEmpty()`（上层没有兵；按 I3 即全盘无兵）、`bottomOccupied()`（最下一行有没有兵）、`pairsLeft()`（全部牌的对数，含底牌，公式 pairs_left）、`count(kind)`（含底牌）、`cells()`、`cellsOf(kind)`（只上层）、`depthAt(r, c)`（这一格底下几张）、`buriedCount()`、`buriedCells(kind)`、`blocks()`（拒马格）、`rowContents(r)`、`selection()`、`forceNext()`、`hasPlayablePair()`（只看上层）、`rng(name)`。
+17. **查询接口**：`isEmpty()`（上层没有兵；按 I3 即全盘无兵）、`bottomOccupied()`（最下一行有没有兵）、`pairsLeft()`（全部牌的对数，含底牌，公式 pairs_left）、`count(kind)`（含底牌）、`cells()`、`cellsOf(kind)`（只上层）、`depthAt(r, c)`（这一格底下几张）、`buriedCount()`、`buriedCells(kind)`、`blocks()`（拒马格）、`rowContents(r)`、`colContents(c)`、`selection()`、`forceNext()`、`hasPlayablePair()`（只看上层）、`rng(name)`。
 18. **玩家不能做的事**：不能拖动块、不能交换位置、不能撤销、不能翻看底牌。盘锁住时（对局流程规则 5）点击直接丢弃，不缓存。
 
 ### States and Transitions
@@ -135,7 +136,7 @@
 | 对局流程与时钟 | 下游调用者 | 把点击交给本系统，拿回 `match`/`miss`；按固定顺序分发；结算点调用 `ensurePlayable()`；开局给出 `seed` | 本系统定义返回数据，对局流程定义顺序 |
 | 清除效果与连斩 | 下游 | 收到 `match`；调用 `clearKind(…, 'effect')`（连底牌）；读 `count` 判断有没有目标 | 本系统 |
 | 战场压力 | 下游 | 收到 `match`、`miss`、`clear`；调用 `pushRowFromTop`（行里可含拒马）、`addPairs`、`shuffleTopRows`、`placeBlocks`、`convertBlocks`；读 `cellsOf`；读 `bottomOccupied`、`isEmpty`、`pairsLeft`、`blocks`；用 `rng('wave')`、`rng('add')` | 本系统 |
-| 武将技能 | 下游 | 收到 `match`（蓄力）；调用 `clearCells`（关羽，含 `under`、`stack`、`block` 层）、`clearKind`（诸葛亮，连底牌）、`setForceNext`（压境、粮草的赵云）、`clearSelection`；读 `rowContents`、`buriedCells`、`count` | 本系统 |
+| 武将技能 | 下游 | 收到 `match`（蓄力）；调用 `clearCells`（关羽、黄忠，含 `under`、`stack`、`block` 层）、`clearKind`（诸葛亮，连底牌）、`setForceNext`（压境、粮草的赵云）、`clearSelection`；读 `rowContents`（关羽）、`colContents`（黄忠）、`buriedCells`、`count` | 本系统 |
 | 回目编排与难度 | 双向数据约定 | 回目提供 `cols`、`rows`、`deck`；本系统定义兵种 id、偶数规则、层叠上限，回目加载器按这些规则校验 | 规则归本系统，格式和校验归回目编排 |
 | 界面与交互 | 下游 | 读盘面、底层张数、拒马、选中、折线、待命；转发点击；播放洗牌、翻牌、拒马碎裂演出 | 本系统 |
 
@@ -154,11 +155,11 @@ The deck_valid formula is defined as:
 | deck[k] | int | 0–96 | data file | 兵种 k 的块数（含将压底的）；上限是最大盘面 6 × 8 再叠一层 |
 | cols | int | 5–6 | data file | 列数，缺省 6；正式版默认 5 |
 | rows | int | 6–8 | data file | 行数；压境固定 8 |
-| startRows | int | 3–5 | data file | 压境开局行数（见“战场压力”） |
+| startRows | int | 3–5（6 列）；5 列只能 4 | data file | 压境开局行数（见“战场压力”；5 列时 3 或 5 会让 Σ deck 为单数） |
 | STACK_DEPTH | int | 1 | constant | 每格最多压几张 |
 
 **Output Range:** true / false；为 false 时回目加载器拒绝加载这一回。
-**Example:** 第一回 `cols = 5`、`rows = 6`：火 2、营 6、刀 6、鼓 6、盾 6、书 8、旗 6、酒 4 → 合计 44，全是偶数，30 ≤ 44 ≤ 60 → 有效。若 Σ = 62 → 超过 60，无效；若 Σ = 28 → 填不满，无效。
+**Example:** 第五回 `cols = 5`、`rows = 6`：鼓 8、刀 6、盾 6、旗 6、酒 6、营 6、弓 6 → 合计 44，全是偶数，30 ≤ 44 ≤ 60 → 有效。若 Σ = 62 → 超过 60，无效；若 Σ = 28 → 填不满，无效。
 
 The buried_count formula is defined as:
 
@@ -167,14 +168,14 @@ The buried_count formula is defined as:
 **Variables:** 同 deck_valid。
 
 **Output Range:** 0 到 `cols × rows × STACK_DEPTH`。
-**Example:** 第一回 44 − 30 = 14 张压底，分在 30 格里的 14 格下面。
+**Example:** 第五回 44 − 30 = 14 张压底，分在 30 格里的 14 格下面。
 
 The pairs_left formula is defined as:
 
 `pairsLeft = (上层兵数 + 底牌数) / 2`；拒马不算
 
 **Output Range:** 0 到 `Σ deck / 2`；由 I1 保证是整数。
-**Example:** 第一回开局 (30 + 14) / 2 = 22 对。
+**Example:** 第五回开局 (30 + 14) / 2 = 22 对。压境 5 列开局 4 行：(4 × 5) / 2 = 10 对。
 
 The path_choice formula is defined as:
 
@@ -235,8 +236,8 @@ The reshuffle_bound formula is defined as:
 
 ## Dependencies
 
-- **依赖（上游）**：无系统依赖（对外接口含 `clearSelection`、`rowContents`、`buriedCells`，供武将技能用）。和“回目编排与难度”是双向数据约定：本系统定义兵种 id、偶数规则和层叠上限，回目编排定义 `cols`、`deck` 的数据格式并在加载时校验。
-- **被依赖（下游）**：对局流程与时钟（硬：点击结果、结算点的 `ensurePlayable`、种子）、清除效果与连斩（硬：`match`、`clearKind`）、战场压力（硬：推行（行里可含拒马）、增兵、横扫、拒马、换兵 `convertBlocks`（曹操铁索连环）、最下一行、`wave` 流）、武将技能（硬：`clearCells`、`clearKind`、`setForceNext`、选排查询）、界面与交互（硬：显示、底层张数、输入、洗牌和翻牌演出）。
+- **依赖（上游）**：无系统依赖（对外接口含 `clearSelection`、`rowContents`、`colContents`、`buriedCells`，供武将技能用）。和“回目编排与难度”是双向数据约定：本系统定义兵种 id、偶数规则和层叠上限，回目编排定义 `cols`、`deck` 的数据格式并在加载时校验。
+- **被依赖（下游）**：对局流程与时钟（硬：点击结果、结算点的 `ensurePlayable`、种子）、清除效果与连斩（硬：`match`、`clearKind`）、战场压力（硬：推行（行里可含拒马）、增兵、横扫、拒马、换兵 `convertBlocks`（曹操铁索连环）、最下一行、`wave` 流）、武将技能（硬：`clearCells`、`clearKind`、`setForceNext`、关羽选排和黄忠选列查询）、界面与交互（硬：显示、底层张数、输入、洗牌和翻牌演出）。
 - **实现备注**（→ 技术决策记录）：规则函数只接收数据、返回数据，不读写页面元素，可以用 Node 自带的测试框架直接测试。
 
 ## Tuning Knobs
@@ -247,8 +248,8 @@ The reshuffle_bound formula is defined as:
 | RESHUFFLE_SHOW_MS | 400 | 300–800 | 洗牌拖节奏 | 看不清发生了什么 |
 | 回目 `cols` | 5（缺省 6） | 5–6 | 6 列：块变小（53 px），找对更难 | — |
 | 回目 `rows` | 6–8 | 6–8 | 块要更小（见“界面与交互”的 fit_scale） | 盘太小，一局太快 |
-| 回目 `deck` 种类数 | 8–11 | 6–12 | 更难找对 | 一眼就是一对 |
-| 回目底牌数（`Σ deck − cols × rows`） | 第一回 14 | 0 到 `cols × rows` | 找对更难、更依赖技能；一回更长 | 层叠形同虚设 |
+| 回目 `deck` 种类数 | 4–7（第一回 4 种，其余 5–7 种） | 4–12 | 更难找对 | 一眼就是一对 |
+| 回目底牌数（`Σ deck − cols × rows`） | 第三回 10、第五回 14、第十回 21（见回目编排） | 0 到 `cols × rows` | 找对更难、更依赖技能；一回更长 | 层叠形同虚设 |
 
 `MAX_TURNS = 2` 是规则常量，不开放调整。`STACK_DEPTH = 1` 是规则常量：界面只画一层底牌，老人也只需要记“底下还有一张”；要加深先改界面和本文。
 
@@ -278,7 +279,7 @@ The reshuffle_bound formula is defined as:
 
 ## UI Requirements
 
-盘面占屏幕中部，5 或 6 列。5 列时棋子 66–72 px（上限 72），6 列时约 53 px（以“界面与交互”的 cell_size 为准，小屏会整体缩放）；外圈走线带保持台面色，不画木框，绕外圈的连线要看得见。层叠标记、翻牌、拒马的样式见“界面与交互”。
+盘面占屏幕中部，5 或 6 列。棋子大小以“界面与交互”的 cell_size 公式为准（上限 72，小屏会先缩格距再整体缩放）；外圈走线带保持台面色，不画木框，绕外圈的连线要看得见。层叠标记、翻牌、拒马的样式见“界面与交互”。
 
 ## Cross-References
 
@@ -287,7 +288,7 @@ The reshuffle_bound formula is defined as:
 | 结算点、分发顺序、种子来历、令牌 | design/gdd/round-flow.md | 规则 4、6、12 |
 | 推行、增兵、波次生成（含 `waveList` 里的拒马）、画戟横扫、赤兔冲阵、铁索连环 | design/gdd/battle-pressure.md | 规则 8、9a、23a；调用时机和参数 |
 | 整类清除的目标 | design/gdd/clear-effects.md | 火 → 营、马 → 弓、水 → 城 |
-| 关羽选排与补斩、诸葛亮、赵云 | design/gdd/general-skills.md | `clearCells`、`clearKind`、`setForceNext`、`rowContents`、`buriedCells` |
+| 关羽选排与补斩、黄忠选列（规则 14b、`huang_cut`）、诸葛亮、赵云 | design/gdd/general-skills.md | `clearCells`、`clearKind`、`setForceNext`、`rowContents`、`colContents`、`buriedCells` |
 | `cols`、`rows`、`deck` 的数据格式与校验 | design/gdd/chapter-design.md | — |
 | 格距、点击换算、层叠标记、翻牌和洗牌演出 | design/gdd/ui-interaction.md | — |
 | 视觉、动效时长 | design/art/art-bible.md 第 2、3、7 节 | — |
@@ -297,11 +298,11 @@ The reshuffle_bound formula is defined as:
 - **GIVEN** 固定 `seed` 和回目数据，**WHEN** 发牌两次，**THEN** 两次的盘面逐格相同，底牌位置和兵种也相同。
 - **GIVEN** 固定 `seed`，**WHEN** 一局里死局洗牌 0 次、另一局洗牌 3 次，**THEN** 两局 `wave` 流和 `add` 流产生的序列完全相同。
 - **GIVEN** 压境回目 `startRows = 4`，**WHEN** 发牌，**THEN** 第 1–4 行满、第 5–8 行全空，没有底牌。
-- **GIVEN** 第一回数据（5 列 × 6 行，Σ deck = 44），**WHEN** 发牌，**THEN** 上层 30 格全满，底牌 14 张，每格最多 1 张，`pairsLeft() = 22`，每种兵（含底牌）为偶数。
+- **GIVEN** 满盘测试数据（5 列 × 6 行，Σ deck = 44，兵种构成取第五回），**WHEN** 发牌，**THEN** 上层 30 格全满，底牌 14 张，每格最多 1 张，`pairsLeft() = 22`，每种兵（含底牌）为偶数。
 - **GIVEN** 满盘回目 `cols = 5`、`rows = 6`，**WHEN** Σ deck 为 28 或 62，**THEN** deck_valid 为 false，加载被拒；为 30 或 60 时为 true。
 - **GIVEN** `cols` 缺省，**WHEN** 加载，**THEN** 按 6 列。
 - **GIVEN** (2,3) 上层是刀、底下压着鼓，**WHEN** 玩家消掉这块刀和另一块刀，**THEN** `match.revealed` 含 `{2,3,鼓}`，(2,3) 上层变成鼓。
-- **GIVEN** 底牌，**WHEN** 玩家点它所在的格，**THEN** 选中的是上层那张；底牌不能被选中、不挡路之外的任何判定都不看它。
+- **GIVEN** (2,3) 上层是刀、底下是鼓，**WHEN** 玩家点 (2,3)，**THEN** `selection()` 为 `{r:2, c:3}` 且 `cells()` 里该格的 kind 是刀（不是鼓）；**GIVEN** 同一盘面把所有底牌删掉后另存一份，**WHEN** 对两份盘面的所有同种上层对做连通判定，**THEN** 两份结果（是否连通、折线）逐对完全相同。
 - **GIVEN** 两块同种的兵在同一行且中间全空，**WHEN** 依次点它们，**THEN** 返回 `match`，折线 2 点。
 - **GIVEN** 两块同种的兵需要一个拐点，**WHEN** 依次点它们，**THEN** 返回 `match`，折线 3 点。
 - **GIVEN** 两块同种的兵只能经外圈绕两个弯连上，**WHEN** 依次点它们，**THEN** 返回 `match`，折线 4 点且经过外圈坐标。
@@ -317,7 +318,8 @@ The reshuffle_bound formula is defined as:
 - **GIVEN** 赵云待命，**WHEN** 选中两块连不通的同种兵，**THEN** 返回 `match` 且 `forced = true`、`path` 为 2 点直线，待命关闭，不产生 `miss`。
 - **GIVEN** 赵云待命，**WHEN** 选中两块连得通的同种兵，**THEN** 返回 `match` 且 `forced = true`，待命关闭。
 - **GIVEN** 随机盘面，**WHEN** 用独立写的广度优先搜索对比所有同种对的连通结果，**THEN** 两者在 10 万对以上的样本中完全一致。
-- **GIVEN** 1000 局固定种子的自动对局（8 行盘、开局 4 行；每步随机选一对可连对；每 5 步按 1:1:1:1 穿插 `clearKind`（随机一种盘上有的兵）、合法的 `clearCells`（关羽规则斩最下一行）、`pushRowFromTop`（最下一行空时；新行用 `rng('wave')` 按 deck 权重抽 3 对）、`addPairs`（2 对，按 deck 权重抽）），**WHEN** 每个结算点检查，**THEN** I1 和 I2 每次都成立，且所有局最终都能清空。
+- **GIVEN** 1000 局固定种子的自动对局（`cols = 6`、8 行盘、开局 4 行；每步随机选一对可连对；每 5 步按 1:1:1:1 穿插 `clearKind`（随机一种盘上有的兵）、合法的 `clearCells`（关羽规则斩最下一行）、`pushRowFromTop`（最下一行空时；新行用 `rng('wave')` 按 deck 权重抽 3 对）、`addPairs`（2 对，按 deck 权重抽）），**WHEN** 每个结算点检查，**THEN** I1 和 I2 每次都成立，且所有局最终都能清空。
+- **GIVEN** 1000 局固定种子、`cols = 5`、8 行、开局 4 行（Σ deck = 20），每步随机选一对可连对，每 5 步按 1:1:1:1 穿插 `clearKind`、合法 `clearCells`、`pushRowFromTop`（最下一行无兵时；新行为 2 对兵 + 1 个空格位，空格位按 1:1 取 `null` 或 `'jm'`，用 `rng('wave')` 抽）、`addPairs`，**WHEN** 每个结算点检查，**THEN** I1、I2、I3 都成立，每局不超过 400 步，且全部清空。
 - **GIVEN** 1000 局固定种子的满盘层叠自动对局（5 × 6，Σ deck = 44；每步随机选一对可连对；每 5 步按 1:1:1:1:1 穿插 `clearKind`、按关羽选排规则随机斩一行（含底牌、拒马和补斩）、`addPairs`、`shuffleTopRows`、`placeBlocks(2)`），**WHEN** 每个结算点检查，**THEN** I1、I2、I3 每次都成立，且所有局最终都能清空（剩下的只有拒马也算清空）。
 - **GIVEN** 一张满盘、没有任何可连对的构造盘面（含底牌），**WHEN** 调用 `ensurePlayable()`，**THEN** 返回 `reshuffle`，盘面当场已洗好：至少有一对可连，各兵种数量（含底牌）不变，每格底层张数不变，拒马不动，选中已清空。
 - **GIVEN** 盘上只剩 (4,4) 一格，上层刀、底下刀，**WHEN** 调用 `ensurePlayable()`，**THEN** 底下的刀挪到行优先第一个空格，返回 `reshuffle {fallback: true}`，上层两块刀可连。
@@ -330,6 +332,8 @@ The reshuffle_bound formula is defined as:
 - **GIVEN** `clearKind('ying', 'effect')`，盘上上层 4 块营、底下 2 张营，其中一张营压在一块上层营底下，**WHEN** 调用，**THEN** 返回 `clear`，`cells` 4 格、`buried = 2`、`pairs = 3`，盘上（含底层）没有营；那一格变空，其余被清的格底下有别种牌的翻上来。
 - **GIVEN** 第 6 行上层有刀、鼓、拒马、盾、盾，鼓底下压着书，**WHEN** 武将技能按选排规则调用 `clearCells`（这一行 `stack` 和 `block`，加上补斩一块刀、一块鼓、一张书），**THEN** 第 6 行全空，拒马碎掉，`pairs` 只数兵（拒马不算），I1 成立。
 - **GIVEN** `clearCells` 的目标会让某种兵（含底牌）剩单数，**WHEN** 正式版调用，**THEN** 返回 `{ok:false}`，盘面不变。
+- **GIVEN** 5 列 6 行、第 2 列从上到下是 营、书、拒马、刀、营、鼓，且第 1 行营底下压着旗，**WHEN** `colContents(2)`，**THEN** 上层兵 5 块、底牌 1 张（旗）、拒马 1 格，且 `clearCells` 射该列（兵给 `stack`、拒马给 `block`，加补斩）后 `pairs = 5`（与武将技能 `huang_cut` 例子一致）。
+- **GIVEN** 盘上有拒马，且死局的第二、三、四级各构造一张盘面（第四级：上层只剩 2 块同种兵，被 4 块拒马围死，没有底牌），**WHEN** `ensurePlayable()`，**THEN** 第二、三级拒马全部不动、返回 `reshuffle {fallback: true}`、有可连对；第四级拒马全部碎掉、盘上至少有一对可连，`clear.blocks` 记下碎掉的拒马。
 - **GIVEN** 盘上某种兵上层没有、底下有，**WHEN** 调用 `buriedCells(kind)`，**THEN** 按行优先返回压着它的格子。
 - **GIVEN** 最下一行有块，**WHEN** 调用 `pushRowFromTop`，**THEN** 返回 `{ok:false}`，盘面不变；**GIVEN** 最下一行为空且第 3 行第 2 列的块被选中，**WHEN** 推行，**THEN** 所有块下移一行，选中变为第 4 行第 2 列。
 - **GIVEN** 盘上只有 3 个空格，**WHEN** `addPairs([dao, gu])`，**THEN** 放下 1 对，`placed = 1`，每种兵仍为偶数，没有放在拒马格或压到底下。
@@ -349,5 +353,4 @@ The reshuffle_bound formula is defined as:
 
 - 对调两块兵（第二级），玩家会不会看出来、觉得是作弊？（负责：试玩时观察；目标：竖切片前。）
 - `RESHUFFLE_SHOW_MS` 400 ms 的演出够不够让中老年明白“盘被重排了”？挪牌（第三级）时底牌“跑到空格上”要不要单独演出？（负责：试玩、界面与交互。）
-- 死局第四级“先碎全部拒马再试”是合并时补的兜底，切片里没有；是否接受，还是直接清盘？（负责：用户。）
 - 层叠带来的难度模拟器量不出来（机器人看得到所有可连对），要靠试玩判断；嫌简单再交给关卡设计调步数或底牌数（切片第六版数值节）。（负责：试玩、关卡设计。）

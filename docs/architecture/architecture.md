@@ -2,10 +2,10 @@
 
 ## Document Status
 - Version: 4（v1 当天经 `/architecture-review` 全量审查为 CONCERNS；v2 按审查意见修订装配顺序、覆盖卡计时归属、事件字段、构建检查、开放问题；复核发现 v2 带进的新问题，v3 修订；第二次复核又发现 2 个中等问题（开讲渐隐的起点、发布时去注释会删坏正则），v4 修订：`starting` 时 `overlay()` 为 `null`，MVP 发布包不去注释、改为用 `node:vm` 编译检查。按事先定的停止标准，复核到此为止，低严重度的遗留项见审查报告末尾）
-- Last Updated: 2026-10-27
+- Last Updated: 2026-10-30（加入选将 general-loadout，Feature 层；ADR-0001..0004 已 Accepted 并于 2026-10-30 就地修订）
 - Engine: 不用引擎 — 原生 H5（HTML/CSS/JS，ES2017），跑在小红书“小工具”WebView 里；平台参考 `docs/engine-reference/web-h5/VERSION.md`
 - Workflow tier: standard（按 `/create-architecture` 的 standard 规定：系统分层图 + 关键决策记录清单；模块归属、数据流、接口边界只写到决策记录需要的程度）
-- GDDs Covered: board-link、round-flow、clear-effects、battle-pressure、general-skills、chapter-design、progress-save、ui-interaction（8 份 MVP，均为 Approved）
+- GDDs Covered: board-link、round-flow、clear-effects、battle-pressure、general-skills、general-loadout、chapter-design、progress-save、ui-interaction（8 份 MVP + 2026-10-30 加入的选将；均在复审中，状态 In Review）
 - ADRs Referenced: ADR-0001、ADR-0002、ADR-0003、ADR-0004（均为 Proposed）
 - TD-ARCHITECTURE: 2026-10-27 — skipped — lean mode
 - LP-FEASIBILITY: 2026-10-27 — skipped — lean mode
@@ -80,7 +80,7 @@ Extracted from 8 GDDs | 38 requirements listed here | 50 registered（TR registr
 ┌───────────────────────────────────────────────────────────────────────┐
 │ PRESENTATION  src/view/       界面与交互：画面、布局、输入换算、演出、喊字位 │
 ├───────────────────────────────────────────────────────────────────────┤
-│ FEATURE       src/rules/      战场压力 · 武将技能 · 进度三星存档（逻辑部分）  │
+│ FEATURE       src/rules/      战场压力 · 武将技能 · 选将 · 进度三星存档（逻辑部分） │
 │               src/data/       回目编排与难度：数据文件 + 加载校验            │
 ├───────────────────────────────────────────────────────────────────────┤
 │ CORE          src/rules/      对局流程与时钟 · 清除效果与连斩               │
@@ -94,7 +94,7 @@ Extracted from 8 GDDs | 38 requirements listed here | 50 registered（TR registr
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
-分层与设计文档一致：盘面与连通标的是 Foundation，对局流程、清除效果标的是 Core，战场压力、武将技能、回目编排、进度标的是 Feature，界面标的是 Presentation。多出来的 `src/core/`、`src/app/`、`src/platform/` 不对应任何设计文档系统，是承接平台和整体运转的基础代码。
+分层与设计文档一致：盘面与连通标的是 Foundation，对局流程、清除效果标的是 Core，战场压力、武将技能、选将、回目编排、进度标的是 Feature，界面标的是 Presentation。多出来的 `src/core/`、`src/app/`、`src/platform/` 不对应任何设计文档系统，是承接平台和整体运转的基础代码。
 
 **装配根是例外**：`src/main.mjs`、`src/app/`、`src/platform/lifecycle.mjs` 负责把各层接起来（建 round、建界面、把平台事件转成调用），所以会引用上层。它们只做装配和转接，不含规则；“下层不引用上层”约束的是 `src/core/`、`src/rules/`、`src/data/` 和 `src/platform/storage.mjs`。
 
@@ -107,6 +107,7 @@ Extracted from 8 GDDs | 38 requirements listed here | 50 registered（TR registr
 | `src/rules/clear-effects.mjs` | 连斩计数、窗口、效果待结算、打断额度 | `onMatch`、查询（连斩数、预告目标） | 对局流程；界面只读 |
 | `src/rules/battle-pressure.mjs` | 压境波次表与倒计时、粮数、敌将血量与蓄力、心 | `onMatch`/`onMiss`/`onClear`/`tick`/`outcome`/`metrics`/`hud`；张飞用的接口 | 对局流程、武将技能；界面读 `hud()` |
 | `src/rules/general-skills.mjs` | 每位武将的蓄力、待命、释放次数 | `onMatch`、`tapCard(id)`、`cards()` | 对局流程；界面 |
+| `src/rules/general-loadout.mjs` | 槽位（主将锁定 + 副将）、推荐阵容；已解锁武将由各回 `wins` 推出，不另存 | `slots`、`lead`、`recommend`、`unlock`/`starters`、`showPicker`、`available`；开讲时把定下的阵容交给武将技能 | 对局流程（水牌点将走覆盖卡按钮意图）；界面读槽位；写档的 `loadout` 经 `progress.settle` |
 | `src/rules/progress-save.mjs` | 内存进度、存储状态（正常 / 只读 / 仅内存）、待显示的提示 | `boot()`、`settle(RoundResult)`、书目查询、`nextNotice()` | 对局流程；界面 |
 | `src/data/chapters.mjs` + `src/rules/chapter-loader.mjs` | 静态数据（无运行状态） | `loadChapters(data, flags)` → 能加载的回目、警告清单 | 启动流程；所有规则系统读参数 |
 | `src/core/rng.mjs` | 无（纯函数） | `hash32(...parts)`、`createStream(seed, name)` | 盘面、对局流程 |
@@ -136,7 +137,7 @@ rAF(now) ─► main-loop: dtReal = now − last
    └─► view.render(round.drainEvents(), 查询接口)   只读，按事件播演出、按查询更新 HUD
 ```
 
-**一回的生命周期**：书目（读 `progress` 查询）→ 开讲水牌（`chapters` 数据）→ 对局（上面的每帧循环）→ 结束（`progress.settle(RoundResult)` 当场写档 → `SettleOutcome`）→ 收尾演出 → `endingDone()` → 结算卡 → 下一回 / 再来一回 / 书目。
+**一回的生命周期**：书目（读 `progress` 查询）→ 开讲水牌（`chapters` 数据；点将区读写 `general-loadout`，点“开讲”时定下 `loadout` 交给武将技能）→ 对局（上面的每帧循环）→ 结束（`progress.settle(RoundResult)` 当场写档 → `SettleOutcome`）→ 收尾演出 → `endingDone()` → 结算卡 → 下一回 / 再来一回 / 书目。
 
 **输入**：指针事件在到达时由界面换算成意图（格子坐标、武将 id、按钮），进入输入队列，在下一帧第 ② 步按到达顺序处理。可见性、横竖屏、返回键不排队，直接调用对局流程的入口（页面进后台后 rAF 会停，不能等下一帧）。
 

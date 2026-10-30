@@ -1,9 +1,9 @@
 # 战场压力
 
-> **Status**: Revised（2026-10-30，并入切片第四至六版和选将；同日并入正式版前 10 回的新敌将、铁索连环、刘备接口、压境拒马；待重新审查）
+> **Status**: In Review（2026-10-30 按 /design-review 修订，待复审）
 > **Author**: 用户 + 主会话（lean 模式）
 > **Last Updated**: 2026-10-30
-> **Last Verified**: 2026-10-27
+> **Last Verified**: 2026-10-30
 > **Implements Pillar**: 3 故事决定这一回打什么仗、1 一回一乐（挑战是体验排序第 1）
 
 ## Summary
@@ -30,7 +30,7 @@
 
 1. 每一回从回目数据读取 `mode` ∈ {`press`, `food`, `boss`} 及其参数。参数的**合法范围**是下面各公式变量表里的 Range：超出就由回目加载器拒绝加载；超出 Tuning Knobs 的**安全范围**只警告。网址参数 `slow=1` 的倍率在校验之后、开局时才乘上去，结果不再校验（它只是测试用的放宽）。
 2. 对局流程只在 `dtGame > 0` 的帧调用 `tick(dtGame)`；有令牌时不调用，压力不前进。压境用 `dtGame` 计时；敌将**不看时间**，`tick` 只检查“该不该换阶段、该不该出手”（规则 23），触发条件是步数（规则 22）。
-3. 对局流程按固定顺序把盘面的结果交给本系统（对局流程规则 6）：`onMatch(match)`、`onMiss(miss)`、`onClear(clear)`；清除效果在连斩达标时调用 `comboReward()`；武将技能调用 `scareNextPush()`、`addFood(n)`（张飞，压境、粮草），`roarBack(back, stun)`（张飞，敌将）、`raiseShield()`（赵云，敌将）、`breakSpecial()`（诸葛亮，敌将）、`healHeart(n)`（刘备，敌将）、`refillFood(n)`（刘备，粮草），并读 `sealed(general)`、`canHeal()`、`canRefill()`。本系统自己调用的 `pushRowFromTop`、`addPairs`、`shuffleTopRows`、`placeBlocks`、`convertBlocks` 的结果由本系统直接拿到。
+3. 对局流程按固定顺序把盘面的结果交给本系统（对局流程规则 6）：`onMatch(match)`、`onMiss(miss)`、`onClear(clear)`；清除效果在连斩达标时调用 `comboReward()`；武将技能调用 `scareNextPush()`、`addFood(n)`（张飞，压境、粮草），`roarBack(back, stun)`（张飞，敌将）、`raiseShield()`（赵云，敌将）、`breakSpecial()`（诸葛亮，敌将）、`healHeart(n)`（刘备，敌将）、`refillFood(n)`（刘备，粮草），并读 `sealed(general)`、`canHeal()`、`canRefill()`、`hasShield()`。`hasShield()` ≡ `hud().shield`（同一个布尔量的两种读法）：仅敌将模式有意义，压境和粮草恒为假。本系统自己调用的 `pushRowFromTop`、`addPairs`、`shuffleTopRows`、`placeBlocks`、`convertBlocks` 的结果由本系统直接拿到。
 3a. **执行时序**（与对局流程规则 6 的分发表一致）：下压在 `tick` 里**当场**改盘面，不申请令牌，盘不锁（界面播 240 ms 的整盘下移，点击由推行宽限处理）；敌将出手和换阶段在 `tick` 里**当场**改盘面和读数（扣心、增兵、特技、补满援军），然后才申请 `hostAttack` 或 `phase` 令牌演出。
 3b. **只放空格**（切片第六版）：本系统往盘上放东西（增兵、暴怒补兵、赤兔冲阵的拒马）时只放在**空格**上（这一格上层没有兵也没有拒马），不压到别的牌底下，也不新增压底的牌。压底只在发牌时发生（见“盘面与连通”）。
 4. **胜负只回答查询**：`outcome()` 返回 `{result: 'win' | 'lose' | null, reason}`，**先判胜利、再判失败**。本系统不主动结束一回。
@@ -114,7 +114,7 @@
       - 玩家当前的选中清掉（与画戟横扫一致，由 `convertBlocks` 负责）。
       - 设计意图：曹操的招就是他的破绽。盘上留着火时，营变多，火一烧清得更多；火已用完时，多出的营只是负担。玩家看见“下招：铁索连环”，就要决定“火先别消”。
     - 申请 `hostAttack` 令牌，横幅“××！”（特技显示名），发 `hostAttack {kind: 'special', special, cells | general}`（`chain` 的 `cells` 是被换成营的格子）。
-23b. **护盾**（赵云 `raiseShield()`，敌将模式）：`shield = true`（已有护盾时赵云不能放，归“武将技能”）。下一次出手被挡下：`shield = false`，不扣心、不增兵、不放特技；这一次本该是特技的，`specialNo` 照样 +1（这一招跳过）。申请 `hostAttack` 令牌，横幅“赵云挡下！”，发 `hostAttack {kind: 'blocked'}`。护盾跨阶段保留。
+23b. **护盾**（赵云 `raiseShield()`，敌将模式）：`shield = true`（`hasShield()` 为真时赵云不能放，归“武将技能”）。下一次出手被挡下：`shield = false`，不扣心、不增兵、不放特技；这一次本该是特技的，`specialNo` 照样 +1（这一招跳过）。申请 `hostAttack` 令牌，横幅“赵云挡下！”，发 `hostAttack {kind: 'blocked'}`。护盾跨阶段保留。
 23c. **破特技**（诸葛亮 `breakSpecial()`）：敌将有特技（这一回写了 `phase2`）、还没打完、且还没有“破”标记时有效；**一阶段放也有效，“破”标记留到二阶段的第一个特技**（用户决定，2026-10-30）：设 `broken = true`，返回 `{special, name, forecast}`。`special` 是下一个将轮到的特技；`forecast` 为真表示此刻预告正亮着（规则 23d）。其他情况（这一回没有二阶段、已经破过）返回 `null`。一阶段时 `special` 是二阶段的第一个特技，`forecast` 为假。诸葛亮据此出结果横幅（“清书 5 对 · 破赤兔冲阵”）；`forecast` 为假时界面在敌将框挂“破”字小标（用户决定，2026-10-30）。下一次轮到特技时（中间隔几次普通出手都一样）：`steps` 照常清零，什么都不发生，`broken = false`，`specialNo += 1`，申请 `hostAttack` 令牌，横幅“妙计已破”，发 `hostAttack {kind: 'broken', special}`。被护盾挡下的特技不消耗“破”标记，留给下一个特技。
 23d. **预告**：二阶段、下一次出手是特技、且 `stepsMax − steps ≤ FORECAST_STEPS`（2）时，`hud().forecast = {id, name, broken}`（`name` 是显示名，规则 23a），界面在敌将框下亮“下招：××”；否则为 `null`。震慑中照样显示。
 23e. **补心**（刘备“仁德”，用户决定 3，2026-10-30；数值 `LIU_HEAL` 归“武将技能”）：`healHeart(n)` 只在敌将模式有效：`gain = max(0, min(n, heartsMax − hearts))`，`hearts += gain`，返回 `gain`。补回的是最后丢的那几颗（原位虚线变实），每补回一颗发一次 `heal {heart}`（`heart` 的口径与 `hostAttack.heart` 相同：这颗心的位置）。`canHeal()` 在敌将模式、`hearts < heartsMax` 时为真，其他模式恒为假。补心不碰步数、震慑、护盾、镇住、“破”标记，不算步。心数永远不超过开局心数 `heartsMax`。
@@ -133,7 +133,7 @@
     - 压境 `{msToNextPush, wave, waves, bottomOccupied, scareArmed}`（`msToNextPush` 已含推迟）；
     - 粮草 `{food, food0, misses}`；
     - 敌将 `{hp, hpMax, phase, phases, steps, stepsMax, stepsLeft, hearts, heartsMax, stun, shield, seal: {general, left} | null, forecast, broken, pushedSinceAttack}`。界面的档位按剩余步数算：`stepsLeft ≤ BOSS_WARN_STEPS_1`（2）为 2 档，`stepsLeft ≤ BOSS_WARN_STEPS_2`（1）为 3 档（见“界面与交互”的 tier 公式）。
-    - 另外 `canScare()` 供武将技能判断张飞在压境里有没有效果；`canHeal()`、`canRefill()` 供武将技能判断刘备的“补”这一半有没有效果（规则 18a、23e）；`sealed(general)` 返回这位武将被镇住的剩余步数（没被镇住为 0）。
+    - 另外 `canScare()` 供武将技能判断张飞在压境里有没有效果；`canHeal()`、`canRefill()` 供武将技能判断刘备的“补”这一半有没有效果（规则 18a、23e）；`hasShield()` 供赵云判断能不能放（等于 `hud().shield`，见规则 3）；`sealed(general)` 返回这位武将被镇住的剩余步数（没被镇住为 0）。
 27. `metrics()`：压境 `{dangerMs}`；粮草 `{foodLeft: max(0, food), misses}`；敌将 `{heartsLost: heartsMax − hearts}`，取**结束时**的值，即**净值**（用户决定 11，2026-10-30）：刘备补回的心算回来，丢 2 颗、补回 1 颗记 1（公式 hearts_net）。特技和被挡下的出手不扣心，所以不影响评星。
 
 ### States and Transitions
@@ -157,7 +157,7 @@
 | 盘面与连通 | 上游 | 经对局流程收到 `match`、`miss`、`clear`；调用 `pushRowFromTop`（行里可含拒马）、`addPairs`、`shuffleTopRows`、`placeBlocks`、`convertBlocks`（铁索连环）（直接拿到结果，都只动空格或上层）；读 `bottomOccupied`、`isEmpty`、`cellsOf`、空格数；用 `rng('wave')`、`rng('add')`；拒马的规则（含压境里随行下移、推出盘面）归盘面 | 盘面 |
 | 对局流程与时钟 | 上游 | 被调用 `tick`、`outcome`、`metrics`、`hud`；申请 `hostAttack`、`phase` 令牌 | 对局流程定义签名，本系统实现 |
 | 清除效果与连斩 | 上游 | 被调用 `comboReward()`；推迟和退步的数值归清除效果 | 本系统实现 |
-| 武将技能 | 双向 | 提供 `scareNextPush()`、`canScare()`、`addFood(n)`、`roarBack(back, stun)`、`raiseShield()`、`breakSpecial()`、`healHeart(n)`、`canHeal()`、`refillFood(n)`、`canRefill()`（刘备）、`sealed(general)`、`hud().shield`；读武将牌的蓄力和所需对数（虎啸挑目标） | 本系统 |
+| 武将技能 | 双向 | 提供 `scareNextPush()`、`canScare()`、`addFood(n)`、`roarBack(back, stun)`、`raiseShield()`、`breakSpecial()`、`healHeart(n)`、`canHeal()`、`refillFood(n)`、`canRefill()`（刘备）、`sealed(general)`、`hasShield()`（≡ `hud().shield`）；读武将牌的蓄力和所需对数（虎啸挑目标） | 本系统 |
 | 选将与解锁 | 上游（间接） | 虎啸只在出阵武将里挑目标，出阵顺序决定并列时选谁 | 选将 |
 | 回目编排与难度 | 上游（数据） | `mode` 和参数、`cols`、`pool`、`waveList`（元素可为 `'jm'`）、`enemy`、`enemyLines`、`boss.hp`、`boss.steps`、`boss.phase2`（含 `phase2.specials`）、`enemies[id].specialNames`；敌将 `lv_bu`、`wen_chou`、`cao_cao`、`xiahou_yuan` | 合法范围由本系统定义，格式和加载校验归回目编排 |
 | 进度、三星与存档 | 下游 | `metrics()` 经结果对象交过去 | 本系统 |
@@ -167,23 +167,23 @@
 
 The press_schedule formula is defined as:
 
-`nextPush_0 = interval`；每次下压（或被吓退的下压）后 `nextPush = gameTime + interval`；期间 `nextPush += comboDelay（≤ PRESS_DELAY_CAP_MS）`
+`nextPush_0 = interval`；每次下压（或被吓退的下压）后 `nextPush = gameTime + interval`；期间 `nextPush += comboDelay_w（≤ PRESS_DELAY_CAP_MS）`
 
 **Variables:**
 | Variable | Type | Range | Source | Description |
 |----------|------|-------|--------|-------------|
-| interval | int | 4000–12000 ms | data file | 下压间隔；MVP 第二回 7000 |
-| waves | int | 4–16 | data file | 有新兵的下压次数；MVP 第二回 8 |
-| startRows | int | 3–5 | data file | 开局行数；MVP 第二回 4 |
-| comboDelay | int | 0–PRESS_DELAY_CAP_MS | calculated | 连斩推迟（见“清除效果与连斩”） |
+| interval | int | 4000–12000 ms | data file | 下压间隔；正式压境回（第 1、6、8 回）都是 12000（registry `press_interval_tiers`）；7000 只是下面例子和验收用的测试夹具 |
+| waves | int | 4–16 | data file | 有新兵的下压次数；第 6 回 8 |
+| startRows | int | 3–5 | data file | 开局行数；5 列时为 4 |
+| comboDelay_w | int | 0–PRESS_DELAY_CAP_MS | calculated | 连斩推迟（见“清除效果与连斩”） |
 | scare | bool | — | calculated | 张飞吓退标记：为真时下一次下压取消 |
 
-**Output Range:** 不清任何块时，开局最下面一行在第 `9 − startRows` 次下压时破城（startRows = 4 → 第 5 次，约 35 秒）。拒马不算兵：最下一行只有拒马时照常下压，拒马被推出盘面（规则 9a），不提前破城。
-**Example:** interval 7000、waves 8、不推迟 → 下压发生在 7、14、21……56 秒（有兵），63、70……秒（空行），直到清空或破城。
+**Output Range:** 不清任何块时，开局最下面一行在第 `9 − startRows` 次下压时破城（startRows = 4 → 第 5 次；interval 12000 时 60 秒，测试夹具 7000 时 35 秒）。拒马不算兵：最下一行只有拒马时照常下压，拒马被推出盘面（规则 9a），不提前破城。
+**Example:** 测试夹具 interval 7000、waves 8、不推迟 → 下压发生在 7、14、21……56 秒（有兵），63、70……秒（空行），直到清空或破城。正式回 interval 12000、waves 8 → 12、24……96 秒（有兵），108 秒起空行。
 
 The press_deadline formula is defined as（压境一回的时间上限和手速要求）:
 
-`T_max ≈ (waves + 8) × interval`；`wavePairs = floor(cols / 2)`；`r_need ≈ 1000 × wavePairs / interval`（对/秒，interval 以毫秒计；稳态下每秒要清的对数）；`P_press = startRows × cols / 2 + waves × wavePairs`（一回要清的总对数；5 列每波只有 2 对，不能按 `(startRows + waves) × cols / 2` 算，草稿 F10，2026-10-30）；拒马不算对，不进 `P_press`
+`T_max ≈ (waves + PRESS_ROWS) × interval`；`wavePairs = floor(cols / 2)`；`r_need ≈ 1000 × wavePairs / interval`（对/秒，interval 以毫秒计；稳态下每秒要清的对数）；`P_press = startRows × cols / 2 + waves × wavePairs`（一回要清的总对数；5 列每波只有 2 对，不能按 `(startRows + waves) × cols / 2` 算，草稿 F10，2026-10-30）；拒马不算对，不进 `P_press`
 
 **Variables:**
 | Variable | Type | Range | Source | Description |
@@ -193,10 +193,10 @@ The press_deadline formula is defined as（压境一回的时间上限和手速�
 | wavePairs | int | 2–3 | calculated | 每一波的对数：5 列 2 对（空 1 格或 1 块拒马），6 列 3 对 |
 | startRows | int | 3–5 | data file | 开局行数；`startRows × cols` 必须是偶数（deck_valid），5 列时只能取 4 |
 | P_press | int | 18–63 | calculated | 一回要清的总对数。最小 18：5 列、startRows 4、waves 4；最大 63：6 列、startRows 5、waves 16。5 列 startRows 4 时为 `10 + 2 × waves` |
-| 8 | int | 8 | constant | 压境盘的行数：第 k 次下压放进的那一行，在第 k + 8 次下压时如果还没清空就破城 |
+| PRESS_ROWS | int | 8 | constant | 压境盘的行数（registry `press_rows`）：第 k 次下压放进的那一行，在第 k + `PRESS_ROWS` 次下压时如果还没清空就破城 |
 
-**Output Range:** T_max 是一回的上限（不含推迟）；玩家平均手速低于 r_need 时，盘会越来越满，靠开局空出的 `8 − startRows` 行、效果和技能撑住。
-**Example:** 6 列、waves 8、interval 7000 → T_max ≈ 112 秒；r_need ≈ 0.43 对/秒。开发者约 0.5 对/秒能跟上；0.25 对/秒的玩家每秒落后约 0.18 对，开局 4 个空行（12 对）大约 60–70 秒用完。改成 5 列（正式版默认）后 r_need ≈ 0.29 对/秒、开局 4 个空行只能缓冲 4 波、8 对：压力明显变松，回目的 interval 和 waves 由关卡设计按 5 列重排。第 6 回草稿（5 列、startRows 4、waves 8、interval 8000）：`P_press = 10 + 8 × 2 = 26` 对（3 块拒马不算），`T_max ≈ 16 × 8 = 128` 秒，`r_need = 0.25` 对/秒。模拟后三个压境回都改为 interval 12000（“回目编排与难度”规则 11，2026-10-30）：第 6 回 `r_need ≈ 0.17` 对/秒。
+**Output Range:** T_max 是一回的上限（不含推迟）；玩家平均手速低于 r_need 时，盘会越来越满，靠开局空出的 `PRESS_ROWS − startRows` 行、效果和技能撑住。
+**Example:** （切片夹具）6 列、waves 8、interval 7000 → T_max ≈ 112 秒；r_need ≈ 0.43 对/秒。开发者约 0.5 对/秒能跟上；0.25 对/秒的玩家每秒落后约 0.18 对，开局 4 个空行（12 对）大约 60–70 秒用完。改成 5 列（正式版默认）后 r_need ≈ 0.29 对/秒、开局 4 个空行只能缓冲 4 波、8 对：压力明显变松，回目的 interval 和 waves 由关卡设计按 5 列重排。第 6 回（5 列、startRows 4、waves 8）：`P_press = 10 + 8 × 2 = 26` 对（3 块拒马不算）。模拟后三个压境回（第 1、6、8 回）都定为 interval 12000（“回目编排与难度”规则 11，2026-10-30）：第 6 回 `T_max = (8 + 8) × 12 = 192` 秒，`r_need = 1000 × 2 / 12000 ≈ 0.17` 对/秒；startRows 4 不操作时 60 秒破城；第 8 回 waves 10 时 `T_max = 18 × 12 = 216` 秒。（早先草稿 interval 8000 的 128 秒、0.25 对/秒作废。）
 
 The food_start formula is defined as:
 
@@ -220,25 +220,26 @@ The boss_steps formula is defined as（切片第五版，用户 2026-10-28 批�
 | Variable | Type | Range | Source | Description |
 |----------|------|-------|--------|-------------|
 | steps | int | 0–stepsMax | calculated | 当前步数（蓄力点亮了几颗） |
-| boss.steps | int | 3–20 | data file | 一阶段蓄满的步数；第一回 8 |
-| phase2.steps | int | 3–20 | data file | 二阶段蓄满的步数；第一回 6 |
+| boss.steps | int | 3–20 | data file | 一阶段蓄满的步数；缺省 8（切片吕布和测试夹具），正式回以回目数据为准（第 2 回 8、第 5 回 6、第 10 回 7） |
+| phase2.steps | int | 3–20 | data file | 二阶段蓄满的步数；缺省 6，正式回以回目数据为准（第 5 回 5、第 10 回 6） |
 | STEP_MATCH | int | 1 | constant | 连上一对走几步 |
 | STEP_MISS | int | 1–3 | data file | 连错一次走几步，默认 2 |
-| COMBO_PUSHBACK / COMBO_PUSHBACK_CAP | int | 1 / 1–3 | clear-effects | 连斩每次退几步、两次出手之间最多退几步，默认 1 / 2 |
+| COMBO_PUSHBACK / COMBO_PUSHBACK_CAP | int | 1–2 / 1–4 | clear-effects | 连斩每次退几步、两次出手之间最多退几步，默认 1 / 2 |
 | ZHANG_PUSHBACK / ZHANG_STUN | int | 1–5 / 0–5 | general-skills | 张飞退几步、震慑几步，默认 3 / 3 |
 | SLOW_CHARGE_FACTOR | float | 1.0–2.0 | chapter-design | 慢速档步数倍率 1.5，开局时四舍五入 |
 | hearts | int | 1–5 | data file | 初始心数，默认 3 |
 | boss.addPairs | int | 0–4 | data file | 每次普通出手的增兵对数，读回目字段；`BOSS_ADD_PAIRS` 是它的推荐值 2 和安全范围 |
 
-**Output Range:** 0–stepsMax。一个阶段里的出手次数约为：
+**Output Range:** `steps` 0–stepsMax；`attacks_p` 不小于 0。一个阶段里的出手次数约为：
 
-`attacks_p ≈ floor((M_p + STEP_MISS × X_p − P_p − Z_p) / stepsMax_p)`
+`attacks_p ≈ max(0, floor((M_p + STEP_MISS × X_p − P_p − Z_p) / stepsMax_p))`（不小于 0：分子可以为负，例如 M = 5、P = 6、Z = 6、stepsMax = 8 时 floor(−7/8) = −1，按 0 次出手算）
 
 其中 `M_p` 是这一阶段连上的对数（约等于 `hp_p` 减去效果和技能打掉的血），`X_p` 是连错次数，`P_p` 是连斩退掉的步数（每个出手周期最多 `COMBO_PUSHBACK_CAP`），`Z_p` 是张飞抵掉的步数（每次最多 `ZHANG_PUSHBACK + ZHANG_STUN` = 6）。挨打数 = 一阶段出手数 + 二阶段普通出手数（约 `floor(attacks_2 / 2)`）− 被护盾挡下的普通出手数；评星用的丢心数再减去刘备补回的心（公式 hearts_net）。只有一段血的敌将（文丑）全部出手都是普通出手。
-**Example:** 第一回（一阶段 hp 12、8 步；二阶段 hp 18、6 步）：
-- 一阶段一次不错、没有连斩和效果：M = 12 → 第 8 对时出手 1 次，丢 1 心。消一对火烧掉 3 对营（这一对打 4 血）并打出连斩：M ≈ 9，9 − 2 = 7 < 8 → 不出手。
-- 二阶段：技能和效果打掉约 7 血，M ≈ 11，连错 1 次（+2），连斩退 2 → 11 → 出手 1 次，是第一个特技“画戟横扫”，不扣心。
-- 同一局 `slow=1`（12 / 9 步）：两段都不出手。
+**Example:** 第 5 回吕布（一阶段 hp 12、6 步；二阶段 hp 18、5 步）：
+- 一阶段一次不错、没有连斩和效果：M = 12 → 第 6、12 对时各出手 1 次，丢 2 心。消一对火烧掉 3 对营（这一对打 4 血）并打出连斩：M ≈ 9，(9 − 2) / 6 → 出手 1 次。
+- 二阶段：技能和效果打掉约 7 血，M ≈ 11，连错 1 次（+2），连斩退 2 → (11 + 2 − 2) / 5 → 出手 2 次，第一次是特技“画戟横扫”（不扣心），第二次是普通出手。
+- 同一局 `slow=1`（9 / 8 步）：一阶段 M = 12 → 出手 1 次；二阶段 (11 + 2 − 2) / 8 → 出手 1 次（特技，不扣心）。
+- 切片吕布（测试夹具 `boss.steps = 8`、`phase2.steps = 6`，hp 12 / 18）：一阶段 M = 12 → 出手 1 次；`slow=1`（12 / 9 步）则一阶段不出手。
 - 切片模拟器（理想玩家，用技能）：连错比例 0 → 胜率 100%；0.2 → 95%；0.3 → 75%（DESIGN-v6）。层叠增加的“找对难”模拟不出来，要靠试玩。
 
 The boss_damage formula is defined as:
@@ -249,11 +250,11 @@ The boss_damage formula is defined as:
 | Variable | Type | Range | Source | Description |
 |----------|------|-------|--------|-------------|
 | pairsRemoved | int | 1–30 | calculated | 本次清掉的对数：`match` 为 1；`clear` 为它的 `pairs`（含压底的牌） |
-| boss.hp | int | 1–60 | data file | 一阶段血量；第一回 12 |
-| phase2.hp | int | 1–60 | data file | 二阶段血量；第一回 18 |
+| boss.hp | int | 1–60 | data file | 一阶段血量；缺省 12（切片吕布和测试夹具），正式回以回目数据为准（第 5 回 12、第 10 回 16） |
+| phase2.hp | int | 1–60 | data file | 二阶段血量；缺省 18，正式回以回目数据为准（第 5 回 18、第 10 回 18） |
 
 **Output Range:** 只有一段血时 `hp = 0` 即胜利；有两段时一阶段 `hp = 0` 进入暴怒，二阶段 `hp = 0` 胜利。
-**Example:** 第一回一阶段 hp = 4；玩家消掉一对火（−1），火烧掉 6 块营（−3），hp = 0 → 暴怒，二阶段 hp = 18。如果火烧掉的是 8 块营（−4），多出的 1 点不带进二阶段。
+**Example:** 第 5 回吕布一阶段打到 hp = 4；玩家消掉一对火（−1），火烧掉 6 块营（−3），hp = 0 → 暴怒，二阶段 hp = 18。如果火烧掉的是 8 块营（−4），多出的 1 点不带进二阶段。
 
 The hearts_net formula is defined as（评星的丢心数，用户决定 11，2026-10-30）:
 
@@ -354,21 +355,21 @@ The phase2_refill formula is defined as:
 ## Dependencies
 
 - **依赖（上游）**：盘面与连通（硬：下压（行里可含拒马）、增兵、横扫、拒马、换兵 `convertBlocks`、空格、最下一行、随机流）、对局流程与时钟（硬：`tick`、`outcome` 查询、`hostAttack` 和 `phase` 令牌；两边互为上下游，用“对局流程只查询 `outcome()`、本系统从不主动结束一回”解开循环）、清除效果与连斩（硬：`comboReward`、效果的 `clear`）、选将与解锁（design/gdd/general-loadout.md；软：虎啸只在出阵武将里挑目标）。
-- **被依赖（下游）**：武将技能（硬：张飞、赵云、诸葛亮、刘备的接口，`sealed()`、`canScare()`、`healHeart()`、`canHeal()`、`refillFood()`、`canRefill()`、`hud().shield`；本系统反过来读武将牌的蓄力挑虎啸目标）、进度三星与存档（硬：评星指标）、界面与交互（硬：`hud()` 和事件）、难度与无障碍选项（Alpha，软：慢速档调整参数）、回目编排与难度（数据双向：回目填参数，本系统定义合法范围）。
+- **被依赖（下游）**：武将技能（硬：张飞、赵云、诸葛亮、刘备的接口，`sealed()`、`canScare()`、`healHeart()`、`canHeal()`、`refillFood()`、`canRefill()`、`hasShield()`（≡ `hud().shield`）；本系统反过来读武将牌的蓄力挑虎啸目标）、进度三星与存档（硬：评星指标）、界面与交互（硬：`hud()` 和事件）、难度与无障碍选项（Alpha，软：慢速档调整参数）、回目编排与难度（数据双向：回目填参数，本系统定义合法范围）。
 
 ## Tuning Knobs
 
 | 名称 | 默认（MVP） | 安全范围 | 调高 | 调低 | 相互影响 |
 |---|---|---|---|---|---|
-| press.interval | 7000 ms | 6000–12000 | 压境变松 | r_need 变大，中老年跟不上 | r_need = 1000 × wavePairs / interval（对/秒） |
-| press.startRows | 4 | 3–5 | 开局缓冲少，更急 | 前几波太闲 | 8 − startRows 是开局的缓冲行数 |
-| press.waves | 8 | 6–12 | 一回变长 | 一回太短 | T_max ≈ (waves + 8) × interval |
-| cols（每回） | 6（正式版按 5 编排） | 5–6 | 6 列：棋子小，压境每波 3 对 | 5 列：棋子大（66–72 px），压境每波 2 对 | 列数归“回目编排与难度”，这里只决定波长 |
+| press.interval | 12000 ms（第 1/6/8 回，见 `press_interval_tiers`；7000 仅为测试夹具） | 6000–12000 | 12000 是合法上限，没有继续放宽的余地；再松只能靠 `slow=1`（×1.3 = 15600，开局后乘，不再校验） | r_need 变大，中老年跟不上 | r_need = 1000 × wavePairs / interval（对/秒） |
+| press.startRows | 4 | 3–5 | 开局缓冲少，更急 | 前几波太闲 | `PRESS_ROWS` − startRows 是开局的缓冲行数 |
+| press.waves | 8 | 6–12 | 一回变长 | 一回太短 | T_max ≈ (waves + `PRESS_ROWS`) × interval |
+| cols（每回） | 6（正式版按 5 编排） | 5–6 | 6 列：棋子小，压境每波 3 对 | 5 列：棋子大（63–72 px，以界面与交互的 cell_size 为准），压境每波 2 对 | 列数归“回目编排与难度”，这里只决定波长 |
 | food.slack | 2 | 1–4 | 不需要计划 | 一次失误就输 | 与效果兵数量强相关 |
-| boss.steps | 8（第一回） | 5–12 | 一阶段几乎不出手，教不会“出手” | 一阶段就丢光心 | 一阶段只有普通出手，用来教人；出手数见 boss_steps |
-| phase2.steps | 6（第一回） | 4–10 | 二阶段特技看不全 | 特技和出手接连不断 | 试玩嫌简单时先试 6 / 5（DESIGN-v6：偶尔连错时用技能胜率 83%、不用 28%） |
-| boss.hp | 12（第一回） | 6–30 | 一阶段拖长 | 暴怒来得太快 | 不写时取开局总对数 |
-| phase2.hp | 18（第一回） | 8–40 | 二阶段拖长，特技次数多 | 特技来不及出 | 补满援军后盘上约 15 对 + 压底的牌 |
+| boss.steps | 8（缺省；正式回见回目数据：第 2 回 8、第 5 回 6、第 10 回 7） | 5–12 | 一阶段几乎不出手，教不会“出手” | 一阶段就丢光心 | 一阶段只有普通出手，用来教人；出手数见 boss_steps |
+| phase2.steps | 6（缺省；第 5 回 5、第 10 回 6） | 4–10 | 二阶段特技看不全 | 特技和出手接连不断 | 第 5 回吕布已定为 6 / 5（DESIGN-v6：偶尔连错时用技能胜率 83%、不用 28%） |
+| boss.hp | 12（缺省；第 5 回 12、第 10 回 16） | 6–30 | 一阶段拖长 | 暴怒来得太快 | 不写时取开局总对数 |
+| phase2.hp | 18（缺省；第 5 回、第 10 回均 18） | 8–40 | 二阶段拖长，特技次数多 | 特技来不及出 | 补满援军后盘上约 15 对 + 压底的牌 |
 | boss.hearts | 3 | 2–4 | 宽松 | 一次失手就输 | 评星按丢心数（见“进度、三星与存档”） |
 | STEP_MISS | 2 | 1–3 | 乱点惩罚重 | 乱点和连上一样 | STEP_MATCH 固定为 1 |
 | boss.addPairs（推荐值 `BOSS_ADD_PAIRS`） | 2 | 1–3 | 出手后盘更挤 | 出手只扣心 | 回目字段，不影响血量 |
@@ -424,13 +425,13 @@ The phase2_refill formula is defined as:
 
 ## Acceptance Criteria
 
-- **GIVEN** 压境、startRows 4、interval 7000、玩家不操作，**WHEN** 以固定步长 dtGame = 10 ms 推进到 35000 ms，**THEN** 第 5 次到点时最下一行有块，结算点 `outcome()` 返回失败“破城”。
-- **GIVEN** 压境、最下一行为空，**WHEN** 到点，**THEN** 全盘下移一行，第 1 行是波次表的下一行（6 列 3 对；5 列 2 对加 1 个空格），每种兵仍为偶数，`wave + 1`，`nextPush = gameTime + 7000`。
+- **GIVEN** 压境、startRows 4、interval 7000（测试夹具，非正式回目数值；正式回 12000 时同一断言的时刻是 60000 ms）、玩家不操作，**WHEN** 以固定步长 dtGame = 10 ms 推进到 35000 ms，**THEN** 第 5 次到点时最下一行有块，结算点 `outcome()` 返回失败“破城”。
+- **GIVEN** 压境、最下一行为空，**WHEN** 到点，**THEN** 全盘下移一行，第 1 行是波次表的下一行（6 列 3 对；5 列 2 对加 1 个空格），每种兵仍为偶数，`wave + 1`，`nextPush = gameTime + interval`（夹具 7000）。
 - **GIVEN** 同一 `seed` 的两局，一局洗牌 0 次、一局洗牌 2 次，**WHEN** 比较波次表，**THEN** 完全相同。
 - **GIVEN** 压境、还有波次，**WHEN** 玩家把盘面清空，**THEN** 下一次 `tick` 立刻下压下一波，`outcome()` 不判胜。
 - **GIVEN** 压境、8 波已推完、盘上还有块，**WHEN** 又过了一个 interval，**THEN** 下压一行空行，`push.empty = true`。
 - **GIVEN** 压境、8 波已推完，**WHEN** 玩家清空盘面，**THEN** `outcome()` 判胜。
-- **GIVEN** 压境、最下一行有块、距下一次下压 2000 ms，**WHEN** 张飞一吼，**THEN** 到点时不下压、不破城、`wave` 不变，`nextPush = gameTime + 7000`；**GIVEN** 最下一行为空，**THEN** `canScare()` 为假（一吼无用）。
+- **GIVEN** 压境、最下一行有块、距下一次下压 2000 ms，**WHEN** 张飞一吼，**THEN** 到点时不下压、不破城、`wave` 不变，`nextPush = gameTime + interval`（夹具 7000）；**GIVEN** 最下一行为空，**THEN** `canScare()` 为假（一吼无用）。
 - **GIVEN** 压境、吓退标记已设、还有波次，**WHEN** 玩家把盘面清空，**THEN** 下一次 `tick` 照常立刻下压，`hud().scareArmed` 仍为真；下一次到点的下压被吓退。
 - **GIVEN** 压境、`cols = 5`、没写 `waveList`，**WHEN** 生成波次表，**THEN** 每一行 5 格：2 对兵加 1 个空格，同一 `seed` 结果相同。
 - **GIVEN** 压境，**WHEN** 最下一行有块的状态持续了游戏时间 2500.6 ms，**THEN** 结束时 `dangerMs = 2500`。
@@ -460,7 +461,9 @@ The phase2_refill formula is defined as:
 - **GIVEN** 盘上只有 1 个空格，**WHEN** 赤兔冲阵，**THEN** 放下 1 块拒马，`specialNo` 照样 +1。
 - **GIVEN** 出阵关羽（1 / 2）、张飞（2 / 3）、诸葛亮（0 / 4），**WHEN** 虎啸，**THEN** 镇住张飞（2/3 最大），`sealed('zhang_fei') = 3`；**WHEN** 连上 1 对再连错 1 次，**THEN** 镇住解除，发 `unseal`。
 - **GIVEN** 出阵关羽（1 / 2）、张飞（0 / 3），**WHEN** 虎啸，**THEN** 镇住关羽；**GIVEN** 两人比值相等，**THEN** 镇住出阵顺序靠前的那位。
-- **GIVEN** 网址参数 `slow=1`、第一回，**WHEN** 开局，**THEN** 一阶段 stepsMax = 12；进入二阶段后 stepsMax = 9。
+- **GIVEN** 网址参数 `slow=1`、第 5 回吕布（一阶段 6 步、二阶段 5 步），**WHEN** 开局，**THEN** 一阶段 stepsMax = 9；进入二阶段后 stepsMax = 8。
+- **GIVEN** 网址参数 `slow=1`、测试回目 `boss.steps = 8`、`phase2.steps = 6`，**WHEN** 开局，**THEN** 一阶段 stepsMax = 12；进入二阶段后 stepsMax = 9；**GIVEN** `boss.steps = 5`，**THEN** 一阶段 stepsMax = 8（7.5 四舍五入）。
+- **GIVEN** 网址参数 `slow=1`、压境回 interval 12000，**WHEN** 开局，**THEN** 实际间隔 15600（开局后乘，不再校验）。
 - **GIVEN** 敌将二阶段、hp = 1、steps 5 / 6，**WHEN** 连上一对，**THEN** 结算点判胜，没有出手。
 - **GIVEN** 敌将、hearts = heartsMax = 3、只有一阶段，**WHEN** 连续普通出手 3 次，**THEN** 第 3 次演出 600 ms 后的结算点判“城破”，`metrics().heartsLost = 3`。
 - **GIVEN** 敌将二阶段，**WHEN** 特技、被挡、被破的出手各发生一次，**THEN** `metrics().heartsLost` 不变。
@@ -498,6 +501,7 @@ The phase2_refill formula is defined as:
 - **GIVEN** 敌将、hearts 2 / 3，**WHEN** `healHeart(1)`，**THEN** 返回 1，hearts = 3，发 `heal {heart}` 一次，steps、stun、shield、seal 都不变。
 - **GIVEN** 敌将、hearts 3 / 3，**WHEN** 查询，**THEN** `canHeal()` 为假；**WHEN** `healHeart(1)`，**THEN** 返回 0，不发事件。
 - **GIVEN** 敌将、heartsMax 3，**WHEN** 挨打 2 次、`healHeart(1)`、再挨打 1 次后赢，**THEN** `metrics().heartsLost = 2`。
+- **GIVEN** 敌将、赵云已放护盾（`shield = true`），**WHEN** 查询，**THEN** `hasShield() == hud().shield == true`，赵云不能再放；护盾被出手挡下后两者都为假；**GIVEN** 压境或粮草，**THEN** `hasShield()` 恒为假。
 - **GIVEN** 粮草、food0 = 16、food = 15，**WHEN** `refillFood(2)`，**THEN** 返回 1，food = 16，发 `foodRefill {amount: 1}`。
 - **GIVEN** 粮草、food0 = 16、张飞让 food = 18，**WHEN** 查询，**THEN** `canRefill()` 为假；`refillFood(2)` 返回 0，food 仍是 18。
 - **GIVEN** 压境，**WHEN** 查询 `canHeal()`、`canRefill()`，**THEN** 都为假。
@@ -505,9 +509,9 @@ The phase2_refill formula is defined as:
 ## Open Questions
 
 - **体验检验（试玩）**：敌将模式的目标是“一阶段学会‘我每走一步他蓄一格’，二阶段看见预告会主动放赵云或诸葛亮”。试玩时观察：(1) 玩家能否说出“连错算两步”；(2) 二阶段至少一次在预告亮时主动放赵云或诸葛亮；(3) 输的人能说出输在哪一步。（负责：试玩；目标：竖切片复审前。）
-- 中老年能接受的 interval 是多少？压境 r_need 在 6 列是 0.43 对/秒、5 列是 0.29 对/秒，第二回要按 5 列重排。（负责：关卡设计 + 试玩；目标：调参前。慢速档参数已备好。）
-- 吕布“还可以再难一点”：第一回保持 8 / 6 步（用户决定 2026-10-30），后面的回目可用 6 / 5。（负责：关卡设计。）
-- **压境、粮草模式下的赵云**：敌将模式里赵云是护盾；压境、粮草模式暂保留旧规则“下一对同种兵必消”（粮草里这一对不扣粮）。等关卡设计时再定。（负责：关卡设计 + 用户。）
+- 中老年能接受的 interval 是多少？三个压境回（第 1、6、8 回）已定 12000 ms（r_need 5 列约 0.17 对/秒），12000 是合法上限，不能再放宽，慢速档（×1.3）已备好。（负责：试玩；目标：调参前。）
+- ~~吕布“还可以再难一点”~~ 已定：第 5 回吕布 6 / 5 步（见“回目编排与难度”）；8 / 6 步只是切片和测试夹具的缺省。
+- **压境、粮草模式下的赵云**：敌将模式里赵云是护盾；压境、粮草模式保留“下一对同种兵必消”（粮草里这一对不扣粮），正式版沿用（第 6、8 回压境带赵云，第 8 回他是主将），试玩后复议。（负责：试玩 + 用户。）
 - ~~压境 5 列时每波 2 对加 1 个空格，还是改成每波 4 格加 1 块拒马？~~ 已定（用户决定 4，2026-10-30）：每波 2 对，多出的一格由回目写成空格或拒马（规则 9a）。
 - 铁索连环 `CHAIN_PAIRS` 和“留火 / 不留火”两种打法的伤害差没有跑模拟；刘备补心对敌将回目胜率的影响也没有。建议定稿前在切片模拟器里加这两项。（负责：系统设计 + 关卡设计；目标：第 9 回数据定稿前。）
 - 压境里赵云强制消除的一对不碎拒马（沿用“盘面与连通”规则 9）。拒马进了压境后两者第一次能同时出现；试玩时看玩家会不会以为赵云能破拒马。（负责：试玩。）

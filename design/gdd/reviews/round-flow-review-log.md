@@ -213,3 +213,28 @@ Reviewed-Content-Hash: design/gdd/progress-save.md c390ad7db13ac935f910f053087d8
 Reviewed-Content-Hash: design/gdd/chapter-design.md a57362fc306dae125f93bc3360e9ff69cc57bf1f
 Reviewed-Content-Hash: design/gdd/game-concept.md b9259643dd0003e64dc9b0fd6d35ed1e66261e03
 Reviewed-Content-Hash: design/gdd/systems-index.md 48a678a841e1908f33a28baea23fc296f47c6378
+
+## Review — 2026-10-30 — Verdict: NEEDS REVISION
+Review mode: lean · Workflow: standard
+Scope signal: L
+Specialists: none (lean)
+Blocking items: 4 | Recommended: 13
+Summary: 骨架稳定，但并入切片第四至六版和选将后，令牌到点那一帧没有结算点（“清空盘面即胜”会失效），`RoundResult.loadout` 长度与其他文档矛盾，一条验收标准前提不清，新规则（黄忠选列、洗牌令牌、开讲时展开）缺验收。四项都是机械修，已全部改掉。
+Prior verdict resolved: Yes（第七轮 4 条建议中，6.5 触发列表与 hearts 前提已在本轮解决；隐式后台丢点击仍留）
+Findings:
+- [BLOCKING] Rule 6.5/6.6/7 + ADR-0002: 令牌到点后、同一帧 tick 之前没有结算点 — 已修（加帧步骤 ③b，6.5 触发列表与 6.6 对齐，Edge Case 改写，ADR-0002 第 3 节加 3b 与修订记录，新增 AC）
+- [BLOCKING] Rule 8: `RoundResult.loadout` 写成 0–3 个 — 已修（1–3 个，副将可空；另补 `attempt` 字段供进度去重）
+- [BLOCKING] AC: “hearts = 1”前提不清 — 已修（改写为 hearts 从 1 被这一次出手打到 0）
+- [BLOCKING] AC: 黄忠选列、`reshuffle` 令牌、开讲时展开着可选武将缺验收 — 已修（补 6 条）
+- [RECOMMENDED] Overview/Interactions 过时的连斩与 gameTime 说法 — 已修
+- [RECOMMENDED] Status/Last Verified、Open Questions 的 `phase` 条 — 已修（Status 改为 In Review，Open Questions 已删）
+- [RECOMMENDED] Tuning Knobs ENDING_WIN_MS 范围 1100–2500 → 1500–2500 — 已修
+- [RECOMMENDED] 规则 13 与选将 D4 的“再来一回”沿用内存槽位（含空槽） — 已修
+- [RECOMMENDED] 6.7 的“帧步骤”与 6.3 的 ①–④ 混读 — 已修
+- [RECOMMENDED] AC 开讲点槽的前提（可选武将多于槽数） — 已修
+- [RECOMMENDED] 规则 11 返回键、States 表 starting/选列、规则 5a 盘外范围、隐式后台丢点击及其 AC、RoundResult 的 AC 改写、general-loadout 依赖表（该文件已改）、onboarding 待写、令牌表来源列 — 未改（留待复审或下一轮；不在本轮批准范围）
+Reviewed-Content-Hash: design/gdd/round-flow.md 85ff930dc58719e051c7323b61ac3e5d735c405b
+Reviewed-Content-Hash: design/registry/entities.yaml 9b88f1c949f5e636c3d0ba131a4bc5616d38c526
+Reviewed-Content-Hash: .claude/skills/design-review/SKILL.md a63d8fba9b7142eeb43791f061e2e1533c429b43
+Reviewed-Content-Hash: design/gdd/game-concept.md 708e6a1dbcb7840c0636f08728c9120ab87604cb
+（以上哈希取修订前的 git 版本 f3a96f9，即本次审查读到的版本；由主会话补填）

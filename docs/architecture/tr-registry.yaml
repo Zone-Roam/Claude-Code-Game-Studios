@@ -43,17 +43,23 @@
 # added at the end of their system's list: board-link-007..009, round-flow-010,
 # battle-pressure-005, chapter-design-004..005, progress-save-006,
 # ui-interaction-007..010. Total 50.
+# 2026-10-30 /architecture-review full (slice v4-v6 + general-loadout merge):
+# 27 IDs appended (board-link-010..013, round-flow-011..016, clear-effects-004..005,
+# battle-pressure-006..009, general-skills-003..006, general-loadout-001..002,
+# progress-save-007..008, chapter-design-006, ui-interaction-011..012).
+# clear-effects-001 deprecated; clear-effects-003 -> -005; progress-save-006 -> -008.
+# Total 77, active 74.
 
 version: 1
-last_updated: "2026-10-27"
+last_updated: "2026-10-30"
 
 requirements:
 - id: TR-board-link-001
   system: board-link
   gdd: design/gdd/board-link.md
-  requirement: "6 列 × 6–8 行的可玩格加一圈永远为空的外圈；12 种兵 id 固定、顺序固定"
+  requirement: "cols 列（回目字段，5 或 6，缺省 6）× 6–8 行的可玩格加一圈永远为空的外圈；12 种兵 id 固定、顺序固定"
   created: 2026-10-27
-  revised: ""
+  revised: "2026-10-30"
   status: active
 - id: TR-board-link-002
   system: board-link
@@ -111,6 +117,34 @@ requirements:
   created: 2026-10-27
   revised: ""
   status: active
+- id: TR-board-link-010
+  system: board-link
+  gdd: design/gdd/board-link.md
+  requirement: "盘宽取回目 cols（5/6）；每格两层 STACK_DEPTH = 1，满盘多出的牌压底，上层消掉底牌翻上（revealed）；I1 按全部牌（含底层）计；查询 depthAt / buriedCount / buriedCells"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-board-link-011
+  system: board-link
+  gdd: design/gdd/board-link.md
+  requirement: "拒马：挡线、点不动、相邻消一对就碎；match.broken、clear.blocks；查询 blocks()"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-board-link-012
+  system: board-link
+  gdd: design/gdd/board-link.md
+  requirement: "查询 colContents(c)（黄忠选列），与 rowContents(r) 同形：上层兵、底牌、拒马格三张表"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-board-link-013
+  system: board-link
+  gdd: design/gdd/board-link.md
+  requirement: "修改接口 convertBlocks(cells, kind)（只改上层；按兵种前后计数查 I1；空格/拒马/越界整次 {ok:false}；清选中）及 shuffleTopRows、placeBlocks（只放空格），都返回数据"
+  created: 2026-10-30
+  revised: ""
+  status: active
 - id: TR-round-flow-001
   system: round-flow
   gdd: design/gdd/round-flow.md
@@ -121,9 +155,9 @@ requirements:
 - id: TR-round-flow-002
   system: round-flow
   gdd: design/gdd/round-flow.md
-  requirement: "令牌集合：7 种原因，有时长的按前台真实时间计时，超过 TOKEN_MAX_MS 强制归还且效果只完成一次"
+  requirement: "令牌集合：8 种原因（含 phase），有时长的按前台真实时间计时，超过 TOKEN_MAX_MS 强制归还且效果只完成一次"
   created: 2026-10-27
-  revised: ""
+  revised: "2026-10-30"
   status: active
 - id: TR-round-flow-003
   system: round-flow
@@ -135,9 +169,9 @@ requirements:
 - id: TR-round-flow-004
   system: round-flow
   gdd: design/gdd/round-flow.md
-  requirement: "每帧五步顺序（隐式后台 → 点击 → 令牌计时 → tick → 结算点），每次点击后就地结算"
+  requirement: "每帧五步加 ③b（隐式后台 → 点击 → 令牌计时 → ③b 令牌到点后的结算点 → tick → 结算点），每次点击后就地结算"
   created: 2026-10-27
-  revised: ""
+  revised: "2026-10-30"
   status: active
 - id: TR-round-flow-005
   system: round-flow
@@ -181,13 +215,55 @@ requirements:
   created: 2026-10-27
   revised: ""
   status: active
+- id: TR-round-flow-011
+  system: round-flow
+  gdd: design/gdd/round-flow.md
+  requirement: "phase 令牌：敌将换二阶段时由战场压力在 tick 里申请，PHASE_SHOW_MS 1400 ms，停钟锁盘"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-round-flow-012
+  system: round-flow
+  gdd: design/gdd/round-flow.md
+  requirement: "规则 5a 选排/选列输入路由：不占令牌、不算步；选中点盘 = 选行/列，点武将牌或盘外（offBoard 意图）= 取消；关羽、黄忠互斥；下压取消选排、不取消选列"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-round-flow-013
+  system: round-flow
+  gdd: design/gdd/round-flow.md
+  requirement: "RoundResult.loadout：实际出阵武将 id，槽位顺序，1–3 个；开讲时定下并转给武将技能"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-round-flow-014
+  system: round-flow
+  gdd: design/gdd/round-flow.md
+  requirement: "RoundResult.bossPhase: null | 1 | 2（结束时 hud().phase；只做记录和失败提示，不评星）"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-round-flow-015
+  system: round-flow
+  gdd: design/gdd/round-flow.md
+  requirement: "RoundResult.attempt：本页面会话本回目第几次开局，从 1 开始，回书目也加 1；进度按 chapterId + attempt 去重"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-round-flow-016
+  system: round-flow
+  gdd: design/gdd/round-flow.md
+  requirement: "令牌到点使令牌集合变空且有结果交回时就地做结算点（先 outcome()，再 ensurePlayable()）；分出胜负或洗牌时本帧不调 tick"
+  created: 2026-10-30
+  revised: ""
+  status: active
 - id: TR-clear-effects-001
   system: clear-effects
   gdd: design/gdd/clear-effects.md
   requirement: "连斩窗口按游戏时钟计（3000 ms），门槛 3"
   created: 2026-10-27
-  revised: ""
-  status: active
+  revised: "2026-10-30"
+  status: deprecated
 - id: TR-clear-effects-002
   system: clear-effects
   gdd: design/gdd/clear-effects.md
@@ -200,6 +276,20 @@ requirements:
   gdd: design/gdd/clear-effects.md
   requirement: "连斩奖励经战场压力兑现；敌将打断每个出手周期最多 50"
   created: 2026-10-27
+  revised: "2026-10-30"
+  status: "superseded-by: TR-clear-effects-005"
+- id: TR-clear-effects-004
+  system: clear-effects
+  gdd: design/gdd/clear-effects.md
+  requirement: "连斩 = 不连错的连续消除，不读时钟"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-clear-effects-005
+  system: clear-effects
+  gdd: design/gdd/clear-effects.md
+  requirement: "连斩 ≥ COMBO_THRESHOLD 起敌将退步 cut = min(COMBO_PUSHBACK, COMBO_PUSHBACK_CAP − pushedSinceAttack, steps)，经 pressure.comboReward()；cut > 0 时发 comboPushback {cut}"
+  created: 2026-10-30
   revised: ""
   status: active
 - id: TR-battle-pressure-001
@@ -226,29 +316,99 @@ requirements:
 - id: TR-battle-pressure-004
   system: battle-pressure
   gdd: design/gdd/battle-pressure.md
-  requirement: "不主动通知胜负，只回答 outcome() 查询（解开与对局流程的循环依赖）"
+  requirement: "压境只由 tick(dtGame) 推进；波次表开局用 wave 流预先生成（每波长度 = cols），最后一波后空行继续下压（敌将按步数见 TR-battle-pressure-006）"
   created: 2026-10-27
-  revised: ""
+  revised: "2026-10-30"
   status: active
 - id: TR-battle-pressure-005
   system: battle-pressure
   gdd: design/gdd/battle-pressure.md
-  requirement: "三种模式共用一套接口：tick / onMatch / onMiss / onClear / outcome / metrics / hud；另有 comboReward（清除效果调用）与 scareNextPush / canScare / addFood / resetCharge / charge（武将技能调用）；敌将出手后由压力申请 hostAttack 令牌"
+  requirement: "三种模式共用一套接口：tick / onMatch / onMiss / onClear / outcome / metrics / hud；另有 comboReward（清除效果调用）与 scareNextPush / canScare / addFood / resetCharge / charge（武将技能调用）；敌将出手后由压力申请 hostAttack 令牌；刘备 healHeart / canHeal / refillFood / canRefill，赵云 hasShield（2026-10-30，见 -008、-009）"
   created: 2026-10-27
+  revised: "2026-10-30"
+  status: active
+- id: TR-battle-pressure-006
+  system: battle-pressure
+  gdd: design/gdd/battle-pressure.md
+  requirement: "敌将按步数：onMatch +1、onMiss +2，出手留到 tick；两段血，暴怒换阶段发 bossPhase {phase, name} 并申请 phase 令牌；先看血再出手"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-battle-pressure-007
+  system: battle-pressure
+  gdd: design/gdd/battle-pressure.md
+  requirement: "二阶段特技 sweep / charge / roar / chain、护盾、破特技、预告；只往空格放东西；hostAttack {kind, line?, heart?, special?, cells?, general?}、push {row, empty, dropped}、seal / unseal"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-battle-pressure-008
+  system: battle-pressure
+  gdd: design/gdd/battle-pressure.md
+  requirement: "刘备接口 healHeart(n) / canHeal()（敌将）、refillFood(n) / canRefill()（粮草），其他模式返回 0；事件 heal {heart}、foodRefill {amount}"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-battle-pressure-009
+  system: battle-pressure
+  gdd: design/gdd/battle-pressure.md
+  requirement: "查询 hasShield() ≡ hud().shield（压境、粮草恒假），供武将技能判断赵云能不能放"
+  created: 2026-10-30
   revised: ""
   status: active
 - id: TR-general-skills-001
   system: general-skills
   gdd: design/gdd/general-skills.md
-  requirement: "消对应兵蓄力；点牌申请 skill 令牌 950 ms，令牌到点后技能才落到盘面"
+  requirement: "消对应兵蓄力；点牌申请 skill 令牌 950 ms（关羽、黄忠先选排/选列，选定后才申请），令牌到点后技能才落到盘面"
   created: 2026-10-27
-  revised: ""
+  revised: "2026-10-30"
   status: active
 - id: TR-general-skills-002
   system: general-skills
   gdd: design/gdd/general-skills.md
   requirement: "每张牌的状态（未蓄满 / 就绪 / 待命 / 无效果）和说明文字供界面读"
   created: 2026-10-27
+  revised: ""
+  status: active
+- id: TR-general-skills-003
+  system: general-skills
+  gdd: design/gdd/general-skills.md
+  requirement: "出阵武将由选将给出，最多 SLOT_MAX = 3 位，武将牌顺序 = 槽位顺序"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-general-skills-004
+  system: general-skills
+  gdd: design/gdd/general-skills.md
+  requirement: "关羽点选一排斩、黄忠点选一列射穿：令牌开始时算目标（含底牌、拒马），到点一次 clearCells"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-general-skills-005
+  system: general-skills
+  gdd: design/gdd/general-skills.md
+  requirement: "结果横幅事件 skillResult：诸葛亮（清{兵}{对数}对，可加破{特技}）、刘备（按模式一句）；关羽、黄忠不出"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-general-skills-006
+  system: general-skills
+  gdd: design/gdd/general-skills.md
+  requirement: "刘备众将蓄力：内部 giveCharge(fromId, n)，事件 gift {generals}；虎啸选目标读改后的 charge / need"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-general-loadout-001
+  system: general-loadout
+  gdd: design/gdd/general-loadout.md
+  requirement: "槽位 slots、主将 lead 锁定、recommend、unlock / starters、showPicker、available（无蓄力兵不算）；点将经水牌覆盖卡按钮意图"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-general-loadout-002
+  system: general-loadout
+  gdd: design/gdd/general-loadout.md
+  requirement: "记住阵容：每回结算写 loadout（赢输都写，放弃不写，空数组不写）；已解锁武将不存，由各回 wins 推出"
+  created: 2026-10-30
   revised: ""
   status: active
 - id: TR-chapter-design-001
@@ -284,6 +444,13 @@ requirements:
   gdd: design/gdd/chapter-design.md
   requirement: "开发用模拟脚本：固定种子、按手速 r 模拟玩家、对每一回分别跑多局并输出胜率和中位用时（验收的是工具存在且能出数）"
   created: 2026-10-27
+  revised: ""
+  status: active
+- id: TR-chapter-design-006
+  system: chapter-design
+  gdd: design/gdd/chapter-design.md
+  requirement: "回目新字段 cols、slots、lead、recommend、unlock、starters、boss.steps、boss.phase2 进加载校验（拒绝 / 只警告）"
+  created: 2026-10-30
   revised: ""
   status: active
 - id: TR-progress-save-001
@@ -326,6 +493,20 @@ requirements:
   gdd: design/gdd/progress-save.md
   requirement: "同一回只结算一次：settle() 被调用第二次时开发版报错、第二次忽略"
   created: 2026-10-27
+  revised: "2026-10-30"
+  status: "superseded-by: TR-progress-save-008"
+- id: TR-progress-save-007
+  system: progress-save
+  gdd: design/gdd/progress-save.md
+  requirement: "每回可选字段 loadout：v 仍为 1、不迁移；形状错只丢这一项；合并不取较大值"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-progress-save-008
+  system: progress-save
+  gdd: design/gdd/progress-save.md
+  requirement: "settle() 按 chapterId + attempt 去重：重复调用返回同一个 SettleOutcome，plays 不加、不写；对局流程保证不重复（开发版断言）"
+  created: 2026-10-30
   revised: ""
   status: active
 - id: TR-ui-interaction-001
@@ -396,5 +577,19 @@ requirements:
   gdd: design/gdd/ui-interaction.md
   requirement: "警戒档位 tier 由界面按 hud() 计算：升档立即生效，降档要等当前档显示满 TIER_MIN_DWELL_MS（1000 ms，前台真实时间）"
   created: 2026-10-27
+  revised: ""
+  status: active
+- id: TR-ui-interaction-011
+  system: ui-interaction
+  gdd: design/gdd/ui-interaction.md
+  requirement: "震动只用 navigator.vibrate(ms)（暴怒 60、击碎 80）：先判 typeof === 'function' 再 try/catch；iOS 不替代；少动、暂停/横屏卡、后台不震；探测页 vibrate 键"
+  created: 2026-10-30
+  revised: ""
+  status: active
+- id: TR-ui-interaction-012
+  system: ui-interaction
+  gdd: design/gdd/ui-interaction.md
+  requirement: "新演出：层叠标记、翻牌 REVEAL_MS 340、拒马、选排/选列高亮、暴怒、击碎（ENDING_WIN_MS 2000）、点将区；只动 transform/opacity，连线仍一个 SVG"
+  created: 2026-10-30
   revised: ""
   status: active

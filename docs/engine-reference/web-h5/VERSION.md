@@ -11,7 +11,7 @@
 | **语言基线** | ES2017（`async`/`await`、`Object.entries`）。探测结果回来前不用 ES2020 起的语法（`?.`、`??`、`BigInt`） |
 | **开发工具** | 本机 Node 24 自带功能（`node:test`、`node:http`、`node:fs`），只在开发时用，不进发布包 |
 | **探测状态** | 未运行（2026-10-27） |
-| **Last Verified** | 2026-10-27：只核对了设计约束，平台事实全部待核实 |
+| **Last Verified** | 2026-10-30：只核对了设计约束（新增 vibrate 未知项），平台事实全部待核实 |
 
 ## 知识风险
 
@@ -27,6 +27,7 @@
 | 宿主会不会放大字号、强制深色 | `font16pxComputed`、`darkScheme` | 美术圣经第 7 节字号、对比度 |
 | 安全区、可用高度 | `safeAreaTRBL`、`innerWxH` | 界面 fit_scale |
 | 帧率 | `fps3s` | 性能预算 |
+| 有没有震动接口（`navigator.vibrate`；iOS WKWebView 没有，安卓宿主可能拦截） | `vibrate` | ui-interaction 规则 21d（暴怒 60 ms、击碎 80 ms）；结果回来前按“可能没有”处理，只做特性检测加 `try/catch` |
 
 ## 禁用（发布包）
 
@@ -42,3 +43,4 @@
 - `IndexedDB`、`navigator.storage`、Clipboard API：探测页会报告，可用了再说。
 - `document.fonts`：毛笔体选定前不用。
 - `matchMedia('(prefers-reduced-motion: reduce)')`：读不到时按默认版本播放（界面规则 29）。
+- `navigator.vibrate`：只经 `src/platform/` 的包装调用（先 `typeof === 'function'`，再 `try/catch`，失败静默）；没有替代反馈（ui-interaction 规则 21d）。

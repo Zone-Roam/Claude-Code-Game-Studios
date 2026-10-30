@@ -62,6 +62,18 @@
   set('darkScheme', matchMedia('(prefers-color-scheme: dark)').matches);
   set('bodyBgComputed', getComputedStyle(document.body).backgroundColor);
 
+  // Vibration (ui-interaction rule 21d). Report the type, then try a 0 ms call:
+  // 0 ms vibrates nothing, so the probe never buzzes the tester's phone.
+  // Some hosts expose the function but throw or return false (blocked).
+  (function () {
+    var t = typeof navigator.vibrate;
+    var call = 'not-called';
+    if (t === 'function') {
+      try { call = String(navigator.vibrate(0)); } catch (e) { call = 'throws: ' + e.name; }
+    }
+    set('vibrate', { type: t, call: call });
+  })();
+
   // 3. Module scripts: the module below flips this flag.
   set('moduleScript', false);
 

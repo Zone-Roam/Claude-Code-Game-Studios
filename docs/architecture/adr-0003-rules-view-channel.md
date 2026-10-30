@@ -75,7 +75,7 @@ round-flow.md 规定了 `match`/`miss` 按固定顺序通知到界面、其他�
 - `round` 持有一个数组 `outbox`。各规则模块由 round 创建时从上下文 `ctx` 拿到同一个 `emit(event)`（只追加；装配顺序见 ADR-0002 第 3 节），**按发生顺序**写进去。对局流程按规则 6 分发的结果（`match`、`miss`、`clear`、`reshuffle`）在分发到第 ④ 步“界面”时 `emit`；战场压力的 `push`、`hostAttack` 等直接 `emit`（battle-pressure 规则：不经对局流程）。
 - 界面每帧调用一次 `round.drainEvents()`，拿到本帧全部事件并清空出口，按顺序播放。
 - 事件是普通对象，只含数据，不含函数和 DOM 引用。界面绝不修改事件对象，也绝不调用规则模块的修改接口。
-- 持续状态（格子、选中、蓄力、粮数、倒计时、档位、覆盖卡）不靠事件，靠查询：`board.cells()`、`board.selection()`、`board.forceNext()`、`board.depthAt(r, c)`（层叠标记）、`board.buriedCount()`、`board.blocks()`（拒马）、`board.rowContents(r)`（选排高亮）、`effects.combo()`、`effects.previewTarget()`、`pressure.hud()`（敌将模式含步数、阶段、震慑、护盾、镇住、预告、“破”标记，battle-pressure 规则 26）、`pressure.sealed(general)`、`skills.cards()`（最多 3 张，顺序是选将给出的槽位顺序；含关羽的选排状态）、`round.state()`、`round.overlay()`、`round.tokens()`、`round.boardLocked()`、`progress` 的书目查询。HUD 每帧比较查询值与上次的缓存，变了才改对应的文字或 transform。
+- 持续状态（格子、选中、蓄力、粮数、倒计时、档位、覆盖卡）不靠事件，靠查询：`board.cells()`、`board.selection()`、`board.forceNext()`、`board.depthAt(r, c)`（层叠标记）、`board.buriedCount()`、`board.blocks()`（拒马）、`board.rowContents(r)`（选排高亮）、`board.colContents(c)`（选列高亮，与 `rowContents` 同形，board-link 规则 15）、`effects.combo()`、`effects.previewTarget()`、`pressure.hud()`（敌将模式含步数、阶段、震慑、护盾、镇住、预告、“破”标记，battle-pressure 规则 26）、`pressure.sealed(general)`、`pressure.hasShield()`（≡ `hud().shield`，battle-pressure 规则 3）、`skills.cards()`（最多 3 张，顺序是选将给出的槽位顺序；含关羽的选排、黄忠的选列状态）、`round.state()`、`round.overlay()`、`round.tokens()`、`round.boardLocked()`、`progress` 的书目查询。HUD 每帧比较查询值与上次的缓存，变了才改对应的文字或 transform。
 
 **事件类型清单（契约，名字不改，只追加）**：
 
@@ -87,19 +87,22 @@ round-flow.md 规定了 `match`/`miss` 按固定顺序通知到界面、其他�
 | `reshuffle` | 盘面，经对局流程 | `fallback` | 整盘抽走再落下；喊字位“重新布阵” |
 | `tokenStart` / `tokenEnd` | 对局流程 | `reason, durationMs, detail` | 效果高亮、泼墨亮相、敌将台词、洗牌演出按令牌开始和结束；`detail` 由持有者在申请时给（例如效果的目标格） |
 | `state` | 对局流程 | `from, to` | 水牌、收尾演出、结算卡 |
-| `push` | 战场压力 | `row, empty` | 整盘容器下移 240 ms；开始推行宽限；`empty` 为真时是最后一波之后的空行 |
+| `push` | 战场压力 | `row, empty, dropped`（`dropped` 2026-10-30 追加：被推出盘面的拒马所在列，没有为空数组） | 整盘容器下移 240 ms；开始推行宽限；`empty` 为真时是最后一波之后的空行；`dropped` 的拒马随盘移出 |
 | `scared` / `lastWave` | 战场压力 | — | 喊字位读的字 |
 | `foodSpent` | 战场压力 | `amount, cause: 'match' \| 'miss'` | 粮数旁“−1”，粮袋格少一格 |
-| `hostAttack` | 战场压力 | `kind: 'normal' \| 'special' \| 'blocked' \| 'broken'`（2026-10-30 追加），`line?`（敌将台词在当前阶段台词表里的序号）、`heart?`、`special?`（`sweep` / `charge` / `roar`）、`cells?`、`general?`；以 battle-pressure 规则 5 为准 | 普通：喊字位显示台词，丢的心在原位变虚线、新增的兵落位；特技：特技名横幅，横扫抽走再落下、拒马落进空格、被镇的牌抖两下变灰；被挡：“赵云挡下！”；被破：“妙计已破” |
+| `hostAttack` | 战场压力 | `kind: 'normal' \| 'special' \| 'blocked' \| 'broken'`（2026-10-30 追加），`line?`（敌将台词在当前阶段台词表里的序号）、`heart?`、`special?`（`sweep` / `charge` / `roar` / `chain`，`chain` 为铁索连环：`cells` 是被 `convertBlocks` 换成营的格子）、`cells?`、`general?`；以 battle-pressure 规则 5 为准 | 普通：喊字位显示台词，丢的心在原位变虚线、新增的兵落位；特技：特技名横幅，横扫抽走再落下、拒马落进空格、被镇的牌抖两下变灰；被挡：“赵云挡下！”；被破：“妙计已破” |
 | `interrupt` | 清除效果 | `cut` | **2026-10-30 作废**：连斩改为不看时间，退步改由 `comboPushback` 表示。名字保留不复用，规则层不再发 |
 | `targetGone` | 清除效果 | `kind` | 喊字位“{目标}已经没了” |
 | `skillReady` / `skillArmed` / `skillArmedSpent` | 武将技能 | `general` | 四重就绪提示；赵云待命的牌面和喊字；用掉时撤回喊字。`skillArmed`、`skillArmedSpent` 只用于压境、粮草模式的赵云（敌将模式的赵云是护盾，读 `hud().shield`） |
 | `cardHint` | 武将技能 | `general, reason` | 牌翻出说明 1500 ms（未蓄满 / 无效果 / 已在待命） |
 | `exit` | 对局流程 | `to: 'next' \| 'retry' \| 'catalog'` | `screens.mjs` 据此切画面、新建 round |
-| `comboPushback`（2026-10-30 追加；暂定名，GDD 没有给事件名） | 战场压力（`comboReward()` 退步 `cut > 0` 时） | `cut` | 朱色斩痕划过步数圆点，读的字“压住一步”；`cut` 为 0 时不发（clear-effects 规则 8，ui-interaction 规则 21） |
+| `comboPushback`（2026-10-30 追加；定名 2026-10-30，clear-effects 规则 8、ui-interaction 规则 20 引用此名） | 战场压力（`comboReward()` 退步 `cut > 0` 时） | `cut` | 朱色斩痕划过步数圆点，读的字“压住一步”；`cut` 为 0 时不发（clear-effects 规则 8，ui-interaction 规则 21） |
 | `bossPhase`（2026-10-30 追加） | 战场压力 | `phase, name` | 暴怒演出（跟 `phase` 令牌的开始和结束），之后敌将框换朱色、名牌换 `name` |
 | `seal` / `unseal`（2026-10-30 追加） | 战场压力 | `general, left` / `general` | 虎啸镇住：武将牌抖两下变灰、挂剩余步数；解除时恢复 |
-| `skillResult`（2026-10-30 追加；暂定名，GDD 没有给事件名） | 武将技能（诸葛亮的 `skill` 令牌到点后） | `general, kind, pairs, special, forecast`（`special` 是 `breakSpecial()` 返回的特技 id，没破为 `null`） | 结果横幅“清{兵} {对数} 对”；`special` 有值且 `forecast` 为真时加“· 破{特技名}”。“破”字小标不靠这个事件，读 `hud().broken`（general-skills 规则 14，battle-pressure 规则 23c） |
+| `skillResult`（2026-10-30 追加；定名 2026-10-30） | 武将技能（诸葛亮、刘备的 `skill` 令牌到点后；关羽、黄忠不发） | 诸葛亮：`general, kind, pairs, special, forecast`（`special` 是 `breakSpecial()` 返回的特技 id，没破为 `null`）；刘备：`general, mode, healed, food, gifted`（`healed`、`food` 为实际补的数，`gifted` 为受力武将数；general-skills 规则 14a） | 结果横幅“清{兵} {对数} 对”；`special` 有值且 `forecast` 为真时加“· 破{特技名}”。“破”字小标不靠这个事件，读 `hud().broken`（general-skills 规则 14，battle-pressure 规则 23c）；刘备：按 mode 出“补一颗心”/“众将用命”/“补 N 份粮” |
+| `heal`（2026-10-30 追加） | 战场压力（`healHeart(n)` 实际补回 > 0 时） | `heart` | 最后丢的那颗心虚线变实、弹一下，心旁“+1”（ui-interaction 规则 16d）；补 0 不发 |
+| `foodRefill`（2026-10-30 追加） | 战场压力（`refillFood(n)` 实际补 > 0 时） | `amount` | 粮数旁“+N”，粮袋格补实 N 格（规则 16d） |
+| `gift`（2026-10-30 追加） | 武将技能（刘备令牌到点后，`giveCharge` 有受力武将时） | `generals`（受力武将 id 列表） | 受力牌新涨的那一格蓄力格闪一次、牌抬一下（规则 16d） |
 
 翻牌和拒马碎不另设事件：它们是 `match.revealed`、`match.broken`、`clear.revealed`、`clear.blocks` 这些字段（board-link 规则 8、13），界面在播 `match`/`clear` 时一起播。增兵、横扫、拒马落下的格子由 `hostAttack.cells` 给出。
 
@@ -111,9 +114,9 @@ round-flow.md 规定了 `match`/`miss` 按固定顺序通知到界面、其他�
 
 | 意图 | 何时产生（`src/view/input.mjs`） | 规则层怎么处理 |
 |---|---|---|
-| `{ type: 'cell', row, col }` | 盘上 `pointerdown`，只认 `isPrimary`；位置换算成格子坐标（走线带算外圈，死区不算）；同格 200 ms 内重复按下忽略；`push` 后 150 ms 内按下压前的位置换算 | 盘锁则丢弃；关羽选排中按 round-flow 规则 5a 交给武将技能选行，不调用 `board.tap`；否则 `board.tap(row, col)` → 结果按规则 6 分发 |
-| `{ type: 'card', general }` | 武将牌 `pointerup`，按下和抬起在同一张牌上；滑出或 `pointercancel` 取消；按下距上一次盘上按下 < 250 ms 忽略 | 盘锁则丢弃（不翻说明）；选排中点任何武将牌 = 取消选排，不做别的；否则 `skills.tapCard(general)`：关羽能放就进入选排（不申请令牌），其他武将能放就申请 `skill` 令牌，不能放就 `emit(cardHint)` |
-| `{ type: 'offBoard' }`（2026-10-30 追加） | 选排中盘外（台眉、桌沿空白处）`pointerup` | 只在选排中有意义：取消选排；其他时候忽略 |
+| `{ type: 'cell', row, col }` | 盘上 `pointerdown`，只认 `isPrimary`；位置换算成格子坐标（走线带算外圈，死区不算）；同格 200 ms 内重复按下忽略；`push` 后 150 ms 内按下压前的位置换算 | 盘锁则丢弃；关羽选排或黄忠选列中按 round-flow 规则 5a 交给武将技能选行/选列，不调用 `board.tap`；否则 `board.tap(row, col)` → 结果按规则 6 分发 |
+| `{ type: 'card', general }` | 武将牌 `pointerup`，按下和抬起在同一张牌上；滑出或 `pointercancel` 取消；按下距上一次盘上按下 < 250 ms 忽略 | 盘锁则丢弃（不翻说明）；选排中点任何武将牌 = 取消选排，不做别的；否则 `skills.tapCard(general)`：关羽能放就进入选排、黄忠能放就进入选列（都不申请令牌；一个在进行时点另一位的牌 = 取消），其他武将能放就申请 `skill` 令牌，不能放就 `emit(cardHint)` |
+| `{ type: 'offBoard' }`（2026-10-30 追加；定名 2026-10-30） | 选排、选列中盘外（台眉、死区、桌沿空白处、盘上下两条走线带）`pointerup` | 只在选排、选列中有意义：取消；其他时候忽略 |
 | `{ type: 'pauseStamp' }` | 暂停印 `pointerup` | 不受盘锁影响；`play` 时申请 `pause` 令牌 |
 | `{ type: 'button', card, button }` | 覆盖卡按钮 `pointerup`（含水牌点将区的槽、可选武将牌、“×”） | 不受盘锁影响；`overlayAgeMs < CARD_GUARD_MS` 则丢弃（计时归 round，见 ADR-0002 第 2 节）；否则按 round-flow 规则 2、11、13 处理；点将按 general-loadout 规则 9–14 |
 
@@ -180,6 +183,7 @@ export function createInput(root, { enqueue, layout, now })            // 只产
 - 绝不：在界面里根据动画是否播完来推进规则（规则上的时间只在令牌和 `gameTime` 里）。
 - 绝不：在规则层里格式化给玩家看的文字。
 - 绝不：用 CSS `filter`、`backdrop-filter`、`mix-blend-mode`、运行时 SVG `<filter>`（构建检查会拦）。
+- 震动（ui-interaction 规则 21d，TR-ui-interaction-011）：只在 `src/platform/` 包一层 `vibrate(ms)`：`typeof navigator.vibrate === 'function'` 才调用，外包 `try/catch`，失败静默；只用于暴怒 60 ms、击碎 80 ms；少动模式、暂停/横屏卡、后台不调。界面层不直接碰 `navigator`。平台未知项见 `docs/engine-reference/web-h5/VERSION.md`（探测键 `vibrate`）。
 
 ## Alternatives Considered
 
@@ -248,6 +252,9 @@ export function createInput(root, { enqueue, layout, now })            // 只产
 | ui-interaction.md | 规则 31–34：只动 transform/opacity、DOM 预算、一个 SVG 连线层、差量更新、内联 SVG | 第 3 节渲染技术（TR-ui-interaction-004） |
 | ui-interaction.md | 规则 26–30：两套字、字号锁定、`color-scheme: light`、少动版本 | 第 3 节页面设置（TR-ui-interaction-005） |
 | ui-interaction.md | 规则 18、20、24：可见性和横竖屏转交对局流程；喊字位排队 | 生命周期入口（ADR-0002）+ 事件驱动的喊字（TR-ui-interaction-006） |
+| general-skills.md | 规则 14a、14b：刘备结果横幅与众将蓄力；黄忠选列 | `skillResult`（含刘备）、`gift` 事件；`colContents` 查询；选列意图分支（TR-general-skills-004、-005、-006） |
+| battle-pressure.md | 规则 3、18a、23e：刘备补心补粮；`hasShield()`；铁索连环；`push.dropped` | `heal`、`foodRefill` 事件；`hasShield()` 查询；`special: 'chain'`（TR-battle-pressure-007、-008、-009） |
+| ui-interaction.md | 规则 21d：震动 | Implementation Guidelines 震动条（TR-ui-interaction-011） |
 
 ## Performance Implications
 - **CPU**: 每帧取一次事件、比较十几个 HUD 值；DOM 写入只在变化时发生。预算：`view.render()` 每帧 ≤ 4 ms（基准机），剩下的帧时间留给浏览器的样式、布局、绘制和合成；点击到反馈 ≤ 100 ms 的链路是“指针事件 → 下一帧第 ② 步 → 同帧 `render`”，最多隔一帧（约 17 ms）。
@@ -274,3 +281,4 @@ export function createInput(root, { enqueue, layout, now })            // 只产
 ## Revision History
 
 - 2026-10-30：并入切片第四至六版和选将（见 `docs/architecture/change-impact-2026-10-30-slice-merge.md`），决策不变。
+- 2026-10-30（二次修订，按 /architecture-review 2026-10-30）：`comboPushback`、`skillResult`、`offBoard` 定名；`skillResult` 加刘备；追加事件 `heal`、`foodRefill`、`gift`；`push` 加 `dropped`；`hostAttack.special` 加 `chain`；查询加 `colContents`、`hasShield`；意图加黄忠选列分支；加震动实现条。决策不变。

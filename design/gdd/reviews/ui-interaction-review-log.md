@@ -183,3 +183,30 @@ Reviewed-Content-Hash: design/gdd/systems-index.md 48a678a841e1908f33a28baea23fc
 
 ### Amendment — 2026-10-27（门禁之后，用户决定与总监意见）
 按用户决定，开讲水牌的出阵武将旁加一行本回技能说明（texts.skillLine，16 px）。未再复审。
+
+## Review — 2026-10-30 — Verdict: NEEDS REVISION
+Review mode: lean · Workflow: standard
+Scope signal: XL
+Specialists: none (lean)
+Blocking items: 4 | Recommended: 10
+Summary: 上次 APPROVED 之后文档又并入切片第四至六版、选将、选排选列、刘备反馈和 5 列大棋子，按整份重审。5 列 8 行的压境盘（正式版最常见组合）在旧 fit_scale 下被整体缩放到 0.89–0.95，字号和触控区一起变小；另有暴怒晃动幅度、震动规格、档位 bottom 条件、点将区版式四处要对齐。4 项阻塞已按用户决定（D1、D6 等）全部修改，待复审。
+Prior verdict resolved: Yes
+Findings:
+- [BLOCKING] 规则 5 / fit_scale / AC: 5 列 8 行压境盘被整体缩放 — 已修（先把格距从 72 降到 52，再整体缩放；375×734 为格距 60、scale 1；412 宽 60；360×734 为 60；667 高 H=600 为 52、scale ≈ 0.905；补算例和 AC）
+- [BLOCKING] 规则 21c / Game Feel / AC: 暴怒晃动 ≤ 5 px 与美术圣经 ≤ 4 px 不符；震动无规格；闪白无上限 — 已修（≤ 4 px、新增规则 21d：`navigator.vibrate` 能力检测加 try/catch、iOS 只有视觉、减弱动态效果与暂停与后台不震、闪白不透明度 ≤ 0.35、补 AC；平台探测页需加 `vibrate` 键，由主会话添加）
+- [BLOCKING] tier 公式: `bottom` 与战场压力 `bottomOccupied` 不一致，拒马会错报档位 — 已修（改读 `hud().bottomOccupied`，变量表和 AC 补上）
+- [BLOCKING] 规则 7a / AC: 点将区展开区版式没有数字 — 已修（padX 20、小牌 64 × 72、间距 12；Ws = 360：k = 4、2 行；Ws = 480：k = 5、1 行；向上展开判据 < 20 px；AC 断言每张 ≥ 44 × 44、离“开讲”≥ 20 px）
+- [RECOMMENDED] 规则 24 返回键行为不全 — 未改（留待复审后补小表和验收）
+- [RECOMMENDED] 点将区防连点与点开讲的措辞 — 已修（与 round-flow 对齐：从按钮出现起算，展开区外点开讲收起并开讲）
+- [RECOMMENDED] 选排选列期间喊字排队、关羽牌面字一起撤回 — 未改（留待复审后）
+- [RECOMMENDED] 武将牌死区从抬起后位置量（20 还是 24） — 未改（留待美术圣经修订时一并定）
+- [RECOMMENDED] 过期文字（Cross-References 70 / 90、已定的两条开放问题、规则 1 的“3 种”、Last Verified）— 已修；另有赵云护盾横幅统一为“赵云挡下！”、水牌示例用第 9 回（无鼓）
+- [RECOMMENDED] 5 列格距范围 63–72 的统一 — 已修（本文；开放问题已关闭）；chapter-design、board-link 的“66–72”由其他会话改
+- [RECOMMENDED] 验收的可测性（喊字包围盒、固定种子回放、基准机、340 ms ± 1 帧、规则 14 / 18 / 25 缺验收）— 未改（留待复审后）
+- [RECOMMENDED] 美术圣经依赖点清单（翻牌弹出 0.55 / 1.08 / 1、落点光芒与墨点四溅、两个例外幅度、规则 7 与 card_width 对美术圣经的数字、九宫格切线、毛笔体）— 未改（美术圣经修订是已知未决项；修订后本文做一次一致性复核）
+- [RECOMMENDED] design/accessibility-requirements.md 的过期数据（“块 52 px”“武将牌 ≥ 72 px”“牌间 ≥ 8”、光敏行）— 未改（不在本次改动范围）
+- [RECOMMENDED] TIER_MIN_DWELL_MS、SAME_CELL_GUARD_MS、PUSH_GRACE_MS 进登记表 — 未改（登记表由其他会话处理）
+Reviewed-Content-Hash: design/gdd/ui-interaction.md 4714ad46a36cb05ce0cab7f0758d4639cd303459
+Reviewed-Content-Hash: design/registry/entities.yaml 9b88f1c949f5e636c3d0ba131a4bc5616d38c526
+Reviewed-Content-Hash: .claude/skills/design-review/SKILL.md a63d8fba9b7142eeb43791f061e2e1533c429b43
+（以上哈希取修订前的 git 版本 f3a96f9，即本次审查读到的版本；由主会话补填）

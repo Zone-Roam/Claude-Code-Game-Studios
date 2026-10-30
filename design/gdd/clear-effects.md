@@ -1,9 +1,9 @@
 # 清除效果与连斩
 
-> **Status**: Revised（2026-10-30，并入切片第四至六版和选将；待重新审查）
+> **Status**: In Review（2026-10-30 按 /design-review 修订，待复审）
 > **Author**: 用户 + 主会话（lean 模式）
 > **Last Updated**: 2026-10-30
-> **Last Verified**: 2026-10-27
+> **Last Verified**: 2026-10-30
 > **Implements Pillar**: 1 一回一乐、3 故事决定这一回打什么仗
 
 ## Summary
@@ -89,10 +89,10 @@ The combo_count formula is defined as:
 **Variables:**
 | Variable | Type | Range | Source | Description |
 |----------|------|-------|--------|-------------|
-| combo | int | 0–本回玩家消除总对数 | calculated | 当前连斩数；开局 0 |
-| maxCombo | int | 0–本回玩家消除总对数 | calculated | 本回最高连斩 |
+| combo | int | 0–999 | calculated | 当前连斩数；开局 0，连错清零 |
+| maxCombo | int | 0–999 | calculated | 本回最高连斩 |
 
-**Output Range:** 0 到本回玩家消除总对数（没有上限）；显示上 13 以上统一为“连斩不断”。
+**Output Range:** 0–999（registry `combo_count` 的 `[0, 999]`）。理论上限是本回玩家消除总对数，一局不可能打到 999，所以实现上封顶 999 是零风险的整数上限；显示上从 13 起统一为“连斩不断”，封顶不影响显示。
 **Example:** 消、消、消、错、消、诸葛亮清兵、消 → combo = 1、2、3、0、1、1、2；maxCombo = 3。
 
 The boss_pushback formula is defined as:
@@ -102,14 +102,14 @@ The boss_pushback formula is defined as:
 **Variables:**
 | Variable | Type | Range | Source | Description |
 |----------|------|-------|--------|-------------|
-| steps | int | 0–stepsMax | battle-pressure | 敌将已蓄的步数；一阶段 stepsMax = 8，二阶段 6 |
+| steps | int | 0–stepsMax | battle-pressure | 敌将已蓄的步数；stepsMax 默认一阶段 8、二阶段 6，以回目 `boss` 数据为准（本系统不规定步数） |
 | COMBO_PUSHBACK | int | 1–2 | data file | 每次连斩奖励退的步数，默认 1 |
 | COMBO_PUSHBACK_CAP | int | 1–4 | data file | 两次出手之间累计最多退的步数，默认 2 |
 | pushedSinceAttack | int | 0–CAP | battle-pressure | 自上次出手（或开局、换阶段）以来已退的步数 |
 | COMBO_THRESHOLD | int | 2–5 | data file | 生效的最低连斩数，默认 3 |
 
 **Output Range:** cut 为 0–COMBO_PUSHBACK；每个出手周期里连斩最多抵掉 COMBO_PUSHBACK_CAP 步。
-**Example:** 一阶段 stepsMax = 8，steps = 5。第 3 连斩：退到 4，再因这一对涨到 5；第 4 连斩：退到 4、涨到 5（本轮已退 2）；第 5 连斩：cut = 0，涨到 6。一路不连错时，这一轮要消 10 对吕布才出手（8 + 2），而不是 8 对。
+**Example:** 一阶段 stepsMax = 8（默认值，取整好算），steps = 5。第 3 连斩：退到 4，再因这一对涨到 5；第 4 连斩：退到 4、涨到 5（本轮已退 2）；第 5 连斩：cut = 0，涨到 6。一路不连错时，这一轮要消 10 对吕布才出手（8 + 2），而不是 8 对。
 
 The press_delay formula is defined as:
 
@@ -156,7 +156,7 @@ The press_delay formula is defined as:
 |---|---|---|---|---|---|
 | COMBO_THRESHOLD | 3 | 2–5 | 奖励太难拿 | 随手就退步，敌将没威胁 | 失败提示文案引用它（见“回目编排与难度”） |
 | COMBO_PUSHBACK | 1 | 1–2 | 2 时连斩的那一对净退 1 步，敌将被压得太死 | — | 受累计上限约束；和每对涨 1 步（战场压力）一起看 |
-| COMBO_PUSHBACK_CAP | 2 | 1–4 | 稳手玩家能把吕布拖得很久 | 连斩对敌将几乎没用 | 默认下不连错时一阶段每轮要消 10 对才出手（8 + 2）；切片模拟见 DESIGN-v5/v6 |
+| COMBO_PUSHBACK_CAP | 2 | 1–4 | 稳手玩家能把吕布拖得很久 | 连斩对敌将几乎没用 | 默认下不连错时每轮多消 2 对才出手（stepsMax 默认 8 时要消 10 对）；切片模拟见 DESIGN-v5/v6 |
 | PRESS_DELAY_MS | 1000 | 0–2000 | 压境变松 | 稳手没回报 | 受累计上限约束 |
 | PRESS_DELAY_CAP_MS | 3000 | 0–6000 | 熟手可以拖得很久 | 奖励很快封顶 | — |
 | EFFECT_HIGHLIGHT_MS | 380 | 200–600 | 拖慢节奏 | 看不清清掉了哪些 | 时钟在这段时间暂停 |

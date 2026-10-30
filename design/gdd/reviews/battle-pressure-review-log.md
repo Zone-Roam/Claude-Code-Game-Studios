@@ -156,3 +156,34 @@ Reviewed-Content-Hash: design/gdd/game-concept.md b9259643dd0003e64dc9b0fd6d35ed
 
 ### Amendment — 2026-10-27（门禁之后，用户决定与总监意见）
 按技术总监意见处理 N3、W9：写明张飞 resetCharge() 不重置打断额度并补验收；增兵对数在变量表和调参表里改为回目字段 boss.addPairs（BOSS_ADD_PAIRS 是推荐值和安全范围）。未再复审。
+
+## Review — 2026-10-30 — Verdict: NEEDS REVISION
+Review mode: lean · Workflow: standard
+Scope signal: L
+Specialists: none (lean)
+Blocking items: 4 | Recommended: 12
+Summary: 10 回新增内容（拒马进压境、特技轮换、铁索连环、一段血敌将、刘备接口、净值丢心）与其他文档基本对得上；没过关的是合并后的收尾：旧的“第一回 8/6 步、12/18 血”和 7000 interval 没换，`hasShield()` 接口名缺失，横幅文案三处两样。均已按用户决定（D5 横幅「赵云挡下！」、interval 12000）修订，待复审。
+Prior verdict resolved: Yes
+Findings:
+- [BLOCKING] Detailed Rules 3 / 23b / Interactions / Dependencies: `hasShield()` 未定义 — 已修（≡ `hud().shield`，仅敌将模式有意义，其余恒为假；23b 改用它；补一条 AC）
+- [BLOCKING] Formulas / Tuning Knobs / AC / Open Questions: “第一回 8/6 步、hp 12/18”过时，AC“slow=1 → 12/9”不可测 — 已修（例子改 ch05 6/5 → 9/8，切片夹具 8/6 → 12/9、5 → 8；变量表和调参表改“缺省 + 正式回数值”；Open Questions 结案）
+- [BLOCKING] 横幅文案三处两样 — 已修（用户决定 D5：全部用「赵云挡下！」，本文原本即是；ui-interaction、general-skills 由对应会话同步）
+- [BLOCKING] Formulas / Tuning Knobs / AC: interval 7000/8000 与 12000 冲突 — 已修（默认 12000，startRows 4 破城 60 秒，ch06 T_max 192 秒，ch08 216 秒，7000 明写测试夹具，补 slow=1 → 15600 的 AC）
+- [RECOMMENDED] boss_steps `attacks_p` 加 max(0, …) — 已修
+- [RECOMMENDED] 变量“8”改名 `PRESS_ROWS` — 已修
+- [RECOMMENDED] `comboDelay` 统一为 `comboDelay_w` — 已修
+- [RECOMMENDED] `COMBO_PUSHBACK / CAP` 范围 1–2 / 1–4（与 clear-effects、registry 一致） — 已修
+- [RECOMMENDED] Open Questions 赵云在压境 / 粮草：结案为“正式版沿用，试玩后复议” — 已修
+- [RECOMMENDED] 头部 Last Verified / Status — 已修
+- [RECOMMENDED] food_start 输出范围 1–30 与 deck 上限不符 — 未改（留待用户定收紧 deck 还是改 registry 范围）
+- [RECOMMENDED] `SLOW_CHARGE_FACTOR` / `slow_steps_factor`、`STEP_MISS` 口径 — 未改（留待 registry 统一命名）
+- [RECOMMENDED] “5 × 6 盘”写法 — 未改（留待下次通读）
+- [RECOMMENDED] registry 卫生（boss_steps 重名、boss_specials 重复、p_press 所有者、chain_convert 表达式） — 未改（registry 由另一会话处理）
+- [RECOMMENDED] AC 缺口（lastWave、scared、护盾 + 破标记顺序、waveList 长度）；`breakSpecial()` 返回值 `forecast` 改名；规则 20 补吕布一段血 — 未改（留待复审）
+- [RECOMMENDED] 依赖与索引（general-loadout 反向提及、systems-index 状态） — 未改（他文档）
+- [RECOMMENDED] chapter-design 里的陈旧值（slow=1 的 13000/9100、P 范围、10 秒/7 秒总表） — 未改（他文档，留待其复审）
+- [RECOMMENDED] 事件载荷归属（push.empty、hostAttack.cells、convert） — 未改（留待复审）
+Reviewed-Content-Hash: design/gdd/battle-pressure.md 11743d6c101f3417576efc7705a57d848447b2ff
+Reviewed-Content-Hash: design/registry/entities.yaml 9b88f1c949f5e636c3d0ba131a4bc5616d38c526
+Reviewed-Content-Hash: .claude/skills/design-review/SKILL.md a63d8fba9b7142eeb43791f061e2e1533c429b43
+（以上哈希取修订前的 git 版本 f3a96f9，即本次审查读到的版本；由主会话补填）

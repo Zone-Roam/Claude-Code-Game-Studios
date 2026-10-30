@@ -139,3 +139,36 @@ Reviewed-Content-Hash: design/gdd/game-concept.md b9259643dd0003e64dc9b0fd6d35ed
 
 ### Amendment — 2026-10-27（门禁之后，用户决定与总监意见）
 按用户决定（水牌加技能说明）在 texts 里加 skillLine[武将 id][mode]，每行 ≤ 12 字。未再复审。
+
+## Review — 2026-10-30 — Verdict: NEEDS REVISION
+Review mode: lean · Workflow: standard
+Scope signal: L（producer 需核实）
+Specialists: none (lean)
+Blocking items: 7 | Recommended: 11
+Summary: 规则、10 回数据和跨文档接口站得住，全部 deck、波次、粮草数字复算无误。问题集中在压境间隔改为 12000 并跑完模拟后正文留下的旧值和旧说法，加上 steps 范围与战场压力不一致、一条验收无法判定。7 条阻塞都是机械修，已全部改完，待复审。
+Prior verdict resolved: Yes
+Findings:
+- [BLOCKING] 规则 12 难度表: 第一、六、八回压境间隔旧值（10 秒 / 7 秒 / “比第一回紧”）— 已修
+- [BLOCKING] Formulas 示例: 第一、八回 T_max 和 r_need 按 12000 重算（168 秒、216 秒、≈ 0.17），删“落后 0.04 对”，第十回示例按 7/6 步、16+18 血重算 — 已修
+- [BLOCKING] Acceptance Criteria: `slow=1` 改为 15600 / “15.6”，第一回水牌“每 12 秒”，“9.1”改用标明的测试夹具 — 已修
+- [BLOCKING] 规则 2/6、Formulas、Tuning: `steps` 合法范围改为 3–20（战场压力定义）— 已修
+- [BLOCKING] 规则 13、Tuning、Formulas、登记表 ch01–ch10: “未模拟”改为已用 chapter-balance-sim 模拟 — 已修
+- [BLOCKING] Tuning: `phase2.steps` 默认 5 / 6 / 6 — 已修
+- [BLOCKING] Acceptance Criteria: 模拟验收改为固定种子、`node sim.mjs 40`、50 格、两次输出逐字节相同 — 已修
+- [RECOMMENDED] Open Questions: 第一回 10000 / 备选 9000 过期 — 已修
+- [RECOMMENDED] 规则 2、Open Questions: 张飞压境 skillLine 实为 10 字，关闭 — 已修
+- [RECOMMENDED] 头部 Status / Last Verified 更新 — 已修
+- [RECOMMENDED] Formulas P 范围 16–40 与登记表 [18, 63] 统一为 22–34（两处同改）— 已修
+- [RECOMMENDED] Tuning 压底张数补第四回 6、第七回 9 — 已修
+- [RECOMMENDED] 跨文档 foodT3 说明过期 — 已修（在 progress-save，见其日志；第四回 3 星难度待试玩时复核）
+- [RECOMMENDED] 依赖 / Open Questions: 教学引导标“待写”— 已修
+- [RECOMMENDED] 依赖 / Open Questions: 压境拒马、刘备、黄忠“待并入”已并入，关闭 — 已修
+- [RECOMMENDED] 第三回、第六回水牌无说明行（`newThingLine`）— 未改（留待第三回试玩前定，仍在 Open Questions）
+- [RECOMMENDED] 验收缺口: 规则 6 每条拒绝规则配一条验收 — 未改（留待实现加载器时补）
+- [RECOMMENDED] Tuning “调高”一栏注明 interval 已到上限 — 未改（用户已知决定，留待复审）
+- [RECOMMENDED] 教学要点表、总表加 rows / Σ deck 列（Nice-to-Have）— 未改
+- 另（用户决定 D3、D7）: 灰卡示例改为第九回无鼓（不计入 available，面板展开时才显示灰卡）— 已修；第三回写为“一回一样新东西”的明确例外并加入试玩观察项 — 已修
+Reviewed-Content-Hash: design/gdd/chapter-design.md a99324ddfe0f154eefb1b87d4413157c8e06193a
+Reviewed-Content-Hash: design/registry/entities.yaml 9b88f1c949f5e636c3d0ba131a4bc5616d38c526
+Reviewed-Content-Hash: .claude/skills/design-review/SKILL.md a63d8fba9b7142eeb43791f061e2e1533c429b43
+（以上哈希取修订前的 git 版本 f3a96f9，即本次审查读到的版本；由主会话补填）

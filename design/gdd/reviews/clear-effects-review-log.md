@@ -120,3 +120,25 @@ Reviewed-Content-Hash: design/gdd/reviews/clear-effects-review-log.md ea4f19ec69
 Reviewed-Content-Hash: design/gdd/battle-pressure.md fde8e4416fb1842b85fff1b350eaa4f5e8f5323a
 Reviewed-Content-Hash: design/gdd/ui-interaction.md bfa00041c182cb9fa1daac4c34119398a291744a
 Reviewed-Content-Hash: design/gdd/general-skills.md 686fe4c6b992627cfb1f89bad3eb489ed522b447
+
+## Review — 2026-10-30 — Verdict: NEEDS REVISION
+Review mode: lean · Workflow: standard
+Scope signal: M
+Specialists: none (lean)
+Blocking items: 2 | Recommended: 7
+Summary: 按步退（combo_pushback）机制在本文、对局流程、战场压力、界面四处一致，只有两处机械不一致：battle-pressure 抄写的调参范围，以及登记表 combo_count 区间与本文“无上限”的写法。均已修，待复审。
+Prior verdict resolved: Yes（上次两条阻塞所依附的字段随新机制废止）
+Findings:
+- [BLOCKING] Formulas / Tuning Knobs vs battle-pressure.md:227: COMBO_PUSHBACK / CAP 范围两处写法 — 已修（本文不变，battle-pressure 改为 1–2 / 1–4）
+- [BLOCKING] Formulas combo_count: 输出范围与 registry `[1, 999]` 不一致 — 已修（本文改为 0–999，实现封顶 999，显示 13 起「连斩不断」；registry 的 `output_range` 须改 `[0, 999]`，由另一会话处理）
+- [RECOMMENDED] stepsMax 8/6 写成定值 — 已修（改为默认值，以回目 `boss` 数据为准；调参表同步）
+- [RECOMMENDED] battle-pressure 的 `comboDelay` 统一为 `comboDelay_w` — 已修（在 battle-pressure 中）
+- [RECOMMENDED] 头部 Last Verified / Status — 已修（In Review；systems-index 状态由他处同步）
+- [RECOMMENDED] ui-interaction 写死“已退满 2 步” — 未改（他文档）
+- [RECOMMENDED] 验收缺口（二连斩 / 十二连斩显示、换阶段清零、震慑期退步、压境无下压机会、AC 220/222 拆分） — 未改（留待复审）
+- [RECOMMENDED] systems-index 第 82、101 行旧措辞 — 未改（他文档）
+- [RECOMMENDED] Open Questions 1 标“数值待试玩” — 未改（留待复审）
+Reviewed-Content-Hash: design/gdd/clear-effects.md 81ca4b1bde6ee9942d8cd678935ceb7f9df1dd75
+Reviewed-Content-Hash: design/registry/entities.yaml 9b88f1c949f5e636c3d0ba131a4bc5616d38c526
+Reviewed-Content-Hash: .claude/skills/design-review/SKILL.md a63d8fba9b7142eeb43791f061e2e1533c429b43
+（以上哈希取修订前的 git 版本 f3a96f9，即本次审查读到的版本；由主会话补填）

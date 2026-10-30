@@ -151,3 +151,28 @@ Reviewed-Content-Hash: design/gdd/round-flow.md ae0b1fc55a036510e040d582fbe2b9ff
 Reviewed-Content-Hash: design/gdd/chapter-design.md a57362fc306dae125f93bc3360e9ff69cc57bf1f
 Reviewed-Content-Hash: design/gdd/systems-index.md 48a678a841e1908f33a28baea23fc296f47c6378
 Reviewed-Content-Hash: design/gdd/game-concept.md b9259643dd0003e64dc9b0fd6d35ed1e66261e03
+
+## Review — 2026-10-30 — Verdict: NEEDS REVISION
+Review mode: lean · Workflow: standard
+Scope signal: M（producer 需核实）
+Specialists: none (lean)
+Blocking items: 3 | Recommended: 9
+Summary: 机制本身稳，与登记表、ADR-0004、其他 GDD 无数值冲突。3 条阻塞都是 2026-10-30 新增内容的缺口（重复结算无从判定、空阵容写出非法 loadout、两条验收测不出），均已机械修好，待复审。
+Prior verdict resolved: Yes
+Findings:
+- [BLOCKING] Edge Cases 重复结算: 用 `chapterId + attempt` 记最近一次已结算的键，同键返回上次结果、不写档；补验收（round-flow 已有 `attempt` 字段，无需改）— 已修
+- [BLOCKING] 规则 12/13: `RoundResult.loadout` 为空数组时不写、保留原值，存下的 loadout 永远是 1–3 位（用户决定 D4）；补验收 — 已修
+- [BLOCKING] Acceptance Criteria: ch01 `stars: 7` 一条改为“没有 `ch01` 键、`ch02` `wins = 1`”；存储失败一条给出确切提示文案和 `setItem` 调用次数断言 — 已修
+- [RECOMMENDED] R1 foodT3 说明: 改为第七回 slack 2、第四回 slack 3 — 已修
+- [RECOMMENDED] R9① 头部 Status / Last Verified — 已修
+- [RECOMMENDED] R8 登记表 `stars`: variables 本就含 missT2，补 note 写明三种单位 — 已修（在 entities.yaml）
+- [RECOMMENDED] R2 补验收（重读异常 / 整条损坏、isNewBest、提示去重与优先级、saved = true）— 未改（留待复审后补）
+- [RECOMMENDED] R3 规则 18 四句文案与优先级对应 — 未改
+- [RECOMMENDED] R4 并发少记 plays / wins 写进 Edge Cases — 未改
+- [RECOMMENDED] R5 转交字段补 `bossPhase` 不评星 — 未改
+- [RECOMMENDED] R6 / R7 ADR-0004 补 `progress.wins()`、`progress.loadoutOf(id)` 和竖切片解锁 — 未改（属 ADR，用 /propagate-design-change）
+- [RECOMMENDED] R9②③④ heartsLost 范围写法、foodLeft 为 0 的文案、t3 ≤ t2 提示 — 未改
+Reviewed-Content-Hash: design/gdd/progress-save.md 15e7cac9d6d4d400f4827e42097bd178f02851d8
+Reviewed-Content-Hash: design/registry/entities.yaml 9b88f1c949f5e636c3d0ba131a4bc5616d38c526
+Reviewed-Content-Hash: .claude/skills/design-review/SKILL.md a63d8fba9b7142eeb43791f061e2e1533c429b43
+（以上哈希取修订前的 git 版本 f3a96f9，即本次审查读到的版本；由主会话补填）

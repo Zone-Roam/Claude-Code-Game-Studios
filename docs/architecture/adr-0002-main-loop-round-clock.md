@@ -133,12 +133,14 @@ onFrame(now):
 1. **隐式后台**：状态为 `play` 且 `dtReal > BG_GAP_MS` → 申请 `background` 令牌，本帧到此为止。
 2. **处理意图**：按到达顺序逐个处理（意图的种类见 ADR-0003）。盘上和武将牌上的点击，在“状态不是 `play`，或**本帧开始时**的令牌集合不为空，或**此刻**的令牌集合不为空”时丢弃；暂停印既不受盘锁也不受防连点影响；覆盖卡按钮不受盘锁影响，只受 `CARD_GUARD_MS`（`overlayAgeMs`）。每处理完一次点击、令牌集合仍为空 → 就地做一次结算点。**关羽选排**（round-flow 规则 5a）：选排是 round 里的一个输入模式，不是令牌，不停钟、不锁盘。选排期间，盘上的点击按行交给武将技能（选中可选的行才放技能、申请 `skill` 令牌；不可选的行不响应），不交给 `board.tap`；点武将牌或盘外 = 取消，这一下不做别的事；暂停印照常。敌将的步数在 `onMatch`/`onMiss` 里累加（连上 1 步、连错 2 步），这里只累加，不出手。
 3. **令牌计时**：计时增量 `dtTok = (dtReal < 0 || dtReal > BG_GAP_MS) ? 0 : dtReal`；有 `background` 或 `pause` 令牌时为 0。本帧第 2 步新申请的令牌不计（从下一帧开始）。到点的令牌按申请顺序通知持有者 `onEnd(token)`，持有者完成效果、`dispatch(result)`、`release(token)`。超过 `TOKEN_MAX_MS` 仍未归还 → 强制移出；没通知过就补发一次，通知过的不再重发；开发版警告。
+3b. **令牌到点后的结算点**（2026-10-30 修订，对应 round-flow 帧步骤 ③b）：第 3 步中令牌因到点或强制归还而使令牌集合变空、且有结果交回（`dispatch`）时，就地做一次结算点，逻辑同第 5 步：先 `pressure.outcome()`，分出胜负就进入 `end`，跳过第 4、5 步；没分出则 `board.ensurePlayable()`，洗了牌就申请 `reshuffle` 令牌，同样跳过第 4 步；令牌集合仍不为空则不做。目的：令牌到点清空盘面（或打掉最后一颗心）的那一帧，第 4 步的 `tick` 不能先出手或补兵。
 4. **时钟和 tick**：令牌集合为空且状态为 `play` 时，`dtGame = min(max(dtReal, 0), MAX_STEP_MS)`，`gameTime += dtGame`；`dtGame > 0` 时调用 `pressure.tick(dtGame)`。压境用 `dtGame` 计时；敌将不看 `dtGame` 的大小，只在 `tick` 里检查“该不该换阶段、步数走满该不该出手”，当场改盘面后申请 `hostAttack` 或 `phase` 令牌（battle-pressure 规则 2、23、24）。所以第 ② 步走满的出手在同一帧这里结算；第 ② 步申请过令牌的（例如这一对触发了效果），出手延后到令牌归还后的第一次 `tick`。
+   压境 `tick` 里下压一排后（`push` 已 `emit`），round 当场调用 `skills.onPush()`：关羽在选排就取消（回到就绪），黄忠在选列就按新盘面重算高亮、不取消（round-flow 规则 5a，general-skills 交互表的两条通知）。`skills.onPush` 是直接调用，不经事件。
 5. **结算点**：令牌集合为空、且自上一个结算点以来有过点击结果、令牌到点、保底清除，或**本帧调用过 `tick`**（round-flow 规则 6.6：tick 之后没有令牌就是结算点，压境到点破城在这里判）时：先 `pressure.outcome()`（先胜后负；敌将一阶段打空、还没换阶段时返回 `null`），分出胜负就进入 `end`；否则 `board.ensurePlayable()`，洗了牌就申请 `reshuffle` 令牌。tick 里没有下压、出手和换阶段时只判胜负、不调用 `ensurePlayable()`。
 
 **令牌的数据结构**：按申请顺序排列的数组，每项 `{ id, reason, durationMs, elapsedMs, bornFrame, notified, onEnd }`。`background`、`pause` 各最多一个（重复申请返回同一个）。`release` 重复调用无副作用。
 
-**进入 `end`**：停钟、锁盘，立即调用 `progress.settle(roundResult)`，把 `SettleOutcome` 存在 round 对象上供界面读；开发版断言此时令牌集合为空。一回只进入一次 `end`，所以 round 只调用一次 `settle()`（progress-save 那边另有“第二次调用开发版报错、正式版忽略”的保护，见 ADR-0004）。界面播完收尾演出后调用 `round.endingDone()` → `settle`。
+**进入 `end`**：停钟、锁盘，立即调用 `progress.settle(roundResult)`，把 `SettleOutcome` 存在 round 对象上供界面读；开发版断言此时令牌集合为空。一回只进入一次 `end`，所以 round 只调用一次 `settle()`（progress-save 那边另按 `chapterId + attempt` 去重：重复调用返回同一个 `SettleOutcome`、不再写，见 ADR-0004 第 3 节；round 这边开发版仍断言只进入一次 `end`）。界面播完收尾演出后调用 `round.endingDone()` → `settle`。
 
 **装配顺序**：round 自己建出一回需要的全部规则对象，不从外面接收建好的对象（各系统要用 round 的 `emit`、`acquire`，先建好再传入会成环）：
 
@@ -146,7 +148,7 @@ onFrame(now):
 2. 建上下文 `ctx = { chapter, constants, board, emit, acquire, release, dispatch, gameTime }`，其中的函数都是 round 自己的，`gameTime` 是函数 `() => ms`（传值会在装配时冻住）；
 3. `pressure = systems.createPressure(ctx)`；
 4. `effects = systems.createEffects(Object.assign({}, ctx, { pressure }))`（连斩奖励要调用 `pressure.comboReward()`；对象展开 `{...ctx}` 是 ES2018，不用）；
-5. `skills = systems.createSkills(Object.assign({}, ctx, { pressure }))`（张飞要调用 `scareNextPush`、`addFood`、`roarBack`，赵云 `raiseShield`，诸葛亮 `breakSpecial`，虎啸读 `sealed`；见 battle-pressure 规则 3）。建武将牌用开讲时定下的 `loadout`。
+5. `skills = systems.createSkills(Object.assign({}, ctx, { pressure }))`（张飞要调用 `scareNextPush`、`addFood`、`roarBack`，赵云 `raiseShield` 并读 `hasShield`，诸葛亮 `breakSpecial`，刘备 `healHeart`、`canHeal`、`refillFood`、`canRefill`，虎啸读 `sealed`；关羽读 `board.rowContents`，黄忠读 `board.colContents`；见 battle-pressure 规则 3、general-skills 规则 11、14a、14b）。建武将牌用开讲时定下的 `loadout`（1–3 个，槽位顺序）。
 
 `systems` 是工厂函数表，**必须由装配根传入**（`src/app/screens.mjs` 引入四个规则模块后组成），`round-flow.mjs` 里不写缺省值：Core 层的 `round-flow` 不能引用 Feature 层的模块（`architecture.md` 分层规则）。测试传假的工厂即可。`progress` 也从外面传入（它跨回存在，见 ADR-0004）。
 
@@ -226,7 +228,7 @@ round.gameTime()     // ms
 round.tokens()       // 只读快照：[{ reason, remainingMs }]
 round.boardLocked()  // boolean
 round.overlay()      // null | 'open' | 'resume' | 'pause' | 'landscape' | 'win' | 'lose'
-round.result()       // RoundResult | null（进入 end 后）
+round.result()       // RoundResult | null（进入 end 后）；字段以 round-flow 规则 8 为准，含 attempt、loadout（1–3）、bossPhase（null | 1 | 2，取结束时 pressure.hud().phase）
 round.settleOutcome()// SettleOutcome | null（进入 end 后）
 round.systems()      // { board, effects, pressure, skills }，给界面读查询用（ADR-0003）
 round.drainEvents()  // ADR-0003
@@ -237,6 +239,7 @@ export function createStream(seed, name)
 ```
 
 各规则模块的回调（`effects.onMatch`、`skills.onMatch`、`pressure.onMatch/onMiss/onClear/tick/outcome/metrics`、`board.ensurePlayable`、`progress.settle`）沿用 round-flow.md 的名字，不改名。
+盘面给其他规则模块的修改接口沿用 board-link 规则 13 的名字：`clearKind`、`clearCells`、`pushRowFromTop`、`addPairs`、`shuffleTopRows`、`placeBlocks`、`convertBlocks`、`setForceNext`、`clearSelection`，都只返回数据，破坏 I1 时 `{ok:false}` 且盘面不变（TR-board-link-008、-013）。
 
 ### Implementation Guidelines
 
@@ -316,6 +319,9 @@ export function createStream(seed, name)
 | clear-effects.md | 连斩是不连错的连续消除，不看时间（规则 6）；`effect` 令牌到点后清除 | 连斩在第 ② 步的通知顺序里计数，不读时钟；令牌 `onEnd`（TR-clear-effects-001 于 2026-10-30 作废：连斩改为不连错的连续消；TR-clear-effects-002 不变） |
 | battle-pressure.md | 压境只由 `tick(dtGame)` 推进；敌将步数在 `onMatch`/`onMiss` 里累加，出手和换阶段在 `tick` 里当场结算（规则 2、22–24）；只回答 `outcome()`；波次表用 `wave` 流预先生成 | 第 2、4、5 步 + `rng('wave')`（TR-battle-pressure-001、-004） |
 | general-skills.md | 放技能申请 `skill` 令牌 950 ms，到点后生效 | 令牌 `onEnd`（TR-general-skills-001） |
+| round-flow.md | 规则 8：`RoundResult.bossPhase`、`attempt`、`loadout` | Key Interfaces `round.result()`（TR-round-flow-013、-014、-015） |
+| round-flow.md | 规则 5a：下压时取消选排、重画选列 | 第 3 节第 4 步 `skills.onPush()`（TR-round-flow-012） |
+| general-skills.md / battle-pressure.md | 刘备、黄忠、`hasShield` 的跨模块调用 | 第 3 节装配第 5 步（TR-battle-pressure-008、-009，TR-general-skills-004） |
 
 ## Performance Implications
 - **CPU**: 每帧一次 `frame()`；没有点击和到点时只有夹取、计时和 `tick`，远低于 2 ms。连通判定在点击时才做（board-link 公式），不在每帧做。
@@ -346,3 +352,5 @@ export function createStream(seed, name)
 ## Revision History
 
 - 2026-10-30：并入切片第四至六版和选将（见 `docs/architecture/change-impact-2026-10-30-slice-merge.md`），决策不变。
+- 2026-10-30（修订，按 round-flow 的 /design-review）：第 3 节在“令牌计时”与“时钟和 tick”之间加 3b（令牌到点后的结算点），“每帧五步”实为五步加 3b；`RoundResult` 增 `attempt`，`loadout` 为 1–3 个。决策不变，只补一个结算点；集成测试需增加“令牌到点清空盘面时同一帧不调用 `tick`”一条。
+- 2026-10-30（三次修订，按 /architecture-review 2026-10-30）：装配加刘备、黄忠、`hasShield`；下压后 `skills.onPush()`；`RoundResult` 字段指向 round-flow 规则 8（含 `bossPhase`）；`settle` 去重归 ADR-0004；列出盘面修改接口名。决策不变。

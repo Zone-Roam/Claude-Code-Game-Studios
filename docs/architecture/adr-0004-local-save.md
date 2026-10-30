@@ -111,7 +111,8 @@ progress.storageState()            // 'normal' | 'readonly' | 'memory'
 - 写入用 `JSON.stringify` 整条写回；顶层不认识的字段、存档里有而回目数据里没有的 `id` 原样保留（规则 10、19）。
 - **`loadout`（2026-10-30 随选将新增）**：每回记录多一个可选字段 `loadout`（武将 id 数组，按槽位顺序）。旧存档没有它也合法，`v` 仍为 1，不迁移。
   - `validate` 只查形状：数组、长度 1 到 `SLOT_MAX`、每项是字符串、没有重复。不合格只丢这一项，`stars`、`wins`、`plays` 照用（progress-save 规则 11）。“认不认识这位武将、超没超过本回 `slots`”归选将系统在填槽时查。
-  - `settle()` 把 `RoundResult.loadout` 写进本回记录，赢输都写（规则 12）。
+  - `settle()` 把 `RoundResult.loadout` 写进本回记录，赢输都写（规则 12）；`loadout` 为空数组时不写这一项，保留原值。
+- **重复结算**（2026-10-30）：`progress` 在内存里记住本页面会话已结算过的 `chapterId + attempt` 及其 `SettleOutcome`。同一键再次 `settle()`：返回同一个 `SettleOutcome`，`plays` 不加，不写存储；开发版另报一次警告（对局流程保证不会发生，见 ADR-0002）。取代旧的“第二次调用开发版报错、正式版忽略”。
   - `merge` 对 `loadout` **不取较大值**：本次结算的那一回用本回的阵容；其他回目重读到合法的就用重读的，没有就用内存的，两边都没有就不写（规则 13）。
   - 已解锁的武将不存，由选将系统从各回 `wins` 推出（general-loadout 规则 7）。
 
@@ -134,7 +135,7 @@ main.mjs ──► createLocalStoragePort(window) ──► storage 端口
 - 必须：只有 `src/platform/storage.mjs` 引用 `localStorage`；构建检查第 4 条拦住规则层里的引用。
 - 必须：每次端口调用都包 `try/catch`，异常只改变存储状态，不冒泡。
 - 必须：写入只发生在 `settle()` 和启动时的探测、损坏备份三处。
-- 必须：同一回只结算一次。`settle()` 记下已结算的回（按 round 对象传入的结果对象判断），第二次调用开发版报错，正式版忽略并返回第一次的 `SettleOutcome`。
+- 必须：同一回只结算一次。`settle()` 按 `chapterId + attempt` 记下已结算的回（见第 3 节“重复结算”），第二次调用返回第一次的 `SettleOutcome`、不再写，开发版另报一次警告。
 - 必须：`settle()` 同步返回且从不抛异常（ADR-0002 依赖这一点：漏出的异常会把玩家送到出错页）。
 - 必须：`tests/unit/progress-save/` 覆盖规则 13 重读结果表的每一行和规则 14–17 的每种状态转换，用假端口。
 - 绝不：在对局中途、切后台、回书目放弃时写档。
@@ -198,6 +199,7 @@ main.mjs ──► createLocalStoragePort(window) ──► storage 端口
 | progress-save.md | 规则 20：不收集、不上传、不联网 | 端口只有本机读写；ADR-0001 构建检查禁止网络 API（TR-progress-save-005） |
 | round-flow.md | 规则 8：进入“结束”时立即 `settle(RoundResult)` 拿回 `SettleOutcome` | `settle()` 同步返回（`localStorage` 是同步接口）（TR-round-flow-006） |
 | progress-save.md | 同一回只结算一次：第二次调用开发版报错、正式版忽略 | Implementation Guidelines 第二条（TR-progress-save-006） |
+| progress-save.md | Edge Cases、AC：按 `chapterId + attempt` 去重 | 第 3 节“重复结算”（TR-progress-save-008，取代 -006） |
 
 ## Performance Implications
 - **CPU**: 一次 `settle()` 读写约 200 字节的 JSON，微秒级。
@@ -224,3 +226,4 @@ main.mjs ──► createLocalStoragePort(window) ──► storage 端口
 ## Revision History
 
 - 2026-10-30：并入切片第四至六版和选将（见 `docs/architecture/change-impact-2026-10-30-slice-merge.md`），决策不变。
+- 2026-10-30（二次修订，按 /architecture-review 2026-10-30）：`settle()` 按 `chapterId + attempt` 去重并返回同一结果；空 `loadout` 不写。决策不变。

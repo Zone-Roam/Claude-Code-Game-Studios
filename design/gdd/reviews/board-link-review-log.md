@@ -125,3 +125,30 @@ Reviewed-Content-Hash: design/gdd/general-skills.md 7d605759e12c9863d37e129f2086
 Reviewed-Content-Hash: design/gdd/chapter-design.md cdf81b77e54acd7d0098c209920994e3fd2ce864
 Reviewed-Content-Hash: design/gdd/game-concept.md 32a4bb041739f3f57968ecd796bc7debc82c732b
 Reviewed-Content-Hash: design/art/art-bible.md d65acad5f16e94183d8f461556fb6d9768b7d68c
+
+## Review — 2026-10-30 — Verdict: NEEDS REVISION
+Review mode: lean · Workflow: standard
+Scope signal: L
+Specialists: none (lean)
+Blocking items: 5 | Recommended: 9
+Summary: 2026-10-30 的合并大改（层叠、拒马、convertBlocks、5 列、黄忠）留下几处同一事实写两处：黄忠的列查询缺失且接口名三套、“第一回”示例其实是第五回的数据、5 列压境没有压测。另有死局第四级兜底待用户确认。按用户决定全部修改。
+Prior verdict resolved: Yes
+Findings:
+- [BLOCKING] Core Rules 15/17、Interactions、Dependencies、Cross-References: 黄忠选列没有 `colContents(c)`，接口名三套 — 已修（补 `colContents`，补验收）
+- [BLOCKING] Formulas / Tuning Knobs / AC: “第一回”被当成 44 块满盘示例，deck 种类数 8–11 与回目数据冲突 — 已修（改用第五回数据 44 块 7 种；种类数 4–7；底牌数 第三回 10、第五回 14、第十回 21）
+- [BLOCKING] AC（底牌不挡路）: 不可独立测试 — 已修（改成选中取上层、删底牌前后连通判定逐对相同）
+- [BLOCKING] Formulas startRows / AC: 5 列压境无自动对局，startRows 范围错 — 已修（5 列只能 4；新增 5 列压境自动对局，≤ 400 步）
+- [BLOCKING] Core Rules 12 第四级: 先碎拒马的兜底未确认且无验收 — 已修（用户决定 D2：接受；补 AC 覆盖第二至四级，关闭 Open Question）
+- [RECOMMENDED] R1 自动对局加步数上限 — 已修一半（新增的 5 列版写了 400 步；原两条 6 列对局未改，留待复审）
+- [RECOMMENDED] R2 最大盘性能 AC 改写 — 未改（留待基准机选定）
+- [RECOMMENDED] R3 AC 补 pairs 数字 — 未改（留待复审）
+- [RECOMMENDED] R4 UI Requirements 棋子像素与 ui-interaction 不一致 — 已修（改为以 cell_size 公式为准）
+- [RECOMMENDED] R5 Status / Last Verified — 已修（systems-index 的 Approved 标记在别的文件，留给主会话）
+- [RECOMMENDED] R6 规则 3 `wave` 流说明补压境来源 — 未改（留待复审）
+- [RECOMMENDED] R7 补验收（setForceNext 重置、clearCells 四层、reshuffle 分发） — 未改（留待复审）
+- [RECOMMENDED] R8 规则 9 与规则 12 互相引用 — 已修（规则 12 第四级写明是规则 9 的例外；规则 9 一侧未改）
+- [RECOMMENDED] R9 规则 17 块和拒马查询对应方法 — 未改（留待复审；`colContents`/`rowContents` 已返回三张表）
+Reviewed-Content-Hash: design/gdd/board-link.md 1f180cc4418a533b793bc3e5b5a376eea15adfe3
+Reviewed-Content-Hash: design/registry/entities.yaml 9b88f1c949f5e636c3d0ba131a4bc5616d38c526
+Reviewed-Content-Hash: .claude/skills/design-review/SKILL.md a63d8fba9b7142eeb43791f061e2e1533c429b43
+（以上哈希取修订前的 git 版本 f3a96f9，即本次审查读到的版本；由主会话补填）
