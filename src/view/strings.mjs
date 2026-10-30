@@ -13,7 +13,8 @@ export const EFFECT_NAMES = Object.freeze({ ying: '火烧连营', gong: '铁骑�
 
 /** Fixed UI strings. Placeholders in braces are filled by fill(). */
 export const UI_TEXT = Object.freeze({
-  gameTitle: '评书连连看',
+  gameTitle: '三国连连看',
+  stackBadge: '叠',
   error: '戏本出错，请稍后再来',
   catalog: '书目',
   pause: '暂停',

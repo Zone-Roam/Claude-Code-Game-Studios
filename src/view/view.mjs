@@ -57,6 +57,28 @@ function generalName(id) {
 }
 
 /**
+ * How a tile shows the cards buried under it (board-link depth, user choice
+ * "A + C", 2026-10-30): a second card edge peeking out below-right (class
+ * `stack`) plus a vermilion 「叠」 seal in the top-right corner. Nothing when
+ * the cell holds no buried card.
+ * @param {number} depth board.depthAt(r, c): cards buried under the top one
+ * @returns {{stack: boolean, badge: string}}
+ */
+export function stackDecor(depth) {
+  return depth > 0 ? { stack: true, badge: UI_TEXT.stackBadge } : { stack: false, badge: '' };
+}
+
+/**
+ * Side of the 「叠」 seal in px for a board cell size: about 0.3 of the cell,
+ * so 18 px at the 60 px pitch and 16 px at the smallest 52 px pitch.
+ * @param {number} cell layout cell pitch in px
+ * @returns {number}
+ */
+export function stackSealSize(cell) {
+  return Math.round(cell * 0.3);
+}
+
+/**
  * Words a general-skills hint code (general-skills rule 7) for the card.
  * @param {(Object|null)} hint `{reason, ...}` from skills.cards() / cardHint
  * @returns {string} '' when the card can fire
@@ -291,6 +313,7 @@ export function createView(root, deps) {
 
   function placeTiles() {
     const L = layout;
+    boardEl.style.setProperty('--seal', stackSealSize(L.cell) + 'px');
     for (const t of tiles) {
       const p = pointCenter(L, t.r, t.c);
       t.el.style.left = p.x - L.cell / 2 + 3 + 'px';
@@ -324,12 +347,13 @@ export function createView(root, deps) {
     if (!board) return;
     for (let rr = 1; rr <= board.rows; rr++) {
       for (let cc = 1; cc <= board.cols; cc++) {
-        // div + img: 2 nodes per tile (ui-interaction rule 32)
+        // div + img + seal span: 3 nodes per tile (ui-interaction rule 32)
         const n = el('div', 'tile empty', boardEl);
         const img = el('img', '', n);
         img.alt = '';
         img.draggable = false;
-        tiles.push({ r: rr, c: cc, el: n, img, kind: null, depth: 0 });
+        const seal = el('span', 'stack-seal', n);
+        tiles.push({ r: rr, c: cc, el: n, img, seal, kind: null, depth: 0 });
       }
     }
     heartsEl.textContent = '';
@@ -877,7 +901,9 @@ export function createView(root, deps) {
       }
       if (depth !== t.depth) {
         t.depth = depth;
-        t.el.classList.toggle('stack', depth > 0);
+        const decor = stackDecor(depth);
+        t.el.classList.toggle('stack', decor.stack);
+        t.seal.textContent = decor.badge;
       }
       if (k !== t.kind) {
         t.kind = k;

@@ -5,6 +5,7 @@
   color-scheme: light;
   --paper: #f6ecd6;
   --paper-hi: #fffaf0;
+  --paper-deep: #c8a873;
   --stage: #eadbbd;
   --ink: #2a2018;
   --ink-soft: #6b5a43;
@@ -377,13 +378,11 @@ html, body {
 .gcard .pips b { width: 7px; height: 7px; margin-left: 2px; }
 
 /* slice v6 (DESIGN-v6.md): a stacked cell shows a second tile edge below it; a buried tile pops in when uncovered */
-.tile.stack { box-shadow: 4px 5px 0 0 var(--wood), 4px 5px 0 2px var(--ink); }
 .tile.reveal { animation: reveal 340ms ease-out; }
 @keyframes reveal { 0% { transform: scale(0.55); opacity: 0.2; } 70% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .tile.reveal { animation: none; } }
 
 /* Production additions (2026-10-30): two-layer depth marker, barricade, reveal, catalog list. */
-.tile.stack { box-shadow: 0 3px 0 var(--ink-soft), 3px 6px 0 var(--wood); }
 .tile.block { background: var(--iron); border-style: dashed; }
 .tile.block::before { color: var(--paper-hi); }
 .tile.reveal { animation: reveal 340ms ease-out; }
@@ -444,3 +443,24 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   #charge-box.up, #charge-box.down #charge-track, #hearts svg.hit, #hearts svg.heal, .gcard.ping, .gcard.hit { animation: none; }
 }
+
+/* Buried cards (2026-10-30, user choice "A + C"): a tile with a card under it shows that card's edge
+   peeking out 3 px below-right (darker paper, ink outline; 4.5 px total, inside the 3 px + 3 px cell gap)
+   and a vermilion 「叠」 seal in its top-right corner. Static: nothing animates here. */
+.tile.stack { box-shadow: 3px 3px 0 0 var(--paper-deep), 3px 3px 0 1.5px var(--ink); }
+.stack-seal { display: none; }
+.tile.stack .stack-seal {
+  display: block; position: absolute; top: -4px; right: -4px; z-index: 2; pointer-events: none;
+  width: var(--seal, 18px); height: var(--seal, 18px); line-height: var(--seal, 18px);
+  font-size: calc(var(--seal, 18px) - 5px); font-weight: 800; text-align: center;
+  background: var(--zhu); color: var(--paper-hi); border-radius: 3px; box-shadow: 0 0 0 1px var(--paper-hi);
+}
+.tile.empty .stack-seal { display: none; }
+
+/* Catalog header (2026-10-30 rename to 三国连连看): the game title sits below the curtain art at the top
+   of the panel, large; 「书目」 stays as the section heading under it. */
+#card-catalog h1 {
+  margin: 30px 0 0; font-size: 34px; line-height: 1.2; font-weight: 800; letter-spacing: 4px;
+  color: var(--ink); white-space: nowrap;
+}
+#card-catalog h2 { margin: 2px 0 6px; font-size: 22px; letter-spacing: 6px; }
