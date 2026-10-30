@@ -15,10 +15,12 @@ import { skillLine } from '../rules/general-skills.mjs';
 import { SHOUT_MS, VIBRATE_MS, PREVIEW_DELAY_MS } from './ui-constants.mjs';
 import { vibrate } from '../platform/lifecycle.mjs';
 
+// Q版清爽版 skin pieces (ui-assets.mjs) -> the CSS variables styles.css reads.
 const UI_VARS = {
-  '--ui-panel': 'panel', '--ui-plaque': 'plaque', '--ui-beam': 'beam', '--ui-btn-primary': 'btnPrimary',
-  '--ui-btn-secondary': 'btnSecondary', '--ui-seal': 'seal', '--ui-card': 'cardFrame',
-  '--ui-card-ready': 'cardFrameReady', '--ui-foe-frame': 'foeFrame',
+  '--ui-panel': 'panel', '--ui-banner': 'banner', '--ui-btn-primary': 'btnPrimary', '--ui-btn-secondary': 'btnSecondary',
+  '--ui-pause': 'pause', '--ui-tile': 'tile', '--ui-tile-sel': 'tileSel', '--ui-bar-empty': 'barEmpty',
+  '--ui-bar-full': 'barFull', '--ui-card': 'cardFrame', '--ui-card-ready': 'cardFrameReady',
+  '--ui-star-off': 'starOff', '--ui-star-on': 'starOn',
 };
 const SVGNS = 'http://www.w3.org/2000/svg';
 const HEART_PATH = 'M20 34 C9 26 4 20 4 13 C4 8 8 5 12 5 C16 5 18 7 20 10 C22 7 24 5 28 5 C32 5 36 8 36 13 C36 20 31 26 20 34 Z';
@@ -52,30 +54,47 @@ function svgIcon(path, attrs) {
   return s;
 }
 
+function useIcon(id, cls) {
+  const s = document.createElementNS(SVGNS, 'svg');
+  s.setAttribute('viewBox', '0 0 40 40');
+  if (cls) s.setAttribute('class', cls);
+  const u = document.createElementNS(SVGNS, 'use');
+  u.setAttribute('href', '#' + id);
+  s.appendChild(u);
+  return s;
+}
+
 function generalName(id) {
   return GENERAL_NAMES[id] || id;
 }
 
+/** Most buried-card edges drawn under a tile; deeper stacks still say +k on the badge. */
+export const STACK_EDGES_MAX = 3;
+
 /**
- * How a tile shows the cards buried under it (board-link depth, user choice
- * "A + C", 2026-10-30): a second card edge peeking out below-right (class
- * `stack`) plus a vermilion 「叠」 seal in the top-right corner. Nothing when
+ * How a tile shows the cards buried under it (board-link depth; 2026-10-30 user
+ * feedback: the 「叠」 seal was too big). One thin card edge per buried card
+ * peeks out below-right (class `stack` + `edges-1..3`, at most STACK_EDGES_MAX),
+ * and a small vermilion "+k" badge sits on the top-right corner. Nothing when
  * the cell holds no buried card.
  * @param {number} depth board.depthAt(r, c): cards buried under the top one
- * @returns {{stack: boolean, badge: string}}
+ * @returns {{stack: boolean, edges: number, badge: string}}
  */
 export function stackDecor(depth) {
-  return depth > 0 ? { stack: true, badge: UI_TEXT.stackBadge } : { stack: false, badge: '' };
+  const k = depth > 0 ? Math.floor(depth) : 0;
+  if (!k) return { stack: false, edges: 0, badge: '' };
+  return { stack: true, edges: Math.min(k, STACK_EDGES_MAX), badge: fill(UI_TEXT.stackBadge, { n: k }) };
 }
 
 /**
- * Side of the 「叠」 seal in px for a board cell size: about 0.3 of the cell,
- * so 18 px at the 60 px pitch and 16 px at the smallest 52 px pitch.
+ * Size of the "+k" badge in px for a board cell pitch: about 0.23 x 0.2 of the
+ * cell, so 14 x 12 at the 60 px pitch and 12 x 11 at the smallest 52 px pitch
+ * (about 30% of the old 「叠」 seal's area). The digits stay 10 px either way.
  * @param {number} cell layout cell pitch in px
- * @returns {number}
+ * @returns {{w: number, h: number}}
  */
-export function stackSealSize(cell) {
-  return Math.round(cell * 0.3);
+export function stackBadgeSize(cell) {
+  return { w: Math.round(cell * 0.233), h: Math.round(cell * 0.205) };
 }
 
 /**
@@ -313,7 +332,9 @@ export function createView(root, deps) {
 
   function placeTiles() {
     const L = layout;
-    boardEl.style.setProperty('--seal', stackSealSize(L.cell) + 'px');
+    const badge = stackBadgeSize(L.cell);
+    boardEl.style.setProperty('--badge-w', badge.w + 'px');
+    boardEl.style.setProperty('--badge-h', badge.h + 'px');
     for (const t of tiles) {
       const p = pointCenter(L, t.r, t.c);
       t.el.style.left = p.x - L.cell / 2 + 3 + 'px';
@@ -347,12 +368,12 @@ export function createView(root, deps) {
     if (!board) return;
     for (let rr = 1; rr <= board.rows; rr++) {
       for (let cc = 1; cc <= board.cols; cc++) {
-        // div + img + seal span: 3 nodes per tile (ui-interaction rule 32)
+        // div + img + badge span: 3 nodes per tile (ui-interaction rule 32)
         const n = el('div', 'tile empty', boardEl);
         const img = el('img', '', n);
         img.alt = '';
         img.draggable = false;
-        const seal = el('span', 'stack-seal', n);
+        const seal = el('span', 'stack-badge', n);
         tiles.push({ r: rr, c: cc, el: n, img, seal, kind: null, depth: 0 });
       }
     }
@@ -488,8 +509,9 @@ export function createView(root, deps) {
       el('b', '', btn, ch.no);
       el('span', 'ctitle', btn, ch.title);
       const stars = el('span', 'cstars', btn);
-      for (let i = 0; i < 3; i++) stars.appendChild(svgIcon(STAR_PATH, { class: i < row.bestStars ? 'on' : 'off' }));
+      for (let i = 0; i < 3; i++) el('i', i < row.bestStars ? 'on' : 'off', stars); // star pieces drawn by CSS
       el('span', 'cmode', btn, MODE_NAMES[ch.mode] || '');
+      if (!row.unlocked) btn.appendChild(useIcon('s-lock', 'lock'));
     }
   }
 
@@ -903,6 +925,7 @@ export function createView(root, deps) {
         t.depth = depth;
         const decor = stackDecor(depth);
         t.el.classList.toggle('stack', decor.stack);
+        for (let i = 1; i <= STACK_EDGES_MAX; i++) t.el.classList.toggle('edges-' + i, decor.edges === i);
         t.seal.textContent = decor.badge;
       }
       if (k !== t.kind) {

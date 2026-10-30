@@ -315,32 +315,6 @@ html, body {
   #hero .blot, #hero .who { transition: none; transform: scale(1); }
 }
 
-/* ── generated UI skin (EvoMeme 游戏 UI 组件, see ui-assets.mjs); falls back to the flat CSS above ── */
-.card {
-  border-style: solid; border-color: transparent; border-width: 46px 12px 22px 12px; left: 10px; right: 10px;
-  border-image: var(--ui-panel) 60 26 30 26 fill / 46px 12px 22px 12px stretch;
-  background: transparent; border-radius: 0; padding: 4px 6px 10px;
-}
-.card button.primary { background: var(--ui-btn-primary) center / 100% 100% no-repeat; border: none; color: var(--paper-hi); }
-.card button:not(.primary) { background: var(--ui-btn-secondary) center / 100% 100% no-repeat; border: none; color: var(--ink); }
-#title {
-  left: 50%; right: auto; width: 352px; margin-left: -176px; border-bottom: none; white-space: nowrap;
-  border-style: solid; border-color: transparent; border-width: 0 34px;
-  border-image: var(--ui-plaque) 0 90 fill / 0 34px stretch; box-sizing: border-box; font-size: 18px; letter-spacing: 0;
-}
-#deadzone {
-  background: transparent; border-style: solid; border-color: transparent; border-width: 0 34px;
-  border-image: var(--ui-beam) 0 90 fill / 0 34px stretch; box-sizing: border-box;
-}
-#pause-stamp { background: var(--ui-seal) center / 100% 100% no-repeat; border: none; }
-#pause-stamp i { background: var(--paper-hi); }
-.gcard { background: var(--ui-card) center / 100% 100% no-repeat; border: none; border-radius: 8px; }
-.gcard.ready { background-image: var(--ui-card-ready); border: none; box-shadow: none; }
-.gcard.armed { border: none; outline: 3px dashed var(--zhu); outline-offset: -5px; }
-.gcard .avatar { margin-top: 8px; width: 30px; height: 30px; }
-.gcard .gname { margin-top: 0; }
-.gcard .pips { line-height: 18px; margin-top: 0; }
-
 /* slice v5 (DESIGN-v5.md): step dots, forecast, status chips, the strike to a heart, barricades, sealed cards */
 #charge-track { display: flex; gap: 3px; align-items: center; background: none; border: none; overflow: visible; height: 14px; }
 #charge-track i { flex: 1; height: 12px; border: 2px solid var(--qing); border-radius: 3px; background: var(--paper-hi); box-sizing: border-box; transition: transform 160ms ease; }
@@ -444,18 +418,29 @@ html, body {
   #charge-box.up, #charge-box.down #charge-track, #hearts svg.hit, #hearts svg.heal, .gcard.ping, .gcard.hit { animation: none; }
 }
 
-/* Buried cards (2026-10-30, user choice "A + C"): a tile with a card under it shows that card's edge
-   peeking out 3 px below-right (darker paper, ink outline; 4.5 px total, inside the 3 px + 3 px cell gap)
-   and a vermilion 「叠」 seal in its top-right corner. Static: nothing animates here. */
-.tile.stack { box-shadow: 3px 3px 0 0 var(--paper-deep), 3px 3px 0 1.5px var(--ink); }
-.stack-seal { display: none; }
-.tile.stack .stack-seal {
-  display: block; position: absolute; top: -4px; right: -4px; z-index: 2; pointer-events: none;
-  width: var(--seal, 18px); height: var(--seal, 18px); line-height: var(--seal, 18px);
-  font-size: calc(var(--seal, 18px) - 5px); font-weight: 800; text-align: center;
-  background: var(--zhu); color: var(--paper-hi); border-radius: 3px; box-shadow: 0 0 0 1px var(--paper-hi);
+/* Buried cards (2026-10-30; the 「叠」 seal was too big, now a small "+k" badge): one thin card edge per
+   buried card (max 3) peeks out below-right, each 2 px further than the one above (1 px darker paper +
+   1 px ink line). Three edges reach 6 px, exactly the 3 px + 3 px cell gap, at every pitch.
+   The "+k" pill straddles the top-right corner, outside the unit art. Static: nothing animates here. */
+.tile.stack.edges-1 { box-shadow: 1px 1px 0 0 var(--paper-deep), 2px 2px 0 0 var(--ink); }
+.tile.stack.edges-2 {
+  box-shadow: 1px 1px 0 0 var(--paper-deep), 2px 2px 0 0 var(--ink),
+    3px 3px 0 0 var(--paper-deep), 4px 4px 0 0 var(--ink);
 }
-.tile.empty .stack-seal { display: none; }
+.tile.stack.edges-3 {
+  box-shadow: 1px 1px 0 0 var(--paper-deep), 2px 2px 0 0 var(--ink),
+    3px 3px 0 0 var(--paper-deep), 4px 4px 0 0 var(--ink),
+    5px 5px 0 0 var(--paper-deep), 6px 6px 0 0 var(--ink);
+}
+.stack-badge { display: none; }
+.tile.stack .stack-badge {
+  display: block; position: absolute; top: -5px; right: -5px; z-index: 2; pointer-events: none;
+  box-sizing: border-box; min-width: var(--badge-w, 14px); height: var(--badge-h, 12px); padding: 0 1px;
+  line-height: var(--badge-h, 12px); font-size: 10px; font-weight: 800; letter-spacing: -0.5px;
+  text-align: center; white-space: nowrap;
+  background: var(--zhu); color: #fff; border-radius: 6px; box-shadow: 0 0 0 1px var(--paper-hi);
+}
+.tile.empty .stack-badge { display: none; }
 
 /* Catalog header (2026-10-30 rename to 三国连连看): the game title sits below the curtain art at the top
    of the panel, large; 「书目」 stays as the section heading under it. */
@@ -464,3 +449,179 @@ html, body {
   color: var(--ink); white-space: nowrap;
 }
 #card-catalog h2 { margin: 2px 0 6px; font-size: 22px; letter-spacing: 6px; }
+
+/* ══ Q版卡通·清爽版 skin (user choice 2026-10-30; art: EvoMeme GPT Image 2.5 sheets, see ui-assets.mjs).
+   Light cream + sky-blue page, cream tile bases with big coloured unit icons, wooden title banner,
+   red countdown bar, round pause, cream card panels. Overrides the flat styles above; every --ui-*
+   image has a flat colour behind it. Must-read text keeps >= 7:1 on its ground. ══ */
+:root {
+  --paper: #fdf6e8;
+  --paper-hi: #fffaf0;
+  --paper-deep: #ead3ab;
+  --stage: #fff8ea;
+  --ink: #3a2616;
+  --ink-soft: #6b4f36;
+  --zhu: #d8381f;
+  --zhu-deep: #9c2412;
+  --qing: #24577a;
+  --qing-soft: #d6e9f4;
+  --gold: #f2b52a;
+  --wood: #c98f52;
+  --sky: #cdeaf8;
+  --sky-hi: #eaf6fc;
+  --cream-line: #e3c597;
+  --font: "Yuanti SC", "YouYuan", -apple-system, "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif;
+}
+html, body { background: linear-gradient(180deg, var(--sky) 0%, var(--sky-hi) 28%, var(--paper) 62%, #fbefd9 100%); }
+#error { background: var(--paper); }
+
+/* top band: wooden title banner, round pause, bold readouts */
+#title {
+  left: 50%; right: auto; width: 300px; margin-left: -150px; height: 46px; top: -1px; white-space: nowrap;
+  border-style: solid; border-color: transparent; border-width: 8px 30px; box-sizing: border-box;
+  border-image: var(--ui-banner) 30 66 fill / 8px 30px stretch;
+  font-size: 20px; font-weight: 800; letter-spacing: 1px; color: var(--ink);
+}
+#pause-stamp { background: var(--ui-pause) center / contain no-repeat; border: none; border-radius: 50%; width: 44px; height: 44px; }
+#pause-stamp i { opacity: 0; }
+#plaque .read, #plaque .shout { color: var(--ink); font-weight: 800; }
+#pairs { font-weight: 800; color: var(--ink); }
+#banner.paper { background: var(--paper-hi); color: var(--zhu-deep); border-top: 3px solid var(--wood); border-bottom: 3px solid var(--wood); border-radius: 22px; }
+#banner.ink { background: #4a2e1a; color: var(--paper-hi); border-radius: 22px; }
+#banner.qing { background: var(--qing); color: var(--paper-hi); border-radius: 22px; }
+#banner .seal { background: var(--zhu-deep); border-radius: 10px; padding: 2px 7px; }
+#hearts { background: var(--paper-hi); border: 2px solid var(--cream-line); box-sizing: border-box; }
+#charge-label { color: var(--ink); font-weight: 700; }
+/* countdown / food: the red bar over its empty socket; the fill scales from the left (transform only) */
+#charge-box:not(.pips) #charge-track {
+  height: 18px; top: 2px; border: none; border-radius: 9px;
+  background: var(--ui-bar-empty) center / 100% 100% no-repeat, #7a1428;
+}
+#charge-box:not(.pips) #charge-fill { background: var(--ui-bar-full) center / 100% 100% no-repeat, var(--zhu); border-radius: 9px; }
+#charge-box.t2:not(.pips) #charge-track, #charge-box.t3:not(.pips) #charge-track { border: none; }
+#charge-box.t2 #charge-fill, #charge-box.t3 #charge-fill { background: var(--ui-bar-full) center / 100% 100% no-repeat, var(--zhu); }
+#charge-box.t2 #charge-label { color: var(--zhu-deep); }
+#charge-box.t3 #charge-label { color: var(--zhu-deep); font-weight: 800; }
+#charge-box.t3:not(.pips) #charge-track { box-shadow: 0 0 0 2px var(--zhu); }
+#charge-track i { border-color: var(--cream-line); background: var(--paper-hi); border-radius: 6px; }
+#charge-track i.on { background: var(--zhu); border-color: var(--zhu-deep); }
+#foe { border: 2px solid var(--cream-line); border-radius: 12px; background: var(--paper-hi); }
+#foe .name { color: var(--zhu-deep); }
+#foe .face { border-color: var(--wood); }
+#foe .hpbar { border-radius: 3px; background: #f3dcd6; overflow: hidden; }
+#foe .hpbar i { background: var(--zhu); }
+
+/* board: a light cream table with soft wood rails */
+#board-frame { background: var(--stage); border-left: 6px solid var(--cream-line); border-right: 6px solid var(--cream-line); border-radius: 10px; }
+#deadzone { background: linear-gradient(180deg, var(--paper-deep), var(--cream-line)); border-radius: 0 0 10px 10px; }
+.tile {
+  background: var(--ui-tile) center / 100% 100% no-repeat, var(--paper-hi);
+  border: none; border-radius: 15%; box-shadow: none;
+}
+.tile img { left: 11%; top: 7%; width: 78%; height: 78%; }
+.tile.sel { background-image: var(--ui-tile-sel); border: none; transform: translateY(-3px); }
+.tile.fx { border: none; }
+.tile.fx img { left: 5%; top: 3%; width: 72%; height: 72%; }
+.tile.fx::after { right: 3px; bottom: 5px; width: 20px; height: 20px; line-height: 20px; font-size: 14px; border-radius: 50%; background: var(--zhu-deep); color: #fff; }
+.tile.fx.notarget::after { background: var(--paper-hi); color: var(--zhu-deep); border: 2px dashed var(--zhu-deep); line-height: 16px; }
+.tile.hl { border: none; outline: 3px solid var(--zhu); outline-offset: -2px; transform: scale(1.06); }
+.tile.line { border: none; outline: 3px dashed var(--zhu-deep); outline-offset: -3px; }
+.tile.pv::before { border-color: var(--zhu); }
+.tile.block { background: #7a5a3c; border: none; box-shadow: 0 3px 0 #5a3f28; }
+.tile.block::before { color: #fff; font-weight: 800; }
+.ghost { background: var(--ui-tile) center / 100% 100% no-repeat, var(--paper-hi); border: none; border-radius: 15%; }
+.ghost img { left: 11%; top: 7%; width: 78%; height: 78%; }
+/* buried cards: the same thin edges, in tile cream with a soft wood line; the "+k" pill stays small */
+.tile.stack.edges-1 { box-shadow: 1px 1px 0 0 var(--paper-deep), 2px 2px 0 0 #b07a48; }
+.tile.stack.edges-2 { box-shadow: 1px 1px 0 0 var(--paper-deep), 2px 2px 0 0 #b07a48, 3px 3px 0 0 var(--paper-deep), 4px 4px 0 0 #b07a48; }
+.tile.stack.edges-3 {
+  box-shadow: 1px 1px 0 0 var(--paper-deep), 2px 2px 0 0 #b07a48, 3px 3px 0 0 var(--paper-deep), 4px 4px 0 0 #b07a48,
+    5px 5px 0 0 var(--paper-deep), 6px 6px 0 0 #b07a48;
+}
+.tile.stack .stack-badge { background: #a82218; color: #fff; box-shadow: 0 0 0 1.5px var(--paper-hi); }
+#links .core { stroke: #4a2e1a; }
+#links .head { stroke: #4a2e1a; }
+
+/* general cards: green frame, gold when ready */
+.gcard {
+  background: var(--ui-card) center / 100% 100% no-repeat, var(--paper-hi);
+  border: none; border-radius: 10px;
+}
+.gcard.ready { background-image: var(--ui-card-ready); border: none; box-shadow: none; }
+.gcard.ready .gname { color: var(--zhu-deep); }
+.gcard.armed { border: none; outline: 3px dashed var(--zhu); outline-offset: -5px; }
+.gcard.show { border: none; outline: 3px solid var(--zhu); outline-offset: -4px; }
+.gcard.standby { border: none; outline: 3px dashed var(--qing); outline-offset: -5px; }
+.gcard .avatar { margin-top: 8px; width: 30px; height: 30px; border-color: var(--wood); }
+.gcard .gname { margin-top: 0; font-weight: 800; color: var(--ink); }
+.gcard .pips { line-height: 18px; margin-top: 0; }
+.gcard .pips b { border-color: var(--ink-soft); }
+.gcard .pips b.on { background: var(--zhu); border-color: var(--zhu-deep); }
+.gcard .token { background: var(--gold); border-color: var(--zhu-deep); color: var(--ink); }
+.gcard .hint { background: #4a2e1a; border-radius: 10px; }
+
+/* overlay cards: the cream panel with a wood frame and gold corners */
+.card {
+  left: 10px; right: 10px; border-radius: 0; padding: 0 4px 6px;
+  border-style: solid; border-color: transparent; border-width: 30px;
+  border-image: var(--ui-panel) 64 fill / 30px stretch;
+  background: transparent;
+}
+.card h1 { color: var(--ink-soft); font-weight: 700; }
+.card h2 { color: var(--zhu-deep); font-weight: 800; }
+.card p, .card .small { color: var(--ink); }
+.card button { font-weight: 800; border-radius: 26px; }
+.card button.primary {
+  background: var(--ui-btn-primary) center / 100% 100% no-repeat, var(--zhu); border: none; color: #fff;
+  text-shadow: 0 2px 0 #7a1608, 1px 0 0 #7a1608, -1px 0 0 #7a1608, 0 -1px 0 #7a1608;
+}
+.card button:not(.primary) { background: var(--ui-btn-secondary) center / 100% 100% no-repeat, var(--paper-hi); border: none; color: var(--ink); }
+.card .btns button { min-width: 136px; min-height: 54px; padding: 0 18px 4px; }
+.card .roster .rface { border-color: var(--wood); }
+.card .roster button.mini, .card .roster button.pick { border-radius: 20px; }
+.card .roster button.pick { background: var(--paper); border: 2px solid var(--cream-line); }
+.stamp { width: 92px; height: 92px; line-height: 88px; border-radius: 50%; background: var(--zhu); color: #fff; box-shadow: 0 0 0 4px var(--paper-hi), 0 0 0 7px var(--wood); text-shadow: 0 3px 0 #7a1608; }
+.stamp.lose { background: var(--qing); text-shadow: 0 3px 0 #0f2c40; }
+/* stars: the two star pieces; the vector star underneath stays as the fallback */
+.stars span { background: center / contain no-repeat; }
+.stars span.on { background-image: var(--ui-star-on); }
+.stars span.off { background-image: var(--ui-star-off); }
+.stars span svg { opacity: 0; }
+
+/* catalog: cream rounded bars, stars, padlock on locked rows */
+#card-catalog h1 { margin: 6px 0 0; color: var(--zhu-deep); letter-spacing: 4px; }
+#card-catalog h2 { color: var(--ink-soft); font-size: 20px; font-weight: 700; }
+.card .catalog-list { gap: 10px; padding: 2px 2px 4px; }
+.card .catalog-list button.chapter {
+  display: grid; grid-template-columns: auto auto 1fr auto; grid-template-areas: "no title title lock" "no stars mode lock";
+  column-gap: 10px; row-gap: 2px; align-items: center;
+  min-height: 60px; padding: 6px 12px; border-radius: 16px;
+  background: var(--paper-hi); border: 2px solid var(--cream-line); box-shadow: 0 3px 0 var(--paper-deep);
+  font-size: 18px; font-weight: 800; color: var(--ink);
+}
+.card .catalog-list button.chapter b { grid-area: no; color: var(--zhu-deep); font-size: 16px; }
+.card .catalog-list button.chapter .ctitle { grid-area: title; font-size: 18px; }
+.card .catalog-list button.chapter .cstars { display: flex; gap: 2px; grid-area: stars; align-self: start; }
+.card .catalog-list button.chapter .cstars i { display: block; width: 20px; height: 20px; background: center / contain no-repeat; }
+.card .catalog-list button.chapter .cstars i.on { background-image: var(--ui-star-on); }
+.card .catalog-list button.chapter .cstars i.off { background-image: var(--ui-star-off); }
+.card .catalog-list button.chapter .cmode {
+  grid-area: mode; justify-self: start; font-size: 13px; font-weight: 700; color: var(--qing); background: var(--qing-soft);
+  border-radius: 10px; padding: 1px 7px;
+}
+.card .catalog-list button.chapter.locked { opacity: 1; background: #eee9e1; border-color: #d6cfc4; box-shadow: 0 3px 0 #cfc7ba; color: #4a433b; }
+.card .catalog-list button.chapter.locked b, .card .catalog-list button.chapter.locked .cmode { color: #4a433b; background: transparent; }
+.card .catalog-list button.chapter.locked .cstars { opacity: 0.45; }
+.card .catalog-list button.chapter .lock { grid-area: lock; width: 22px; height: 22px; }
+
+/* catalog / pause dim: a light sky veil instead of ink; the skill show keeps its dark mask */
+#mask.dim { background: var(--sky); opacity: 0.88; }
+#hearts:empty { display: none; }
+/* compact top band: the chapter name / shouts sit on the wooden banner */
+#plaque { left: 54px; right: 84px; box-sizing: border-box; border-style: solid; border-color: transparent; border-width: 7px 24px; }
+#plaque:not([data-key=""]) { border-image: var(--ui-banner) 30 66 fill / 7px 24px stretch; }
+#plaque .read { font-size: 16px; overflow: hidden; text-overflow: ellipsis; }
+/* general card content fits inside the frame at the 76 px rail height */
+.gcard .avatar { margin-top: 5px; width: 24px; height: 24px; }
+.gcard .gname { font-size: 17px; line-height: 20px; }
+.gcard .pips { line-height: 16px; font-size: 14px; }

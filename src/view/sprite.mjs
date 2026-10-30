@@ -33,6 +33,8 @@ const SYMBOLS = {
 const EXTRA = {
   heart: `<path d="M20 34 C9 26 4 20 4 13 C4 8 8 5 12 5 C16 5 18 7 20 10 C22 7 24 5 28 5 C32 5 36 8 36 13 C36 20 31 26 20 34 Z" fill="${ZHU}" stroke="${ZHU}" stroke-width="2"/>`,
   star: `<path d="M20 3 L25 15 L38 15 L27.5 23 L31.5 36 L20 28 L8.5 36 L12.5 23 L2 15 L15 15 Z"/>`,
+  // padlock for locked catalog rows (Q版清爽版 catalog)
+  lock: `<rect x="9" y="18" width="22" height="17" rx="4" fill="#8a7f72" stroke="#4a433b" stroke-width="2.2"/><path d="M14 18 V13 C14 6 26 6 26 13 V18" fill="none" stroke="#4a433b" stroke-width="3" stroke-linecap="round"/><circle cx="20" cy="26" r="2.6" fill="#fffaf0"/>`,
   tick: `<path d="M8 21 L17 30 L33 9" fill="none" stroke="${ZHU}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`,
 };
 
