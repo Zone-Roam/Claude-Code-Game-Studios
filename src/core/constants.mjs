@@ -62,3 +62,24 @@ export const COMBO_PUSHBACK_CAP = 2;
 export const PRESS_DELAY_MS = 1000;
 /** Tuning knob (0-6000): most ms of delay between two press-mode pushes (press_delay). */
 export const PRESS_DELAY_CAP_MS = 3000;
+
+/**
+ * Round clock (design/gdd/round-flow.md Formulas, dt_game; ADR-0002 section 3).
+ * Tuning knob (50-500): most ms the game clock advances in one frame.
+ */
+export const MAX_STEP_MS = 250;
+/** Tuning knob (600-3000, must exceed MAX_STEP_MS): a frame gap above this is an implicit background. */
+export const BG_GAP_MS = 1000;
+/** Tuning knob (2000-10000): most foreground ms a timed token is held before it is force-released. */
+export const TOKEN_MAX_MS = 5000;
+/** Tuning knobs: default durations of the timed tokens (round-flow rule 4). */
+export const SKILL_SHOW_MS = 950;
+export const HOST_ATTACK_MS = 600;
+export const PHASE_SHOW_MS = 1400;
+/** Ending show lengths (round-flow rule 8): the view calls round.endingDone() after these. */
+export const ENDING_WIN_MS = 2000;
+export const ENDING_LOSE_MS = 300;
+/** Tuning knob (200-1000): ms after an overlay-card button appears before it takes taps (round-flow rule 9, card_guard). */
+export const CARD_GUARD_MS = 500;
+/** ms the mask takes to fade after 开讲 before play and the clock start (round-flow rule 2). */
+export const OPEN_FADE_MS = 150;
