@@ -196,7 +196,7 @@ The press_deadline formula is defined as（压境一回的时间上限和手速�
 | 8 | int | 8 | constant | 压境盘的行数：第 k 次下压放进的那一行，在第 k + 8 次下压时如果还没清空就破城 |
 
 **Output Range:** T_max 是一回的上限（不含推迟）；玩家平均手速低于 r_need 时，盘会越来越满，靠开局空出的 `8 − startRows` 行、效果和技能撑住。
-**Example:** 6 列、waves 8、interval 7000 → T_max ≈ 112 秒；r_need ≈ 0.43 对/秒。开发者约 0.5 对/秒能跟上；0.25 对/秒的玩家每秒落后约 0.18 对，开局 4 个空行（12 对）大约 60–70 秒用完。改成 5 列（正式版默认）后 r_need ≈ 0.29 对/秒、开局 4 个空行只能缓冲 4 波、8 对：压力明显变松，回目的 interval 和 waves 由关卡设计按 5 列重排。第 6 回草稿（5 列、startRows 4、waves 8、interval 8000）：`P_press = 10 + 8 × 2 = 26` 对（3 块拒马不算），`T_max ≈ 16 × 8 = 128` 秒，`r_need = 0.25` 对/秒。
+**Example:** 6 列、waves 8、interval 7000 → T_max ≈ 112 秒；r_need ≈ 0.43 对/秒。开发者约 0.5 对/秒能跟上；0.25 对/秒的玩家每秒落后约 0.18 对，开局 4 个空行（12 对）大约 60–70 秒用完。改成 5 列（正式版默认）后 r_need ≈ 0.29 对/秒、开局 4 个空行只能缓冲 4 波、8 对：压力明显变松，回目的 interval 和 waves 由关卡设计按 5 列重排。第 6 回草稿（5 列、startRows 4、waves 8、interval 8000）：`P_press = 10 + 8 × 2 = 26` 对（3 块拒马不算），`T_max ≈ 16 × 8 = 128` 秒，`r_need = 0.25` 对/秒。模拟后三个压境回都改为 interval 12000（“回目编排与难度”规则 11，2026-10-30）：第 6 回 `r_need ≈ 0.17` 对/秒。
 
 The food_start formula is defined as:
 

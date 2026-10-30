@@ -7,6 +7,50 @@
 // need: not written in rule 13 for any of these, so every general uses his default (rule 9).
 
 export const CHAPTERS = [
+  // 2026-10-30: press / food chapters 1, 4, 6, 7, 8 (rule 13). cols 5 like the boss chapters.
+  {
+    id: 'ch01', no: '第一回', title: '斩黄巾英雄首立功', mode: 'press', rows: 8, cols: 5,
+    deck: { dao: 6, qi: 6, jiu: 4, gu: 4 }, // 20 = startRows 4 × 5
+    press: { startRows: 4, waves: 6, interval: 12000 }, // was 10000
+    slots: 1, lead: 'guan_yu', recommend: ['guan_yu'],
+  },
+  {
+    id: 'ch04', no: '第四回', title: '陶恭祖三让徐州', mode: 'food', rows: 6, cols: 5,
+    deck: { qi: 8, dao: 6, gu: 6, dun: 6, ying: 6, jiu: 4 }, // 36, 6 buried; food0 = 18 − 0 + 3 = 21
+    food: { slack: 3 },
+    slots: 2, lead: 'liu_bei', recommend: ['liu_bei', 'guan_yu'],
+  },
+  {
+    id: 'ch06', no: '第六回', title: '关云长过五关斩将', mode: 'press', rows: 8, cols: 5,
+    deck: { dao: 6, gu: 6, dun: 6, qi: 2 }, // 20
+    press: {
+      startRows: 4, waves: 8, interval: 12000, // was 8000
+      waveList: [
+        ['qi', 'dao', null, 'dao', 'qi'],
+        ['gu', 'jiu', 'jiu', null, 'gu'],
+        ['dun', 'ying', 'jm', 'dun', 'ying'],
+        [null, 'gong', 'dao', 'gong', 'dao'],
+        ['jiu', 'gu', 'jm', 'gu', 'jiu'],
+        ['dun', 'qi', 'qi', 'dun', null],
+        ['ying', 'jm', 'dao', 'ying', 'dao'],
+        ['gu', 'gong', null, 'gong', 'gu'],
+      ],
+    },
+    slots: 3, lead: 'guan_yu', recommend: ['guan_yu', 'zhang_fei', 'zhao_yun'],
+  },
+  {
+    id: 'ch07', no: '第七回', title: '博望坡军师初用兵', mode: 'food', rows: 7, cols: 5,
+    deck: { huo: 2, ying: 10, shu: 8, dao: 6, gu: 6, jiu: 8, qi: 4 }, // 44, 9 buried; food0 = 22 − 5 + 2 = 19
+    food: { slack: 2 },
+    slots: 3, lead: 'zhuge_liang', recommend: ['zhuge_liang', 'guan_yu', 'zhang_fei'],
+  },
+  {
+    id: 'ch08', no: '第八回', title: '赵子龙单骑救主', mode: 'press', rows: 8, cols: 5,
+    deck: { ma: 2, gong: 2, dun: 6, gu: 6, dao: 4 }, // 20
+    pool: { gong: 3, ma: 1, dao: 1, gu: 1, dun: 1, qi: 1, jiu: 2, ying: 1 },
+    press: { startRows: 4, waves: 10, interval: 12000 }, // was 7000
+    slots: 3, lead: 'zhao_yun', recommend: ['zhao_yun', 'zhang_fei', 'guan_yu'],
+  },
   {
     id: 'ch02', no: '第二回', title: '虎牢关三英战吕布', mode: 'boss', rows: 6, cols: 5,
     deck: { gu: 8, dao: 6, qi: 6, ying: 6, jiu: 4 }, // 30, 0 buried

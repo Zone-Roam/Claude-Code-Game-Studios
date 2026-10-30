@@ -197,7 +197,7 @@ function withSteps(ch, d) {
 
 const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/').split('/').pop());
 if (isMain) {
-  const chapters = load(CHAPTERS);
+  const chapters = load(CHAPTERS).filter((c) => c.mode === 'boss'); // press / food: sim-press-food.mjs
   console.log(`# 敌将回目数值模拟（每格 ${N} 局，种子 hash32('sim', 1..${N})）`);
   for (const ch of chapters) {
     const p2 = ch.boss.phase2;

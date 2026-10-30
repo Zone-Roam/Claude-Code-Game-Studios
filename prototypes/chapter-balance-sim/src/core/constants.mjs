@@ -112,3 +112,20 @@ export const STAR_BOSS_T2 = 1;
 
 /** `slow=1` multipliers (chapter-design rule 14). */
 export const SLOW_CHARGE_FACTOR = 1.5;
+
+// ---- 压境、粮草 (battle-pressure rules 7–19, 2026-10-30) ----
+/** Press board height (battle-pressure rule 7). */
+export const PRESS_ROWS = 8;
+/** clear-effects press_delay: delay per 3+ combo match, and the most between two pushes. */
+export const PRESS_DELAY_MS = 1000;
+export const PRESS_DELAY_CAP_MS = 3000;
+/** general-skills rule 12 / 14a: Zhang Fei's food (may exceed food0), Liu Bei's refill (capped at food0). */
+export const ROAR_FOOD = 3;
+export const LIU_FOOD = 2;
+/** progress-save rule 2: press stars by dangerMs, food stars by misses and foodLeft. */
+export const STAR_PRESS_T3 = 2000;
+export const STAR_PRESS_T2 = 8000;
+export const STAR_FOOD_T3 = 2;
+export const STAR_FOOD_MISS_T2 = 2;
+/** chapter-design rule 14: slow=1 multiplies press interval by this. */
+export const SLOW_INTERVAL_FACTOR = 1.3;

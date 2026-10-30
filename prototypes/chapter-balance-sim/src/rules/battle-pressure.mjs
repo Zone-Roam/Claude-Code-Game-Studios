@@ -16,14 +16,27 @@ import {
   CHAIN_PAIRS, CHAIN_SKIP,
 } from '../core/constants.mjs';
 import { devAssert } from '../core/assert.mjs';
+import { createPress, createFood } from './press-food.mjs';
 
 /**
+ * Pressure for the chapter's mode (rule 1). Press and food live in press-food.mjs (added 2026-10-30).
  * @param {object} ctx round context
  * @returns {object} pressure API
  */
 export function createPressure(ctx) {
+  const mode = ctx.chapter.mode;
+  if (mode === 'press') return createPress(ctx);
+  if (mode === 'food') return createFood(ctx);
+  devAssert(mode === 'boss', 'unknown mode ' + mode);
+  return createBoss(ctx);
+}
+
+/**
+ * @param {object} ctx round context
+ * @returns {object} boss pressure API
+ */
+function createBoss(ctx) {
   const { chapter, board, emit, acquire, release } = ctx;
-  devAssert(chapter.mode === 'boss', 'slice implements boss mode only');
   const boss = chapter.boss;
   const phase2 = boss.phase2 || null;
   let phase = 1;
@@ -241,6 +254,8 @@ export function createPressure(ctx) {
       return gain;
     },
     canHeal() { return hearts < boss.hearts; },
+    canScare() { return false; },
+    canRefill() { return false; },
     sealed(general) { return seal && seal.general === general ? seal.left : 0; },
     charge() { return stepsMax ? (100 * steps) / stepsMax : 0; },
     /** @returns {boolean} whether the board changed (an attack or phase change) */

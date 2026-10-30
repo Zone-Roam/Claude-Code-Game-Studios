@@ -4,7 +4,9 @@
 
 // 回目编排与难度 loader (design/gdd/chapter-design.md rules 6–9, 14) — the checks the slice's one chapter needs.
 
-import { KINDS, BOARD_COLS, STACK_DEPTH, GENERALS, SLOW_CHARGE_FACTOR, SPECIAL_NAMES } from '../core/constants.mjs';
+import {
+  KINDS, BOARD_COLS, STACK_DEPTH, GENERALS, SLOW_CHARGE_FACTOR, SPECIAL_NAMES, PRESS_ROWS, SLOW_INTERVAL_FACTOR,
+} from '../core/constants.mjs';
 
 /**
  * Validates chapters and applies test flags. Rejected chapters are dropped with a reason.
@@ -26,6 +28,11 @@ export function loadChapters(data, flags) {
     const ch = JSON.parse(JSON.stringify(raw));
     // chapter-design rule 2: recommend replaces generals; the sim fields the recommended lineup
     if (!ch.generals) ch.generals = ch.recommend.slice();
+    if (ch.mode === 'press' && flags.slow) ch.press.interval = Math.round(ch.press.interval * SLOW_INTERVAL_FACTOR);
+    if (ch.mode !== 'boss') {
+      out.push(ch);
+      continue;
+    }
     const enemy = data.enemies[ch.boss.enemy];
     ch.enemyName = enemy.name;
     ch.enemyLines = ch.enemyLines || enemy.lines;
@@ -45,8 +52,9 @@ export function loadChapters(data, flags) {
 
 function reject(ch, data, seen) {
   if (seen[ch.id]) return 'duplicate id';
-  if (ch.mode !== 'boss') return 'slice supports boss mode only';
+  if (['boss', 'press', 'food'].indexOf(ch.mode) < 0) return 'unknown mode';
   if (!(ch.rows >= 6 && ch.rows <= 8)) return 'rows out of range';
+  if (ch.mode === 'press' && ch.rows !== PRESS_ROWS) return 'press rows must be ' + PRESS_ROWS;
   let total = 0;
   for (const k of Object.keys(ch.deck)) {
     if (KINDS.indexOf(k) < 0) return 'unknown kind ' + k;
@@ -56,9 +64,17 @@ function reject(ch, data, seen) {
   // slice v6: 5 or 6 columns; tiles beyond the board are dealt face down (stacking)
   const cols = ch.cols || BOARD_COLS;
   if (!(cols >= 5 && cols <= 6)) return 'cols out of range';
+  for (const k of Object.keys(ch.pool || {})) {
+    if (KINDS.indexOf(k) < 0) return 'unknown pool kind ' + k;
+    if (!(Number.isInteger(ch.pool[k]) && ch.pool[k] > 0)) return 'bad pool weight ' + k;
+  }
+  const lineup0 = ch.generals || ch.recommend;
+  if (!lineup0 || lineup0.length === 0 || lineup0.length > 3) return 'no generals';
+  for (const id of lineup0) if (!GENERALS.some((g) => g.id === id)) return 'unknown general ' + id;
+  if (ch.mode === 'press') return rejectPress(ch, cols, total);
   if (total < ch.rows * cols) return 'deck does not fill the board';
   if (total > ch.rows * cols * (1 + STACK_DEPTH)) return 'deck too big to stack';
-  for (const k of Object.keys(ch.pool || {})) if (KINDS.indexOf(k) < 0) return 'unknown pool kind ' + k;
+  if (ch.mode === 'food') return ch.food && ch.food.slack >= 0 && ch.food.slack <= 6 ? null : 'food.slack out of range';
   if (!ch.boss || !data.enemies[ch.boss.enemy]) return 'unknown enemy';
   if (ch.boss.chargeMs !== undefined && !(ch.boss.chargeMs >= 6000 && ch.boss.chargeMs <= 20000)) return 'chargeMs out of range';
   if (!(ch.boss.steps >= 3 && ch.boss.steps <= 20)) return 'steps out of range';
@@ -71,6 +87,33 @@ function reject(ch, data, seen) {
   const lineup = ch.generals || ch.recommend;
   if (!lineup || lineup.length === 0 || lineup.length > 3) return 'no generals';
   for (const id of lineup) if (!GENERALS.some((g) => g.id === id)) return 'unknown general ' + id;
+  return null;
+}
+
+// battle-pressure rules 7–8 and Edge Cases: press parameters and waveList.
+function rejectPress(ch, cols, total) {
+  const p = ch.press;
+  if (!p) return 'no press';
+  if (!(p.startRows >= 3 && p.startRows <= 5)) return 'startRows out of range';
+  if (total !== p.startRows * cols) return 'press deck must fill startRows exactly (no stacking)';
+  if (!(p.interval >= 4000 && p.interval <= 12000)) return 'interval out of range';
+  if (!(p.waves >= 4 && p.waves <= 16)) return 'waves out of range';
+  const wp = Math.floor(cols / 2);
+  if (p.waveList) {
+    if (p.waveList.length !== p.waves) return 'waveList length != waves';
+    for (const w of p.waveList) {
+      if (w.length !== cols) return 'waveList item length != cols';
+      const n = {};
+      let gaps = 0;
+      for (const e of w) {
+        if (e === null || e === 'jm') gaps++;
+        else if (KINDS.indexOf(e) < 0) return 'unknown waveList element ' + e;
+        else n[e] = (n[e] || 0) + 1;
+      }
+      if (gaps !== cols - 2 * wp) return 'waveList gaps wrong';
+      if (Object.keys(n).some((k) => n[k] % 2)) return 'odd kind in waveList item';
+    }
+  }
   return null;
 }
 

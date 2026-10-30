@@ -9,7 +9,7 @@
 // PROTOTYPE SIMPLIFICATION: the "选排 / 选列" UI state is folded into one call, tapCard(id, {row} | {col}).
 // Selecting does not move the enemy (rule 10), so this changes no numbers.
 
-import { GENERALS, KINDS, KIND_NAMES, NEED_DEFAULT, SKILL_SHOW_MS, LIU_GIFT, LIU_HEAL } from '../core/constants.mjs';
+import { GENERALS, KINDS, KIND_NAMES, NEED_DEFAULT, SKILL_SHOW_MS, LIU_GIFT, LIU_HEAL, ROAR_FOOD, LIU_FOOD } from '../core/constants.mjs';
 import { devAssert } from '../core/assert.mjs';
 
 const NUMERALS = ['零', '一', '两', '三', '四'];
@@ -86,6 +86,7 @@ export function zhugeKind(board) {
 export function createSkills(ctx) {
   const { chapter, board, pressure, emit, acquire, release, dispatch } = ctx;
   const ids = chapter.generals;
+  const mode = chapter.mode || 'boss';
   const roster = ids.map((id) => GENERALS.find((g) => g.id === id)).filter(Boolean).map((g) => ({
     id: g.id, name: g.name, kind: g.kind, skill: g.skill, line: g.line,
     need: typeof chapter.need === 'object' && chapter.need ? chapter.need[g.id] || NEED_DEFAULT[g.id]
@@ -109,14 +110,20 @@ export function createSkills(ctx) {
   function hasEffect(g) {
     if (g.id === 'guan_yu' || g.id === 'huang_zhong') return anyBlocks();
     if (g.id === 'zhuge_liang') return !board.isEmpty();
-    if (g.id === 'zhao_yun') return !pressure.hud().shield;
-    if (g.id === 'liu_bei') return pressure.canHeal() || receivers(g).length > 0;
+    if (g.id === 'zhao_yun') return mode === 'boss' ? !pressure.hud().shield : !board.forceNext();
+    if (g.id === 'zhang_fei' && mode === 'press') return pressure.canScare();
+    if (g.id === 'liu_bei') {
+      if (mode === 'boss') return pressure.canHeal() || receivers(g).length > 0;
+      if (mode === 'food') return pressure.canRefill() || receivers(g).length > 0;
+      return receivers(g).length > 0;
+    }
     return true;
   }
 
   function noEffectText(g) {
-    if (g.id === 'zhao_yun') return '已有护盾';
-    if (g.id === 'liu_bei') return '心满，众将也满';
+    if (g.id === 'zhao_yun') return mode === 'boss' ? '已有护盾' : '已在待命';
+    if (g.id === 'zhang_fei') return '此时一吼无用';
+    if (g.id === 'liu_bei') return mode === 'boss' ? '心满，众将也满' : mode === 'food' ? '粮满，众将也满' : '众将已满';
     return '盘上已经无兵';
   }
 
@@ -132,6 +139,7 @@ export function createSkills(ctx) {
   function onMatch(match) {
     for (const g of roster) {
       if (g.kind !== match.kind || g.charge >= g.need) continue;
+      if (g.id === 'zhao_yun' && mode !== 'boss' && board.forceNext()) continue; // 待命: charge stays 0
       g.charge += 1;
       if (g.charge === g.need) emit({ type: 'skillReady', general: g.id });
     }
@@ -174,12 +182,18 @@ export function createSkills(ctx) {
       else if (g.id === 'zhuge_liang') {
         dispatch(board.clearKind(kind, 'skill'));
         if (pressure.breakSpecial()) emit({ type: 'specialBroken' });
-      } else if (g.id === 'zhang_fei') pressure.roarBack();
-      else if (g.id === 'zhao_yun') {
-        pressure.raiseShield();
-        emit({ type: 'shield', on: true });
+      } else if (g.id === 'zhang_fei') {
+        if (mode === 'press') pressure.scareNextPush();
+        else if (mode === 'food') pressure.addFood(ROAR_FOOD);
+        else pressure.roarBack();
+      } else if (g.id === 'zhao_yun') {
+        if (mode === 'boss') {
+          pressure.raiseShield();
+          emit({ type: 'shield', on: true });
+        } else board.setForceNext(true); // press / food: old rule, the next same-kind pair is forced
       } else if (g.id === 'liu_bei') {
-        pressure.healHeart(LIU_HEAL);
+        if (mode === 'boss') pressure.healHeart(LIU_HEAL);
+        else if (mode === 'food') pressure.refillFood(LIU_FOOD);
         for (const gid of gifted) {
           const x = byId(gid);
           const before = x.charge;

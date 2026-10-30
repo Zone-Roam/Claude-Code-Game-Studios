@@ -52,7 +52,7 @@ const LAYOUT = [
 
 test('loader → all five boss chapters load, lineup = recommend', () => {
   assert.equal(LOADED.rejected.length, 0);
-  assert.deepEqual(LOADED.chapters.map((c) => c.id), ['ch02', 'ch03', 'ch05', 'ch09', 'ch10']);
+  assert.deepEqual(LOADED.chapters.filter((c) => c.mode === 'boss').map((c) => c.id), ['ch02', 'ch03', 'ch05', 'ch09', 'ch10']);
   assert.deepEqual(CH('ch10').generals, ['huang_zhong', 'zhuge_liang', 'zhao_yun']);
 });
 
@@ -232,4 +232,98 @@ test('sim → same seed gives the same game (reproducible)', () => {
   const a = playOne(CH('ch09'), 7, 0.2, true);
   const b = playOne(CH('ch09'), 7, 0.2, true);
   assert.deepEqual(a, b);
+});
+
+// ---- 压境、粮草 (battle-pressure rules 7–19, 2026-10-30) ----
+import { foodStart } from '../src/rules/press-food.mjs';
+
+const PRESS = (waveList, startRows) => ({
+  id: 'tp', mode: 'press', rows: 8, cols: 5, deck: { dao: 2 }, generals: ['guan_yu'],
+  press: { startRows: startRows || 1, waves: waveList.length, interval: 1000, waveList },
+});
+const W1 = ['gu', 'gu', null, 'qi', 'qi'];
+const W2 = ['jiu', 'jiu', 'jm', 'dun', 'dun'];
+const FOOD = (generals) => ({
+  id: 'tf', mode: 'food', rows: 2, cols: 5, deck: { dao: 4, gu: 2, qi: 4 }, food: { slack: 2 }, generals,
+});
+const FOOD_LAYOUT = [['dao', 'dao', 'gu', 'qi', 'qi'], ['gu', 'dao', 'dao', 'qi', 'qi']];
+
+test('压境 → at interval one row comes down from the top; waves count', () => {
+  const { board, pressure } = rig(PRESS([W1, W2]), [['dao', 'dao', _, _, _]]);
+  assert.equal(pressure.tick(999), false);
+  assert.equal(pressure.tick(1), true);
+  assert.equal(board.kindAt(2, 1), 'dao');
+  assert.equal(board.kindAt(1, 1), 'gu');
+  assert.equal(board.kindAt(1, 3), null);
+  assert.equal(pressure.hud().wave, 1);
+  assert.equal(pressure.outcome().result, null);
+});
+
+test('压境 → a tile in the bottom row when a push falls due = 破城, board unchanged', () => {
+  const layout = [_, _, _, _, _, _, _, ['dao', 'dao', _, _, _]].map((r) => r || [_, _, _, _, _]);
+  const { board, pressure } = rig(PRESS([W1]), layout);
+  pressure.tick(500);
+  assert.equal(pressure.outcome().result, null);
+  pressure.tick(500);
+  assert.deepEqual(pressure.outcome(), { result: 'lose', reason: '破城' });
+  assert.equal(board.kindAt(1, 1), null);
+  assert.equal(pressure.metrics().dangerMs, 1000); // both ticks started with a tile in the bottom row
+});
+
+test('压境 → 拒马 in the bottom row does not lose; it is pushed off the board (dropped)', () => {
+  const layout = [['dao', 'dao', _, _, _], _, _, _, _, _, _, [J, _, _, _, _]].map((r) => r || [_, _, _, _, _]);
+  const { board, pressure, events } = rig(PRESS([W1, W2]), layout);
+  assert.equal(board.bottomOccupied(), false);
+  pressure.tick(1000);
+  assert.equal(pressure.outcome().result, null);
+  assert.equal(board.blocks().length, 0);
+  assert.deepEqual(events.find((e) => e.type === 'push').dropped, [1]);
+  assert.equal(pressure.metrics().dangerMs, 0);
+  pressure.tick(1000); // wave 2 brings its own 拒马 in at row 1
+  assert.equal(board.kindAt(1, 3), J);
+});
+
+test('压境 → all waves pushed and the board cleared = win (not before the last wave)', () => {
+  const { board, pressure } = rig(PRESS([W1]), [['dao', 'dao', _, _, _]]);
+  board.tap(1, 1); board.tap(1, 2);
+  assert.equal(board.isEmpty(), true);
+  assert.equal(pressure.outcome().result, null); // waves left
+  assert.equal(pressure.tick(16), true); // empty board → next wave at once
+  assert.equal(pressure.hud().wave, 1);
+  for (const [a, b] of [[[1, 1], [1, 2]], [[1, 4], [1, 5]]]) { board.tap(a[0], a[1]); board.tap(b[0], b[1]); }
+  assert.deepEqual(pressure.outcome(), { result: 'win', reason: null });
+});
+
+test('粮草 → food0 from food_start; a pair costs 1, a forced pair 0, a miss 1 and counts', () => {
+  assert.equal(foodStart(CH('ch07')), 19);
+  assert.equal(foodStart(CH('ch04')), 21);
+  const { pressure } = rig(FOOD(['guan_yu']), FOOD_LAYOUT);
+  assert.equal(pressure.hud().food, 7); // 5 pairs − 0 + 2
+  pressure.onMatch({ forced: false });
+  assert.equal(pressure.hud().food, 6);
+  pressure.onMatch({ forced: true });
+  assert.equal(pressure.hud().food, 6);
+  pressure.onMiss({});
+  assert.equal(pressure.hud().food, 5);
+  assert.equal(pressure.metrics().misses, 1);
+});
+
+test('粮草 → food 0 with tiles left = 粮草断绝', () => {
+  const { pressure } = rig(FOOD(['guan_yu']), FOOD_LAYOUT);
+  for (let i = 0; i < 7; i++) pressure.onMiss({});
+  assert.deepEqual(pressure.outcome(), { result: 'lose', reason: '粮草断绝' });
+});
+
+test('粮草 → 刘备 refills 2 capped at food0; 张飞 +3 may exceed it', () => {
+  const r = rig(FOOD(['liu_bei', 'zhang_fei']), FOOD_LAYOUT);
+  r.pressure.onMiss({});
+  r.skills.setCharge('liu_bei', 3);
+  assert.equal(r.skills.tapCard('liu_bei'), true);
+  assert.equal(r.pressure.hud().food, 7);
+  assert.deepEqual(r.events.filter((e) => e.type === 'foodRefill').map((e) => e.amount), [1]);
+  assert.equal(r.pressure.canRefill(), false);
+  r.skills.setCharge('zhang_fei', 3);
+  assert.equal(r.skills.tapCard('zhang_fei'), true);
+  assert.equal(r.pressure.hud().food, 10);
+  assert.equal(r.pressure.metrics().misses, 1);
 });

@@ -1527,11 +1527,11 @@ constants:
     referenced_by:
       - design/gdd/chapter-design.md
       - design/gdd/battle-pressure.md
-    value: "10000 / 8000 / 7000"
+    value: "12000 / 12000 / 12000"
     unit: ms
-    note: "5 列版收紧顺序（ch01 / ch06 / ch08）"
+    note: "ch01 / ch06 / ch08；原 10000 / 8000 / 7000，模拟后 2026-10-30 放宽到上限，难度靠盘面内容拉开"
     added: 2026-10-30
-    revised: ""
+    revised: 2026-10-30
 
 # Example:
 #

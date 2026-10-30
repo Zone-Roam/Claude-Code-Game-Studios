@@ -532,6 +532,38 @@ export function createBoard(chapter, opts) {
     return { type: 'blocks', cells: placed };
   }
 
+  /**
+   * 压境 rule 9 / 9a: shift every row down one, put `row` (cols entries: kind, null or 'jm') into row 1.
+   * Barricades in the bottom row leave the board (their columns are returned in `dropped`). The caller checks
+   * bottomOccupied() first: a tile in the bottom row is a loss, not a push.
+   * @param {Array<string|null>|null} row the wave, or null for an empty row
+   * @returns {{type: string, dropped: number[], empty: boolean}}
+   */
+  function pushRowFromTop(row) {
+    const dropped = [];
+    for (let c = 1; c <= cols; c++) {
+      devAssert(grid[rows][c] === null || grid[rows][c] === BLOCK, 'push with a tile in the bottom row');
+      if (grid[rows][c] === BLOCK) dropped.push(c);
+    }
+    for (let r = rows; r >= 2; r--) {
+      for (let c = 1; c <= cols; c++) { grid[r][c] = grid[r - 1][c]; under[r][c] = under[r - 1][c]; }
+    }
+    for (let c = 1; c <= cols; c++) {
+      const k = row ? row[c - 1] : null;
+      grid[1][c] = k === 'jm' ? BLOCK : k;
+      under[1][c] = [];
+    }
+    if (selection) selection = { r: selection.r + 1, c: selection.c };
+    changed();
+    return { type: 'push', dropped, empty: !row || row.every((k) => k === null || k === 'jm') };
+  }
+
+  /** 压境: a tile (not a barricade) in the bottom row. */
+  function bottomOccupied() {
+    for (let c = 1; c <= cols; c++) if (grid[rows][c] !== null && grid[rows][c] !== BLOCK) return true;
+    return false;
+  }
+
   /** Board-link rule 9/10: at a settle point, make sure a playable pair exists. */
   function ensurePlayable() {
     if (occupied().length === 0 || hasPlayablePair()) return null;
@@ -554,6 +586,8 @@ export function createBoard(chapter, opts) {
     shuffleTopRows,
     placeBlocks,
     blocks,
+    pushRowFromTop,
+    bottomOccupied,
     setForceNext(on) { forceNext = !!on; changed(); },
     clearSelection() { if (selection) { selection = null; changed(); } },
     isEmpty() { return occupied().length === 0; },
