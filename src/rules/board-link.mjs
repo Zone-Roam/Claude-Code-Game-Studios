@@ -7,7 +7,7 @@
 // Data in, data out. No page, clock, global random or storage access.
 import {
   UNIT_KINDS, EMPTY_CELL, ROADBLOCK, BOARD_COLS, BOARD_COLS_ALLOWED, BOARD_ROWS_MIN, BOARD_ROWS_MAX,
-  STACK_DEPTH, RNG_STREAM_NAMES, RESHUFFLE_TRIES,
+  STACK_DEPTH_DEFAULT, STACK_DEPTH_MAX, RNG_STREAM_NAMES, RESHUFFLE_TRIES,
 } from '../core/constants.mjs';
 import { createStream } from '../core/rng.mjs';
 
@@ -16,19 +16,23 @@ import { createStream } from '../core/rng.mjs';
  * Cells use (row, col) coordinates; the playable area is rows 1..rows and
  * cols 1..cols inside an always-empty outer ring (indices 0..rows+1, 0..cols+1).
  * @param {{seed: (number|string), cols: (number|undefined), rows: number,
- *   streams: (Object<string, Object>|undefined)}} options
+ *   stackDepth: (number|undefined), streams: (Object<string, Object>|undefined)}} options
  *   `cols` defaults to BOARD_COLS (6) when omitted; throws RangeError for bad cols/rows.
+ *   `stackDepth` (integer 1..STACK_DEPTH_MAX, default STACK_DEPTH_DEFAULT) caps the
+ *   under layer of every cell until a `deal` that names its own `stackDepth`.
  *   `streams` optionally replaces named random streams (dependency injection for
  *   tests), e.g. `{ shuffle: stub }`; each replacement must offer the methods its
  *   user calls (`shuffle` for the shuffle stream). Unknown names throw RangeError.
  * Each playable cell has two layers: the top layer (`get`/`set`) and an under
- * layer holding at most STACK_DEPTH face-down units (filled only by `deal`).
+ * layer holding at most `stackDepth()` face-down units (filled by `deal`, or `bury`
+ * in fixtures); a reveal pops one card, so the next buried card becomes the top.
  * Single-threaded; every method reads or mutates this board only.
  * @returns {{cols: number, rows: number, rng: function(string): Object,
  *   get: function(number, number): *, set: function(number, number, *): void,
  *   deal: function(Object): void, cells: function(): Array<Object>,
  *   count: function(string): number, pairsLeft: function(): number,
  *   depthAt: function(number, number): number, buriedCount: function(): number,
+ *   stackDepth: function(): number,
  *   bury: function(number, number, string): void,
  *   findPath: function(Object, Object): (Array<Object>|null),
  *   selection: function(): (Object|null), tap: function(number, number): (Object|null),
@@ -56,6 +60,9 @@ export function createBoard(options) {
   if (!Number.isInteger(rows) || rows < BOARD_ROWS_MIN || rows > BOARD_ROWS_MAX) {
     throw new RangeError('rows must be an integer in 6..8');
   }
+
+  // Most cards buried under one cell (GDD rule 4; per chapter since 2026-10-30).
+  let depthLimit = checkStackDepth(options.stackDepth);
 
   const streams = {};
   for (const name of RNG_STREAM_NAMES) streams[name] = createStream(options.seed, name);
@@ -342,15 +349,19 @@ export function createBoard(options) {
      * Deals a chapter's deck (GDD rule 4). Clears both layers, builds the pile in
      * UNIT_KINDS order, shuffles it with the `deal` stream, fills the top layer
      * row-major (rows 1..startRows in press mode, every row otherwise), then buries
-     * each extra card in a cell whose under layer is below STACK_DEPTH, picked
-     * uniformly with the `deal` stream. Throws RangeError when deckValid fails,
+     * each extra card, one at a time, in a cell whose under layer holds fewer than
+     * `stackDepth` cards, picked uniformly with the `deal` stream (so a cell may get
+     * 0..stackDepth cards). Throws RangeError when deckValid fails,
      * so a bad deck is refused in release builds too (keeps I1 and I3).
      * Starts a round, so it also clears the selection and turns Zhao Yun stand-by off.
      * When the dealt top layer has no playable pair, reshuffles it at once with
      * the same logic as ensurePlayable (GDD edge case "dead right after deal")
      * and drops the result: no `reshuffle` is returned, so nothing is shown.
-     * @param {{deck: Object<string, number>, mode: (string|undefined), startRows: (number|undefined)}} chapter
-     *   `mode` is 'press', 'boss' or 'food'; `startRows` is required for 'press'
+     * @param {{deck: Object<string, number>, mode: (string|undefined), startRows: (number|undefined),
+     *   stackDepth: (number|undefined)}} chapter
+     *   `mode` is 'press', 'boss' or 'food'; `startRows` is required for 'press';
+     *   `stackDepth` (1..STACK_DEPTH_MAX) replaces the board's cap from now on when
+     *   given, else the cap from createBoard stays (press decks never bury anything)
      * @example board.deal({ deck: { huo: 10, ying: 10 }, mode: 'press', startRows: 4 });
      */
     deal(chapter) {
@@ -359,7 +370,8 @@ export function createBoard(options) {
       if (mode === 'press' && (!Number.isInteger(startRows) || startRows < 1 || startRows > rows)) {
         throw new RangeError('press startRows must be an integer in 1..rows');
       }
-      if (!deckValid(chapter.deck, { cols, rows, mode, startRows })) {
+      if (chapter.stackDepth !== undefined) depthLimit = checkStackDepth(chapter.stackDepth);
+      if (!deckValid(chapter.deck, { cols, rows, mode, startRows, stackDepth: depthLimit })) {
         throw new RangeError('invalid deck for this board');
       }
       for (let r = 0; r < rows + 2; r++) {
@@ -387,7 +399,7 @@ export function createBoard(options) {
         const open = [];
         for (let r = 1; r <= rows; r++) {
           for (let c = 1; c <= cols; c++) {
-            if (top[r][c] !== EMPTY_CELL && under[r][c].length < STACK_DEPTH) open.push(under[r][c]);
+            if (top[r][c] !== EMPTY_CELL && under[r][c].length < depthLimit) open.push(under[r][c]);
           }
         }
         open[stream.int(open.length)].push(pile[next++]);
@@ -444,13 +456,23 @@ export function createBoard(options) {
       return n / 2;
     },
     /**
-     * Number of cards buried under one cell (0..STACK_DEPTH; always 0 on the outer ring).
+     * Number of cards buried under one cell (0..stackDepth(), at most
+     * STACK_DEPTH_MAX = 3; always 0 on the outer ring).
      * @returns {number}
-     * @example board.depthAt(1, 1) // 0 or 1
+     * @example board.depthAt(1, 1) // 0..2 after dealing a stackDepth-2 chapter
      */
     depthAt(row, col) {
       if (!inGrid(row, col)) throw new RangeError('cell out of grid');
       return under[row][col].length;
+    },
+    /**
+     * The most cards one cell may hold below its top (this board's cap: the last
+     * `deal`'s chapter `stackDepth`, else createBoard's, else STACK_DEPTH_DEFAULT).
+     * @returns {number} 1..STACK_DEPTH_MAX
+     * @example board.stackDepth() // 2 after dealing chapter 5
+     */
+    stackDepth() {
+      return depthLimit;
     },
     /**
      * Total buried cards on the board (formula buried_count right after a deal).
@@ -466,12 +488,14 @@ export function createBoard(options) {
     },
     /**
      * Buries one card under a cell, like `set` for the under layer (board setup,
-     * test fixtures). Keeps I3 and STACK_DEPTH: the cell must hold a unit on top
+     * test fixtures). Keeps I3 and the stack cap (`stackDepth()`): the cell must hold a unit on top
      * and have room below. Does not check I1 (the caller sets up whole pairs).
      * @param {number} row playable row
      * @param {number} col playable column
      * @param {string} kind a UNIT_KINDS id; throws RangeError otherwise, or when
      *   the cell is off the playable area, has no unit on top, or is full
+     * Each call buries the new card on top of the cell's under layer, so it is
+     * the one revealed next.
      * @example board.set(2, 3, 'dao'); board.bury(2, 3, 'gu'); board.depthAt(2, 3) // 1
      */
     bury(row, col, kind) {
@@ -480,7 +504,7 @@ export function createBoard(options) {
       }
       if (UNIT_KINDS.indexOf(kind) === -1) throw new RangeError('unknown unit kind: ' + kind);
       if (!isUnit(top[row][col])) throw new RangeError('only a cell with a unit on top can bury a card');
-      if (under[row][col].length >= STACK_DEPTH) throw new RangeError('cell is already full');
+      if (under[row][col].length >= depthLimit) throw new RangeError('cell is already full');
       under[row][col].push(kind);
     },
     /**
@@ -549,18 +573,24 @@ export function createBoard(options) {
      * column shot). Each target is `{r, c, layer}`:
      *   'top'   - the top unit; a buried card under it flips up (`revealed`);
      *   'under' - only the buried card next to the top (the one revealed next);
+     *             with `kind` (deeper stacks, 2026-10-30): the buried card of that
+     *             kind nearest the top instead, wherever it sits in the stack;
      *   'stack' - the top unit and every card under it; the cell ends empty;
      *   'block' - breaks the roadblock in that cell.
-     * 'top' and 'under' on the same cell act as 'stack'; repeated targets count
-     * once. Ignored targets: an empty cell, 'under' with nothing buried,
-     * 'top'/'stack'/'under' on a roadblock, 'block' on a cell without one.
+     * 'top' and a plain 'under' on the same cell act as 'stack'; repeated targets
+     * count once. Kinded 'under' targets on one cell each remove one card (kinded
+     * ones first, then a plain 'under' takes the next card left, then 'top'); the
+     * cards left keep their order. Ignored targets: an empty cell, 'under' with
+     * nothing (of that kind) buried, 'top'/'stack'/'under' on a roadblock,
+     * 'block' on a cell without one.
      * I1 check: every card this call would remove (top and under) is counted per
      * kind; any odd count refuses the whole call with `{ok: false}` and the
      * board unchanged (release behaviour; logging is the caller's job, since
      * rules return data only). Clears the selection when its cell's top is cleared.
      * Returns data only; the caller emits it.
-     * @param {Array<{r: number, c: number, layer: string}>} targets playable cells;
-     *   throws RangeError for a cell outside the playable area or an unknown layer
+     * @param {Array<{r: number, c: number, layer: string, kind: (string|undefined)}>} targets
+     *   playable cells; throws RangeError for a cell outside the playable area, an
+     *   unknown layer, or a `kind` that is not a UNIT_KINDS id
      * @param {string} source who asked, e.g. 'skill'
      * @returns {Object} `{type: 'clear', source, cells, buried, blocks, revealed, pairs}`:
      *   `cells` lists cleared top cells `{r, c}` row-major, `buried` is the number
@@ -574,7 +604,7 @@ export function createBoard(options) {
      *   //   blocks: [{r:6,c:3}], revealed: [], pairs: 1 }
      */
     clearCells(targets, source) {
-      // Merge targets per cell: plan[key] = {r, c, top, under, block}.
+      // Merge targets per cell: plan[key] = {r, c, top, under, kinds, block}.
       const plan = {};
       for (const t of targets) {
         if (!inGrid(t.r, t.c) || t.r < 1 || t.r > rows || t.c < 1 || t.c > cols) {
@@ -583,24 +613,40 @@ export function createBoard(options) {
         if (['top', 'under', 'stack', 'block'].indexOf(t.layer) === -1) {
           throw new RangeError('unknown layer: ' + t.layer);
         }
+        const kinded = t.layer === 'under' && t.kind !== undefined;
+        if (kinded && UNIT_KINDS.indexOf(t.kind) === -1) throw new RangeError('unknown unit kind: ' + t.kind);
         const key = t.r * (cols + 2) + t.c;
-        if (plan[key] === undefined) plan[key] = { r: t.r, c: t.c, top: false, under: false, block: false };
+        if (plan[key] === undefined) plan[key] = { r: t.r, c: t.c, top: false, under: false, kinds: [], block: false };
         const p = plan[key];
         if (t.layer === 'top' || t.layer === 'stack') p.top = true;
-        if (t.layer === 'under' || t.layer === 'stack') p.under = true;
+        if (t.layer === 'stack' || (t.layer === 'under' && !kinded)) p.under = true;
+        if (kinded && p.kinds.indexOf(t.kind) === -1) p.kinds.push(t.kind);
         if (t.layer === 'block') p.block = true;
       }
       const order = Object.keys(plan).map(Number).sort((x, y) => x - y).map((k) => plan[k]);
 
-      // I1 check over every card that would go, before touching the board.
+      // Works out each unit cell's under layer after the clear (`p.keep`) and
+      // the cards that go (`p.gone`: buried ones, then the top), before
+      // touching the board, so the I1 check sees every card that would go.
       const removed = {};
       const tally = (kind) => { removed[kind] = (removed[kind] === undefined ? 0 : removed[kind]) + 1; };
       for (const p of order) {
         if (!isUnit(top[p.r][p.c])) continue;
-        const stack = under[p.r][p.c];
+        const keep = under[p.r][p.c].slice();
+        const gone = [];
+        if (p.top && p.under) {
+          while (keep.length > 0) gone.push(keep.pop());
+        } else {
+          for (const kind of p.kinds) {
+            const at = keep.lastIndexOf(kind);
+            if (at !== -1) gone.push(keep.splice(at, 1)[0]);
+          }
+          if (p.under && keep.length > 0) gone.push(keep.pop());
+        }
+        p.keep = keep;
+        p.buried = gone.length;
+        gone.forEach(tally);
         if (p.top) tally(top[p.r][p.c]);
-        if (p.under && p.top) stack.forEach(tally);
-        else if (p.under && stack.length > 0) tally(stack[stack.length - 1]);
       }
       for (const kind of Object.keys(removed)) if (removed[kind] % 2 !== 0) return { ok: false };
 
@@ -617,14 +663,8 @@ export function createBoard(options) {
           continue;
         }
         if (!isUnit(top[p.r][p.c])) continue;
-        const stack = under[p.r][p.c];
-        if (p.under && p.top) {
-          buried += stack.length;
-          under[p.r][p.c] = [];
-        } else if (p.under && stack.length > 0) {
-          stack.pop();
-          buried++;
-        }
+        under[p.r][p.c] = p.keep;
+        buried += p.buried;
         if (p.top) clearTop(p.r, p.c, cells, revealed);
       }
       return {
@@ -1145,12 +1185,16 @@ export function createBoard(options) {
 
 /**
  * Validates a chapter deck: every kind has an even count and the total fits the board.
- * Full mode: cols*rows <= sum <= cols*rows*(1+STACK_DEPTH). Press mode: sum == cols*startRows.
+ * Full mode: cols*rows <= sum <= cols*rows*(1+stackDepth). Press mode: sum == cols*startRows.
  * @param {Object<string, number>} deck kind id to block count (missing kinds count 0)
- * @param {{cols: (number|undefined), rows: number, mode: (string|undefined), startRows: (number|undefined)}} board
- *   `mode` is the chapter mode: 'press' checks sum == cols*startRows; 'boss', 'food' or omitted check the full-board range; `cols` defaults to 6
+ * @param {{cols: (number|undefined), rows: number, mode: (string|undefined), startRows: (number|undefined),
+ *   stackDepth: (number|undefined)}} board
+ *   `mode` is the chapter mode: 'press' checks sum == cols*startRows; 'boss', 'food' or omitted check the full-board range; `cols` defaults to 6;
+ *   `stackDepth` (1..STACK_DEPTH_MAX, default STACK_DEPTH_DEFAULT; ignored in press mode) caps the buried cards per cell;
+ *   an out-of-range stackDepth makes the deck invalid
  * @returns {boolean} false means the chapter loader must refuse the chapter
  * @example deckValid({ huo: 14, ying: 14, ma: 2 }, { cols: 5, rows: 6 }) // 30 -> true
+ * @example deckValid({ gu: 40, dao: 40 }, { cols: 5, rows: 6, stackDepth: 2 }) // 80 <= 90 -> true
  */
 export function deckValid(deck, board) {
   const cols = board.cols === undefined ? BOARD_COLS : board.cols;
@@ -1164,6 +1208,25 @@ export function deckValid(deck, board) {
     sum += n;
   }
   if (board.mode === 'press') return sum === cols * board.startRows;
+  const depth = board.stackDepth === undefined ? STACK_DEPTH_DEFAULT : board.stackDepth;
+  if (!isStackDepth(depth)) return false;
   const cells = cols * board.rows;
-  return sum >= cells && sum <= cells * (1 + STACK_DEPTH);
+  return sum >= cells && sum <= cells * (1 + depth);
+}
+
+/**
+ * Whether a value is a legal chapter `stackDepth`: an integer 1..STACK_DEPTH_MAX.
+ * @param {*} value
+ * @returns {boolean}
+ * @example isStackDepth(3) // true
+ */
+export function isStackDepth(value) {
+  return Number.isInteger(value) && value >= 1 && value <= STACK_DEPTH_MAX;
+}
+
+// createBoard / deal: undefined means STACK_DEPTH_DEFAULT; anything else must be legal.
+function checkStackDepth(value) {
+  if (value === undefined) return STACK_DEPTH_DEFAULT;
+  if (!isStackDepth(value)) throw new RangeError('stackDepth must be an integer in 1..' + STACK_DEPTH_MAX);
+  return value;
 }

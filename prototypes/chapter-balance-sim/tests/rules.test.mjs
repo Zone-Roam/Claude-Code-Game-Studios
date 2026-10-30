@@ -295,7 +295,7 @@ test('压境 → all waves pushed and the board cleared = win (not before the la
 });
 
 test('粮草 → food0 from food_start; a pair costs 1, a forced pair 0, a miss 1 and counts', () => {
-  assert.equal(foodStart(CH('ch07')), 19);
+  assert.equal(foodStart(CH('ch07')), 21); // 2026-10-30 deck 50: 25 − 6 + 2 (was 19)
   assert.equal(foodStart(CH('ch04')), 21);
   const { pressure } = rig(FOOD(['guan_yu']), FOOD_LAYOUT);
   assert.equal(pressure.hud().food, 7); // 5 pairs − 0 + 2

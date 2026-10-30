@@ -42,7 +42,7 @@ export function createRoundFactory(deps) {
   const systems = {
     createBoard(ch, options) {
       const board = createBoard({ seed: options.seed, streams: options.streams, rows: ch.rows, cols: ch.cols });
-      board.deal({ deck: ch.deck, mode: ch.mode, startRows: ch.press ? ch.press.startRows : undefined });
+      board.deal({ deck: ch.deck, mode: ch.mode, startRows: ch.press ? ch.press.startRows : undefined, stackDepth: ch.stackDepth });
       return board;
     },
     createPressure(ctx) {

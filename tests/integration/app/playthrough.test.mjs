@@ -181,3 +181,28 @@ test('picker on a 3-slot chapter: clear slot 2, open it, pick another general; t
   assert.equal(round.result().loadout[0], before[0]);
   assert.equal(round.result().loadout[2], choice);
 });
+
+// --- deeper stacks (chapter-design rule 13 stackDepth; user decision 2026-10-30) ---
+
+const deckSum = (deck) => Object.keys(deck).reduce((n, k) => n + deck[k], 0);
+test('stacked chapters ch05 / ch07 / ch09 / ch10: the deal fits stackDepth, buries the rest, and playing settles a win', () => {
+  const env = setup();
+  for (const [id, seed] of [['ch05', 505], ['ch07', 707], ['ch09', 909], ['ch10', 1010]]) {
+    const chapter = env.book.chapters.find((c) => c.id === id);
+    const probe = env.factory.newRound({ chapter, seed, attempt: 1, hasNext: true, slots: null });
+    const board = probe.systems().board;
+    assert.ok(board.cells().every((c) => c.under.length <= chapter.stackDepth), id + ' depth within stackDepth');
+    assert.equal(board.buriedCount(), deckSum(chapter.deck) - chapter.rows * chapter.cols, id + ' buried count');
+    const { round } = playRound(env, id, seed, 'play');
+    assert.equal(round.result().win, true, id);
+  }
+});
+
+test('round factory deals each chapter with its own stackDepth', () => {
+  const env = setup();
+  for (const id of ['ch05', 'ch09', 'ch10']) {
+    const chapter = env.book.chapters.find((c) => c.id === id);
+    const round = env.factory.newRound({ chapter, seed: 1, attempt: 1, hasNext: true, slots: null });
+    assert.equal(round.systems().board.stackDepth(), chapter.stackDepth, id);
+  }
+});

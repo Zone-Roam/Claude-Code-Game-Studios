@@ -5,7 +5,7 @@
 // 盘面与连通 (design/gdd/board-link.md). Pure: no page, clock, randomness or storage.
 // Coordinates are {r, c}; playable cells are 1..rows × 1..cols, the outer ring is 0 and rows+1 / cols+1.
 // SLICE v6 (DESIGN-v6.md, not yet in the GDD): `chapter.cols` (default BOARD_COLS) and stacking. A deck bigger
-// than the board deals the extra tiles face down under random cells (at most STACK_DEPTH per cell). Only the top
+// than the board deals the extra tiles face down under random cells (at most chapter.stackDepth, default STACK_DEPTH, per cell; 2026-10-30). Only the top
 // tile is seen, tapped and linked; clearing it turns the one below face up. Kind counts include buried tiles.
 
 import { KINDS, BOARD_COLS, RESHUFFLE_TRIES, BLOCK, STACK_DEPTH } from '../core/constants.mjs';
@@ -307,7 +307,7 @@ export function createBoard(chapter, opts) {
     while (i < deck.length) {
       const room = [];
       for (let r = 1; r <= rows; r++) {
-        for (let c = 1; c <= cols; c++) if (under[r][c].length < STACK_DEPTH) room.push({ r, c });
+        for (let c = 1; c <= cols; c++) if (under[r][c].length < (chapter.stackDepth || STACK_DEPTH)) room.push({ r, c });
       }
       devAssert(room.length > 0, 'deck bigger than the board can stack');
       if (room.length === 0) break;
@@ -374,11 +374,14 @@ export function createBoard(chapter, opts) {
    * Refused with {ok:false} and no change when any kind would lose an odd number of tiles (I1).
    */
   function clearCells(targets, source) {
-    const plan = {}; // key r,c -> {r, c, top, under, block}
+    // 2026-10-30 deeper stacks: 'stack' takes the whole stack; 'under' with `kind` takes the buried card of
+    // that kind nearest the top; a plain 'under' takes the next card (top + plain under = stack, as before).
+    const plan = {}; // key r,c -> {r, c, top, under, kinds, block}
     for (const t of targets) {
       const key = t.r + ',' + t.c;
-      const p = plan[key] || (plan[key] = { r: t.r, c: t.c, top: false, under: false, block: false });
+      const p = plan[key] || (plan[key] = { r: t.r, c: t.c, top: false, under: false, kinds: [], block: false });
       if (t.layer === 'top') p.top = true;
+      else if (t.layer === 'under' && t.kind) { if (p.kinds.indexOf(t.kind) < 0) p.kinds.push(t.kind); }
       else if (t.layer === 'under') p.under = true;
       else if (t.layer === 'stack') { p.top = true; p.under = true; }
       else if (t.layer === 'block') p.block = true;
@@ -387,9 +390,18 @@ export function createBoard(chapter, opts) {
     const list = Object.keys(plan).map((k) => plan[k]);
     for (const p of list) {
       const top = at(p.r, p.c);
-      if (p.top && top !== null && top !== BLOCK) counts[top] = (counts[top] || 0) + 1;
-      const u = under[p.r][p.c];
-      if (p.under && u.length) counts[u[u.length - 1]] = (counts[u[u.length - 1]] || 0) + 1;
+      const unit = top !== null && top !== BLOCK;
+      const keep = under[p.r][p.c].slice();
+      const gone = [];
+      if (unit && p.top && p.under) while (keep.length) gone.push(keep.pop());
+      else if (unit) {
+        for (const k of p.kinds) { const i = keep.lastIndexOf(k); if (i >= 0) gone.push(keep.splice(i, 1)[0]); }
+        if (p.under && keep.length) gone.push(keep.pop());
+      }
+      p.keep = keep;
+      p.gone = gone.length;
+      for (const k of gone) counts[k] = (counts[k] || 0) + 1;
+      if (p.top && unit) counts[top] = (counts[top] || 0) + 1;
     }
     for (const k of Object.keys(counts)) {
       if (counts[k] % 2 !== 0) {
@@ -403,8 +415,10 @@ export function createBoard(chapter, opts) {
     for (const p of list) {
       const top = at(p.r, p.c);
       if (p.block && top === BLOCK) { grid[p.r][p.c] = null; blocksBroken.push({ r: p.r, c: p.c }); continue; }
-      if (p.under && under[p.r][p.c].length) { under[p.r][p.c].pop(); buried++; }
-      if (p.top && top !== null && top !== BLOCK) {
+      if (top === null || top === BLOCK) continue;
+      under[p.r][p.c] = p.keep;
+      buried += p.gone;
+      if (p.top) {
         cells.push({ r: p.r, c: p.c });
         grid[p.r][p.c] = under[p.r][p.c].length ? under[p.r][p.c].pop() : null;
       }
@@ -596,6 +610,8 @@ export function createBoard(chapter, opts) {
     count(kind) { return slots().filter((s) => slotKind(s) === kind).length; },
     /** Slice v6: how many tiles lie under (r, c). */
     depthAt(r, c) { return inPlay(r, c) ? under[r][c].length : 0; },
+    /** 2026-10-30: the buried kinds of one cell, bottom first (copy). */
+    buriedKinds(r, c) { return inPlay(r, c) ? under[r][c].slice() : []; },
     /** Slice v6: a cell whose next buried tile is of this kind, or null. */
     buriedOf(kind) {
       for (let r = 1; r <= rows; r++) {

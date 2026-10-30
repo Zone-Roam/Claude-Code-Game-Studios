@@ -257,3 +257,56 @@ test('rule 9: loaded chapters fill pool and boss.hp defaults from the deck', () 
   assert.equal(c.boss.hp, 15);
   assert.deepEqual(c.pool, { ying: 3, dao: 3, gu: 4, qi: 3, jiu: 2 });
 });
+
+// --- stackDepth (rule 13; user decision 2026-10-30 "往后逐步加深") -------------
+
+test('rule 13 stackDepth: ch02-04 at most 1, ch05/07 at most 2, ch09/10 at most 3; press chapters carry none', () => {
+  const book = loadChapters(CHAPTER_DATA, DEV);
+  const depth = {};
+  for (const c of book.chapters) depth[c.id] = c.stackDepth;
+  assert.deepEqual(depth, {
+    ch01: undefined, ch02: 1, ch03: 1, ch04: 1, ch05: 2, ch06: undefined,
+    ch07: 2, ch08: undefined, ch09: 3, ch10: 3,
+  });
+});
+
+test('rule 13 decks grown with the deeper stacks: ch05 56, ch07 50, ch09 66, ch10 72, every kind even', () => {
+  const book = loadChapters(CHAPTER_DATA, DEV);
+  const sum = (deck) => Object.keys(deck).reduce((n, k) => n + deck[k], 0);
+  const want = { ch05: 56, ch07: 50, ch09: 66, ch10: 72 };
+  for (const id of Object.keys(want)) {
+    const c = byId(book, id);
+    assert.equal(sum(c.deck), want[id], id);
+    for (const k of Object.keys(c.deck)) assert.equal(c.deck[k] % 2, 0, id + ' ' + k);
+    assert.ok(sum(c.deck) <= c.cols * c.rows * (1 + c.stackDepth), id + ' fits its stackDepth');
+  }
+});
+
+test('stackDepth omitted loads as 1; 0, 4, 1.5 and "2" are refused on field stackDepth', () => {
+  const plain = loadChapters(dataWith([bossChapter()]), DEV);
+  assert.equal(plain.chapters[0].stackDepth, 1);
+  for (const bad of [0, 4, 1.5, '2']) {
+    const book = loadChapters(dataWith([bossChapter({ stackDepth: bad })]), DEV);
+    assert.deepEqual(ids(book), [], String(bad));
+    assert.ok(fields(book.rejected, 'tb').indexOf('stackDepth') !== -1, String(bad));
+  }
+});
+
+test('deck_valid follows stackDepth: rows 6 cols 5 take up to 60 / 90 / 120 blocks at depth 1 / 2 / 3', () => {
+  for (const [depth, pairs, ok] of [[1, 30, true], [1, 31, false], [2, 31, true], [2, 45, true], [2, 46, false],
+    [3, 46, true], [3, 60, true], [3, 61, false]]) {
+    const book = loadChapters(dataWith([bossChapter({ stackDepth: depth, deck: deckOfPairs(pairs) })]), DEV);
+    assert.equal(book.chapters.length, ok ? 1 : 0, 'depth ' + depth + ' sum ' + pairs * 2);
+    if (!ok) {
+      const r = book.rejected.find((x) => x.id === 'tb' && x.field === 'deck');
+      assert.ok(r && r.reason.indexOf('-' + 30 * (1 + depth) + ' ') !== -1, r && r.reason);
+    }
+  }
+});
+
+test('press mode ignores stackDepth: warned and dropped, the chapter still loads', () => {
+  const book = loadChapters(dataWith([pressChapter({ stackDepth: 3 })]), DEV);
+  assert.deepEqual(ids(book), ['tp']);
+  assert.equal(book.chapters[0].stackDepth, undefined);
+  assert.ok(fields(book.warnings, 'tp').indexOf('stackDepth') !== -1);
+});

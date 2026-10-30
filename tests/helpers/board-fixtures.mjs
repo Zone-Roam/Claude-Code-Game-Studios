@@ -26,37 +26,43 @@ export function pairedDeck(total, kinds) {
 /**
  * Creates a board and deals a deck on it.
  * @param {{seed: (number|string), cols: (number|undefined), rows: number,
- *   deck: Object<string, number>, mode: (string|undefined), startRows: (number|undefined)}} options
+ *   deck: Object<string, number>, mode: (string|undefined), startRows: (number|undefined),
+ *   stackDepth: (number|undefined)}} options `stackDepth` is the chapter's (default 1)
  * @returns {Object} the dealt board
  * @example dealtBoard({ seed: 5, cols: 5, rows: 6, deck: CH05_DECK, mode: 'boss' })
  */
 export function dealtBoard(options) {
   const board = createBoard({ seed: options.seed, cols: options.cols, rows: options.rows });
-  board.deal({ deck: options.deck, mode: options.mode, startRows: options.startRows });
+  board.deal({ deck: options.deck, mode: options.mode, startRows: options.startRows, stackDepth: options.stackDepth });
   return board;
 }
 
 /**
  * Builds an undealt board from a picture of its playable cells. Each string
  * is one row (row 1 first) of space-separated tokens: '.' empty, a unit kind id,
- * ROADBLOCK ('jm'), or 'top/under' for a unit with one buried card (e.g.
- * 'dao/gu': 刀 on top, 鼓 underneath). Row and column counts come from the picture.
+ * ROADBLOCK ('jm'), or 'top/under' for a unit with buried cards (e.g.
+ * 'dao/gu': 刀 on top, 鼓 underneath; 'dao/gu/qi': 鼓 revealed next, 旗 at the
+ * bottom). Row and column counts come from the picture.
  * @param {Array<string>} picture rows of tokens, 6..8 rows of 5 or 6 tokens
- * @param {{streams: (Object<string, Object>|undefined)}} [options] passed to
- *   createBoard (e.g. an injected `shuffle` stream)
+ * @param {{streams: (Object<string, Object>|undefined), stackDepth: (number|undefined)}} [options]
+ *   passed to createBoard (e.g. an injected `shuffle` stream); `stackDepth`
+ *   defaults to the deepest stack in the picture (at least 1)
  * @returns {Object} the board
  * @example boardFromPicture(['ma . . ma . .', '. . dao/gu . . .', ...])
  */
 export function boardFromPicture(picture, options) {
   const grid = picture.map((line) => line.trim().split(/\s+/));
   const streams = options === undefined ? undefined : options.streams;
-  const board = createBoard({ seed: 1, cols: grid[0].length, rows: grid.length, streams });
+  let deepest = 1;
+  grid.forEach((tokens) => tokens.forEach((t) => { deepest = Math.max(deepest, t.split('/').length - 1); }));
+  const stackDepth = options !== undefined && options.stackDepth !== undefined ? options.stackDepth : deepest;
+  const board = createBoard({ seed: 1, cols: grid[0].length, rows: grid.length, streams, stackDepth });
   grid.forEach((tokens, i) => {
     tokens.forEach((token, j) => {
       if (token === '.') return;
       const layers = token.split('/');
       board.set(i + 1, j + 1, layers[0]);
-      if (layers.length > 1) board.bury(i + 1, j + 1, layers[1]);
+      for (let k = layers.length - 1; k >= 1; k--) board.bury(i + 1, j + 1, layers[k]);
     });
   });
   return board;

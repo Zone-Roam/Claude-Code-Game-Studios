@@ -120,9 +120,9 @@ requirements:
 - id: TR-board-link-010
   system: board-link
   gdd: design/gdd/board-link.md
-  requirement: "盘宽取回目 cols（5/6）；每格两层 STACK_DEPTH = 1，满盘多出的牌压底，上层消掉底牌翻上（revealed）；I1 按全部牌（含底层）计；查询 depthAt / buriedCount / buriedCells"
+  requirement: "盘宽取回目 cols（5/6）；每格两层，底层最多压回目 stackDepth 张（1–3，缺省 1，STACK_DEPTH_MAX = 3；压境不叠），满盘多出的牌压底，上层消掉后底牌一次翻上一张（revealed）；deck_valid 上限 cols × rows × (1 + stackDepth)；I1 按全部牌（含底层）计；查询 depthAt（0..stackDepth）/ stackDepth / buriedCount / buriedCells；clearCells 的 under 可带 kind 斩深处的底牌（2026-10-30 用户决定：往后逐步加深，原为 STACK_DEPTH = 1）"
   created: 2026-10-30
-  revised: ""
+  revised: "2026-10-30"
   status: active
 - id: TR-board-link-011
   system: board-link

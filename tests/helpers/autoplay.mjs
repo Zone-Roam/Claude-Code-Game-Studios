@@ -2,7 +2,7 @@
 // Drives a board only through its public mutation and query API, calls
 // ensurePlayable() at every settle point and records invariant violations.
 // Every random choice comes from injected seeded streams. Dev-only; never shipped.
-import { UNIT_KINDS, ROADBLOCK, EMPTY_CELL, STACK_DEPTH } from '../../src/core/constants.mjs';
+import { UNIT_KINDS, ROADBLOCK, EMPTY_CELL } from '../../src/core/constants.mjs';
 
 /**
  * Every same-kind pair of top-layer units that findPath connects, in a fixed
@@ -34,7 +34,7 @@ export function playablePairs(board) {
 /**
  * Checks the structural invariants that hold at any time: I1 (every kind's
  * count over top and under layers is even) and I3 (empty and roadblock cells
- * hold no buried card; no cell holds more than STACK_DEPTH).
+ * hold no buried card; no cell holds more than the board's `stackDepth()`).
  * @param {Object} board a board from createBoard
  * @returns {Array<string>} violation labels, empty when both hold
  * @example checkI1I3(board) // []
@@ -46,7 +46,7 @@ export function checkI1I3(board) {
     const isUnit = cell.top !== EMPTY_CELL && cell.top !== ROADBLOCK;
     if (isUnit) counts[cell.top] = (counts[cell.top] || 0) + 1;
     if (!isUnit && cell.under.length > 0) problems.push('I3 at (' + cell.r + ',' + cell.c + ')');
-    if (cell.under.length > STACK_DEPTH) problems.push('STACK_DEPTH at (' + cell.r + ',' + cell.c + ')');
+    if (cell.under.length > board.stackDepth()) problems.push('stackDepth at (' + cell.r + ',' + cell.c + ')');
     for (const k of cell.under) counts[k] = (counts[k] || 0) + 1;
   }
   for (const kind of UNIT_KINDS) {
@@ -98,7 +98,9 @@ export function drawPairs(stream, weights, n) {
  * cut an odd number of times (top and buried together) one extra cut outside
  * the row: the first top-layer unit of that kind scanning from the bottom row
  * up, left to right ('top'); failing that, the first `buriedCells(kind)` cell
- * outside the row ('under').
+ * outside the row; failing that (stacks deeper than 1), the first cell outside
+ * the row, row-major, with that kind anywhere in its under layer. Buried
+ * extras are 'under' targets with `kind`. Mirrors general-skills lineTargets.
  * @param {Object} board a board from createBoard
  * @param {number} r the chosen row
  * @returns {Array<{r: number, c: number, layer: string}>} targets for clearCells
@@ -124,7 +126,9 @@ export function guanYuTargets(board, r) {
     }
     if (extra === null) {
       const buried = board.buriedCells(kind).filter((p) => p.r !== r);
-      if (buried.length > 0) extra = { r: buried[0].r, c: buried[0].c, layer: 'under' };
+      const deep = board.cells().find((p) => p.r !== r && p.under.indexOf(kind) !== -1);
+      const at = buried.length > 0 ? buried[0] : deep;
+      if (at !== undefined) extra = { r: at.r, c: at.c, layer: 'under', kind };
     }
     if (extra !== null) targets.push(extra);
   }

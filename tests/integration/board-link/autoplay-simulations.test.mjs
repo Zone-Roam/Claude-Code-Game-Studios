@@ -18,6 +18,11 @@ const MAX_STEPS = 400;
 // Press decks: chapter 1 (5 columns, 20 units) and a 6-column variant (24 units).
 const PRESS_DECK_6 = Object.freeze({ dao: 6, qi: 6, jiu: 4, gu: 4, dun: 4 });
 const PRESS_DECK_5 = Object.freeze({ dao: 6, qi: 6, jiu: 4, gu: 4 });
+// stackDepth 3 (user decision 2026-10-30 "往后逐步加深"): 5x7 board, 35 on top and
+// 45 buried, up to 3 under one cell, all 12 kinds (effects 火 马 水 included).
+const DEEP3_DECK = Object.freeze({
+  huo: 2, ying: 10, ma: 2, gong: 10, shui: 2, cheng: 6, dao: 8, gu: 6, dun: 8, shu: 10, qi: 8, jiu: 8,
+});
 
 // --- interjections (each returns its event, null when not applicable) -----
 
@@ -103,6 +108,16 @@ const CASES = {
     interjections: [clearKindOp, guanYuRandomRowOp, addPairsOp(deckWeights(CH05_DECK)), sweepOp,
       placeBlocksOp],
   },
+  deep3: {
+    seedBase: 450000,
+    make(seed) {
+      const board = createBoard({ seed, cols: 5, rows: 7 });
+      board.deal({ deck: DEEP3_DECK, mode: 'boss', stackDepth: 3 });
+      return board;
+    },
+    interjections: [clearKindOp, guanYuRandomRowOp, addPairsOp(deckWeights(DEEP3_DECK)), sweepOp,
+      placeBlocksOp],
+  },
 };
 
 function playCase(spec, seed) {
@@ -161,6 +176,18 @@ test('AC3 1000 stacked 5x6 games (deck 44) with Guan Yu rows, sweeps and roadblo
   assertCase(t, CASES.stacked, ['clear', 'add', 'sweep', 'blocks']);
 });
 
+test('AC4 1000 stackDepth-3 5x7 games (deck 80) with Guan Yu rows, sweeps and roadblocks: I1, I2, I3 and the 3-card cap hold, every game clears', (t) => {
+  // Arrange: the deal really stacks 3 deep somewhere in most games.
+  let threeDeep = 0;
+  for (let i = 0; i < 50; i++) {
+    const board = CASES.deep3.make(CASES.deep3.seedBase + i);
+    assert.equal(board.stackDepth(), 3);
+    if (board.cells().some((cell) => cell.under.length === 3)) threeDeep++;
+  }
+  assert.ok(threeDeep >= 25, threeDeep + ' of 50 deals reach depth 3');
+  assertCase(t, CASES.deep3, ['clear', 'add', 'sweep', 'blocks']);
+});
+
 test('the same seed replays the same game event for event (TR-board-link-002)', () => {
   for (const name of Object.keys(CASES)) {
     const spec = CASES[name];
@@ -174,18 +201,22 @@ test('the same seed replays the same game event for event (TR-board-link-002)', 
   }
 });
 
-test('Guan Yu minimal targets never ask for an odd cut on a stacked board', () => {
-  // Arrange
-  const board = CASES.stacked.make(424242);
-  for (let r = 1; r <= board.rows; r++) {
-    const before = UNIT_KINDS.map((k) => board.count(k));
-    // Act: plan only (a refused clearCells leaves the board unchanged)
-    const targets = guanYuTargets(board, r);
-    const probe = CASES.stacked.make(424242);
-    const result = probe.clearCells(targets, 'skill');
-    // Assert
-    assert.notEqual(result.ok, false, 'row ' + r);
-    assert.deepEqual(UNIT_KINDS.map((k) => board.count(k)), before);
-    assert.ok(UNIT_KINDS.every((k) => probe.count(k) % 2 === 0));
+test('Guan Yu minimal targets never ask for an odd cut on a stacked board (depth 1 and 3)', () => {
+  for (const spec of [CASES.stacked, CASES.deep3]) {
+    for (const seed of [424242, 424243, 424244]) {
+      // Arrange
+      const board = spec.make(seed);
+      for (let r = 1; r <= board.rows; r++) {
+        const before = UNIT_KINDS.map((k) => board.count(k));
+        // Act: plan only (a refused clearCells leaves the board unchanged)
+        const targets = guanYuTargets(board, r);
+        const probe = spec.make(seed);
+        const result = probe.clearCells(targets, 'skill');
+        // Assert
+        assert.notEqual(result.ok, false, 'seed ' + seed + ' row ' + r);
+        assert.deepEqual(UNIT_KINDS.map((k) => board.count(k)), before);
+        assert.ok(UNIT_KINDS.every((k) => probe.count(k) % 2 === 0));
+      }
+    }
   }
 });

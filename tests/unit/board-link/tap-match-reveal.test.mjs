@@ -156,5 +156,5 @@ test('edge: tap off the grid and bad bury calls throw RangeError', () => {
   assert.throws(() => board.bury(0, 1, 'gu'), RangeError, 'outer ring');
   assert.throws(() => board.bury(3, 3, 'jm'), RangeError, 'not a unit kind');
   board.bury(3, 3, 'gu');
-  assert.throws(() => board.bury(3, 3, 'gu'), RangeError, 'STACK_DEPTH');
+  assert.throws(() => board.bury(3, 3, 'gu'), RangeError, 'stackDepth 1 is full');
 });

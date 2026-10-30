@@ -52,7 +52,13 @@ export const TEXTS = Object.freeze({
   },
 });
 
-/** The book in catalog order (rule 13). All chapters use 5 columns. */
+/**
+ * The book in catalog order (rule 13). All chapters use 5 columns.
+ * `stackDepth` (boss / food only; press buries nothing): most face-down cards
+ * under one cell. User decision 2026-10-30 "往后逐步加深": chapters 1-4 at most
+ * 1, 5-7 at most 2, 8-10 at most 3; the ch05, ch07, ch09, ch10 decks grew with
+ * it (prototypes/chapter-balance-sim/stackdepth-results.md).
+ */
 export const CHAPTERS = Object.freeze([
   {
     id: 'ch01', no: '第一回', title: '斩黄巾英雄首立功', mode: 'press', rows: 8, cols: 5,
@@ -62,25 +68,25 @@ export const CHAPTERS = Object.freeze([
   },
   {
     id: 'ch02', no: '第二回', title: '虎牢关三英战吕布', mode: 'boss', rows: 6, cols: 5,
-    deck: { gu: 8, dao: 6, qi: 6, ying: 6, jiu: 4 },
+    stackDepth: 1, deck: { gu: 8, dao: 6, qi: 6, ying: 6, jiu: 4 },
     boss: { enemy: 'lv_bu', hp: 15, steps: 8, hearts: 3, addPairs: 2 },
     slots: 2, lead: 'zhang_fei', recommend: ['zhang_fei', 'guan_yu'],
   },
   {
     id: 'ch03', no: '第三回', title: '赵子龙磐河大战', mode: 'boss', rows: 6, cols: 5,
-    deck: { dun: 8, dao: 6, gu: 6, qi: 8, jiu: 6, ying: 6 },
+    stackDepth: 1, deck: { dun: 8, dao: 6, gu: 6, qi: 8, jiu: 6, ying: 6 },
     boss: { enemy: 'wen_chou', hp: 18, steps: 8, hearts: 3, addPairs: 2 },
     slots: 2, lead: 'zhao_yun', recommend: ['zhao_yun', 'guan_yu'], unlock: 'zhao_yun',
   },
   {
     id: 'ch04', no: '第四回', title: '陶恭祖三让徐州', mode: 'food', rows: 6, cols: 5,
-    deck: { qi: 8, dao: 6, gu: 6, dun: 6, ying: 6, jiu: 4 },
+    stackDepth: 1, deck: { qi: 8, dao: 6, gu: 6, dun: 6, ying: 6, jiu: 4 },
     food: { slack: 3 },
     slots: 2, lead: 'liu_bei', recommend: ['liu_bei', 'guan_yu'], unlock: 'liu_bei', foe: '曹军（攻徐州）',
   },
   {
     id: 'ch05', no: '第五回', title: '白门楼吕布殒命', mode: 'boss', rows: 6, cols: 5,
-    deck: { gu: 8, dao: 6, dun: 6, qi: 6, jiu: 6, ying: 6, gong: 6 },
+    stackDepth: 2, deck: { gu: 8, dao: 8, dun: 8, qi: 8, jiu: 8, ying: 8, gong: 8 },
     boss: {
       enemy: 'lv_bu', hp: 12, steps: 6, hearts: 3, addPairs: 2,
       phase2: { hp: 18, steps: 5, name: '暴怒吕布', shout: '吕布暴怒！', lines: ['方天画戟在此！', '挡我者死！'] },
@@ -108,7 +114,7 @@ export const CHAPTERS = Object.freeze([
   },
   {
     id: 'ch07', no: '第七回', title: '博望坡军师初用兵', mode: 'food', rows: 7, cols: 5,
-    deck: { huo: 2, ying: 10, shu: 8, dao: 6, gu: 6, jiu: 8, qi: 4 },
+    stackDepth: 2, deck: { huo: 2, ying: 12, shu: 8, dao: 8, gu: 6, jiu: 8, qi: 6 },
     food: { slack: 2 },
     slots: 3, lead: 'zhuge_liang', recommend: ['zhuge_liang', 'guan_yu', 'zhang_fei'], unlock: 'zhuge_liang',
     newEffect: 'huo', foe: '曹军（夏侯惇）',
@@ -123,7 +129,7 @@ export const CHAPTERS = Object.freeze([
   },
   {
     id: 'ch09', no: '第九回', title: '七星坛诸葛祭风', mode: 'boss', rows: 7, cols: 5,
-    deck: { huo: 2, ying: 10, shu: 8, dao: 6, dun: 6, gong: 6, qi: 6, jiu: 8 },
+    stackDepth: 3, deck: { huo: 2, ying: 12, shu: 10, dao: 8, dun: 8, gong: 8, qi: 8, jiu: 10 },
     pool: { ying: 3, huo: 1, shu: 1, dao: 1, dun: 1, gong: 1, qi: 1, jiu: 1 },
     boss: {
       enemy: 'cao_cao', hp: 14, steps: 7, hearts: 3, addPairs: 2,
@@ -133,7 +139,7 @@ export const CHAPTERS = Object.freeze([
   },
   {
     id: 'ch10', no: '第十回', title: '定军山黄忠斩夏侯', mode: 'boss', rows: 7, cols: 5,
-    deck: { gong: 8, ma: 2, shu: 8, dun: 6, huo: 2, ying: 8, dao: 6, qi: 6, jiu: 6, gu: 4 },
+    stackDepth: 3, deck: { gong: 10, ma: 2, shu: 10, dun: 8, huo: 2, ying: 10, dao: 8, qi: 8, jiu: 8, gu: 6 },
     pool: { gong: 2, ying: 2, shu: 1, dun: 1, dao: 1, qi: 1, jiu: 1, gu: 1 },
     boss: {
       enemy: 'xiahou_yuan', hp: 16, steps: 7, hearts: 3, addPairs: 2,

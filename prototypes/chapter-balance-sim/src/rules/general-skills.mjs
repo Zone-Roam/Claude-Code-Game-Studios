@@ -42,7 +42,13 @@ export function lineTargets(board, line, inLine) {
     // then a buried tile: top row downward, left to right, outside the line
     if (!found) {
       const b = board.buriedCells(k).find((p) => !inLine(p));
-      if (b) found = { r: b.r, c: b.c, layer: 'under' };
+      if (b) found = { r: b.r, c: b.c, layer: 'under', kind: k };
+    }
+    // 2026-10-30 deeper stacks: else that kind deeper in a stack, row-major, outside the line
+    for (let r = 1; r <= board.rows && !found; r++) {
+      for (let c = 1; c <= board.cols && !found; c++) {
+        if (!inLine({ r, c }) && board.buriedKinds(r, c).indexOf(k) >= 0) found = { r, c, layer: 'under', kind: k };
+      }
     }
     devAssert(found, 'extra tile for ' + k);
     if (found) targets.push(found);

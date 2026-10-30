@@ -192,9 +192,12 @@ export function createSkills(ctx) {
   // per kind cut an odd number of times (top layer + buried counted
   // together): first a top-layer unit off the line, bottom row up, left to
   // right; else the top buried card off the line in buriedCells order (top row
-  // down, left to right). Kinds are visited in UNIT_KINDS order. A cell already
-  // taken for an extra is skipped, so one clearCells target never asks for
-  // both its top and its buried card. Returns clearCells targets.
+  // down, left to right); else (stacks up to 3 deep since 2026-10-30) a deeper
+  // buried card of that kind off the line, row-major. Kinds are visited in
+  // UNIT_KINDS order. Buried extras are kinded 'under' targets, so they remove
+  // exactly that card even when the same cell also gives a top extra (the
+  // buried card goes first, then the top, and the next card left flips up).
+  // Returns clearCells targets.
   function lineTargets(contents, onLine) {
     const targets = [];
     const n = {};
@@ -206,23 +209,19 @@ export function createSkills(ctx) {
     for (const b of contents.buried) tally(b.kind);
     for (const b of contents.blocks) targets.push({ r: b.r, c: b.c, layer: 'block' });
 
-    const taken = {};
-    const key = (p) => p.r + ':' + p.c;
-    const free = (p) => !onLine(p) && !taken[key(p)];
-    const bottomUp = board.cells().slice().sort((a, b) => (b.r - a.r) || (a.c - b.c));
+    const off = (p) => !onLine(p);
+    const cells = board.cells();
+    const bottomUp = cells.slice().sort((a, b) => (b.r - a.r) || (a.c - b.c));
     for (const kind of UNIT_KINDS) {
       if (!n[kind] || n[kind] % 2 === 0) continue;
-      const onTop = bottomUp.find((p) => p.top === kind && free(p));
+      const onTop = bottomUp.find((p) => p.top === kind && off(p));
       if (onTop) {
-        taken[key(onTop)] = true;
         targets.push({ r: onTop.r, c: onTop.c, layer: 'top' });
         continue;
       }
-      const under = board.buriedCells(kind).find(free);
-      if (under) {
-        taken[key(under)] = true;
-        targets.push({ r: under.r, c: under.c, layer: 'under' });
-      }
+      const under = board.buriedCells(kind).find(off)
+        || cells.find((p) => p.under.indexOf(kind) !== -1 && off(p));
+      if (under) targets.push({ r: under.r, c: under.c, layer: 'under', kind });
       // None found breaks I1 (cannot happen, Edge Cases); clearCells then
       // refuses the whole cut with {ok: false}.
     }

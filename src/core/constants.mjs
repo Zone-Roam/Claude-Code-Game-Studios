@@ -20,8 +20,14 @@ export const BOARD_COLS_ALLOWED = Object.freeze([5, 6]);
 export const BOARD_ROWS_MIN = 6;
 export const BOARD_ROWS_MAX = 8;
 
+/**
+ * Stacking (design/gdd/board-link.md rule 4; user decision 2026-10-30 "往后逐步加深").
+ * A chapter's `stackDepth` (1..STACK_DEPTH_MAX) caps the face-down cards dealt under
+ * one cell; STACK_DEPTH_DEFAULT applies when a chapter omits it. Press mode ignores it.
+ */
+export const STACK_DEPTH_DEFAULT = 1;
+export const STACK_DEPTH_MAX = 3;
 /** Rule constants, not tuning knobs. */
-export const STACK_DEPTH = 1;
 export const MAX_TURNS = 2;
 
 /** Tuning-knob defaults. */

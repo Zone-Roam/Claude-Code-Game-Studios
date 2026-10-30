@@ -73,7 +73,10 @@ function reject(ch, data, seen) {
   for (const id of lineup0) if (!GENERALS.some((g) => g.id === id)) return 'unknown general ' + id;
   if (ch.mode === 'press') return rejectPress(ch, cols, total);
   if (total < ch.rows * cols) return 'deck does not fill the board';
-  if (total > ch.rows * cols * (1 + STACK_DEPTH)) return 'deck too big to stack';
+  // 2026-10-30: per-chapter stackDepth 1-3 (user decision "往后逐步加深").
+  const depth = ch.stackDepth === undefined ? STACK_DEPTH : ch.stackDepth;
+  if (!(Number.isInteger(depth) && depth >= 1 && depth <= 3)) return 'stackDepth out of range';
+  if (total > ch.rows * cols * (1 + depth)) return 'deck too big to stack';
   if (ch.mode === 'food') return ch.food && ch.food.slack >= 0 && ch.food.slack <= 6 ? null : 'food.slack out of range';
   if (!ch.boss || !data.enemies[ch.boss.enemy]) return 'unknown enemy';
   if (ch.boss.chargeMs !== undefined && !(ch.boss.chargeMs >= 6000 && ch.boss.chargeMs <= 20000)) return 'chargeMs out of range';

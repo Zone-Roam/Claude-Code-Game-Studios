@@ -62,7 +62,7 @@ export function pressDelay(comboDelayW) {
  *   release: function(Object): void, dispatch: function(Object): void,
  *   pressure: Object}} ctx the round's context plus `pressure`, built with
  *   `Object.assign({}, ctx, { pressure })`. `board` needs `count`, `cells`,
- *   `buriedCells` and `clearKind`. `pressure` needs `comboReward()`, called
+ *   and `clearKind`. `pressure` needs `comboReward()`, called
  *   once per match from COMBO_THRESHOLD on; it is never called for an effect
  *   clear (GDD rule 5). A new round builds a new module, so combo and maxCombo
  *   start at 0 (rule 6, "再来一回" included).
@@ -96,8 +96,8 @@ export function createEffects(ctx) {
      * any other event type is ignored and leaves the combo unchanged. With no target card left on either layer, emits and returns
      * `{type: 'targetGone', kind: target}` and takes no token (rule 4).
      * Otherwise acquires an `effect` token of EFFECT_HIGHLIGHT_MS whose `detail`
-     * is `{kind: target, cells, covers}` (top-layer target cells, and cells whose
-     * buried card is the target) and returns that token; the target is cleared
+     * is `{kind: target, cells, covers}` (top-layer target cells, and cells with
+     * the target buried at any depth, row-major) and returns that token; the target is cleared
      * when the token ends, not before (rule 3).
      * @param {Object} ev a board event; acts on `{type: 'match', kind}`
      * @returns {(Object|null)} the token, the targetGone event, or null when not triggered
@@ -118,7 +118,12 @@ export function createEffects(ctx) {
       const cells = board.cells()
         .filter((cell) => cell.top === target)
         .map((cell) => ({ r: cell.r, c: cell.c }));
-      const detail = { kind: target, cells, covers: board.buriedCells(target) };
+      // covers: cells with the target anywhere in the under layer (stacks may be
+      // up to 3 deep since 2026-10-30; clearKind removes every buried target).
+      const covers = board.cells()
+        .filter((cell) => cell.under.indexOf(target) !== -1)
+        .map((cell) => ({ r: cell.r, c: cell.c }));
+      const detail = { kind: target, cells, covers };
       return ctx.acquire('effect', EFFECT_HIGHLIGHT_MS, (token) => finish(target, token), detail);
     },
 

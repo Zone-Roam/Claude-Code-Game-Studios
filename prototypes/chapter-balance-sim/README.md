@@ -84,3 +84,7 @@ node tunepress.mjs 100  # 压境间隔扫描，结果在 tunepress-results.md
 - 超出上限的参考：第六回 13000 时 89%，第八回 15000 时 95%。
 - 每步 3 秒的人在 10000 以上都有 81–100%。
 - **用户 2026-10-30 定方案一**：三回都改为 12000，`src/data/chapters.mjs` 和 `sim-press-food-results.md` 已按新值重跑。上面“压境、粮草”一节的压境表是原值（10000 / 8000 / 7000）的结果。
+
+## 叠深（2026-10-30，`stackdepth.mjs`，每格 300 局）
+
+用户决定“往后逐步加深”：回目 `stackDepth`（第 3–4 回 1、5–7 回 2、8–10 回 3）。原型的 `board-link` 按 `chapter.stackDepth` 压底，`clearCells` 的 `stack` 整摞拿掉、`under` 可带 `kind`；关羽、黄忠补斩在各摞最上面找不到同种时去更深处找。`node stackdepth.mjs [局数]` 对比第五、七、九、十回加深前后（原牌组 + 深度 1 对新牌组 + 新深度），结果在 `stackdepth-results.md`：连错两成用技能胜率 74 → 70%、65 → 68%、72 → 68%、58 → 61%，局长变化在 ±10% 以内。`src/data/chapters.mjs` 已换成新牌组。

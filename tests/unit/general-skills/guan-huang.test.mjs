@@ -277,3 +277,29 @@ test('AC Huang Zhong empty board: tapping ready Huang Zhong gives noEffect board
   assert.deepEqual(f.emitted('cardHint').pop(), { type: 'cardHint', general: 'huang_zhong', reason: 'noEffect', why: 'boardEmpty' });
   assert.equal(f.card('huang_zhong').charge, 3);
 });
+
+// Deeper stacks (2026-10-30): row 4 cuts a buried 书; the only other 书 is the
+// bottom card under 旗/旗 at (1,1), so the extra is a kinded 'under' target.
+const GUAN_DEEP = [
+  'qi/qi/shu qi qi . .',
+  E,
+  E,
+  'ying/shu ying . . .',
+  E,
+  E,
+];
+
+test('AC Guan Yu, deeper stacks: an odd kind found only deep in a stack off the row is cut from there', () => {
+  const f = ready('guan_yu', 'dao', 2, GUAN_DEEP);
+  f.skills.cutRow(4);
+  f.end(f.tokens[0]);
+  const res = f.dispatched[0];
+  assert.equal(res.type, 'clear');
+  assert.deepEqual(res.cells, [{ r: 4, c: 1 }, { r: 4, c: 2 }]);
+  assert.equal(res.buried, 2);
+  assert.equal(res.pairs, 2);
+  assert.equal(f.board.get(1, 1), 'qi');
+  assert.equal(f.board.depthAt(1, 1), 1); // 书 left the bottom, 旗 stays
+  assert.equal(f.board.count('shu'), 0);
+  evenCounts(f.board);
+});

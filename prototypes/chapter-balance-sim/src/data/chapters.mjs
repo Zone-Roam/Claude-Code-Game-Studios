@@ -40,7 +40,7 @@ export const CHAPTERS = [
   },
   {
     id: 'ch07', no: '第七回', title: '博望坡军师初用兵', mode: 'food', rows: 7, cols: 5,
-    deck: { huo: 2, ying: 10, shu: 8, dao: 6, gu: 6, jiu: 8, qi: 4 }, // 44, 9 buried; food0 = 22 − 5 + 2 = 19
+    stackDepth: 2, deck: { huo: 2, ying: 12, shu: 8, dao: 8, gu: 6, jiu: 8, qi: 6 }, // 50, 15 buried; food0 = 25 − 6 + 2 = 21 (2026-10-30: was 44)
     food: { slack: 2 },
     slots: 3, lead: 'zhuge_liang', recommend: ['zhuge_liang', 'guan_yu', 'zhang_fei'],
   },
@@ -65,7 +65,7 @@ export const CHAPTERS = [
   },
   {
     id: 'ch05', no: '第五回', title: '白门楼吕布殒命', mode: 'boss', rows: 6, cols: 5,
-    deck: { gu: 8, dao: 6, dun: 6, qi: 6, jiu: 6, ying: 6, gong: 6 }, // 44, 14 buried
+    stackDepth: 2, deck: { gu: 8, dao: 8, dun: 8, qi: 8, jiu: 8, ying: 8, gong: 8 }, // 56, 26 buried (2026-10-30: was 44, depth 1)
     boss: {
       enemy: 'lv_bu', hp: 12, steps: 6, hearts: 3, addPairs: 2,
       phase2: { hp: 18, steps: 5, name: '暴怒吕布', shout: '吕布暴怒！', lines: ['方天画戟在此！', '挡我者死！'] },
@@ -74,7 +74,7 @@ export const CHAPTERS = [
   },
   {
     id: 'ch09', no: '第九回', title: '七星坛诸葛祭风', mode: 'boss', rows: 7, cols: 5,
-    deck: { huo: 2, ying: 10, shu: 8, dao: 6, dun: 6, gong: 6, qi: 6, jiu: 8 }, // 52, 17 buried
+    stackDepth: 3, deck: { huo: 2, ying: 12, shu: 10, dao: 8, dun: 8, gong: 8, qi: 8, jiu: 10 }, // 66, 31 buried (2026-10-30: was 52)
     pool: { ying: 3, huo: 1, shu: 1, dao: 1, dun: 1, gong: 1, qi: 1, jiu: 1 },
     boss: {
       enemy: 'cao_cao', hp: 14, steps: 7, hearts: 3, addPairs: 2,
@@ -84,7 +84,7 @@ export const CHAPTERS = [
   },
   {
     id: 'ch10', no: '第十回', title: '定军山黄忠斩夏侯', mode: 'boss', rows: 7, cols: 5,
-    deck: { gong: 8, ma: 2, shu: 8, dun: 6, huo: 2, ying: 8, dao: 6, qi: 6, jiu: 6, gu: 4 }, // 56, 21 buried
+    stackDepth: 3, deck: { gong: 10, ma: 2, shu: 10, dun: 8, huo: 2, ying: 10, dao: 8, qi: 8, jiu: 8, gu: 6 }, // 72, 37 buried (2026-10-30: was 56)
     // "弓 2、营 2，其余各 1（不含火、马）": 其余 = the other deck kinds
     pool: { gong: 2, ying: 2, shu: 1, dun: 1, dao: 1, qi: 1, jiu: 1, gu: 1 },
     boss: {

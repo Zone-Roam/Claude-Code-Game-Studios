@@ -1,9 +1,9 @@
 // Chapter loader (design/gdd/chapter-design.md rules 6-9 and 14; TR-chapter-design-001,
 // -004, -006). Validates every chapter once at start-up: refuse / warn-only lists,
-// resolves defaults (cols, pool, boss.hp, phase2.specials, need) and applies the
+// resolves defaults (cols, stackDepth, pool, boss.hp, phase2.specials, need) and applies the
 // `slow` multipliers. Data in, data out: no page, clock, storage or text formatting.
-import { UNIT_KINDS, ROADBLOCK, EFFECT_TARGETS, STACK_DEPTH } from '../core/constants.mjs';
-import { deckValid } from './board-link.mjs';
+import { UNIT_KINDS, ROADBLOCK, EFFECT_TARGETS, STACK_DEPTH_DEFAULT, STACK_DEPTH_MAX } from '../core/constants.mjs';
+import { deckValid, isStackDepth } from './board-link.mjs';
 
 /**
  * General table used by the loader (general-skills rule 1): charge kind and default
@@ -207,6 +207,19 @@ export function loadChapters(data, flags) {
     }
     const inDeck = (kind) => deckKindsOk && isInt(ch.deck[kind]) && ch.deck[kind] > 0;
 
+    // Stack depth (rule 13; user decision 2026-10-30 "往后逐步加深"): 1-3 face-down
+    // cards per cell, default 1. Press decks bury nothing, so press ignores it.
+    let stackDepth = STACK_DEPTH_DEFAULT;
+    if (mode === 'press') {
+      if (ch.stackDepth !== undefined) {
+        warn('stackDepth', 'ignored in press mode: ' + ch.stackDepth);
+        delete ch.stackDepth;
+      }
+    } else if (ch.stackDepth !== undefined) {
+      if (!isStackDepth(ch.stackDepth)) reject('stackDepth', 'outside 1-' + STACK_DEPTH_MAX + ': ' + ch.stackDepth);
+      else stackDepth = ch.stackDepth;
+    }
+
     // Mode parameters.
     if (mode === 'press') {
       const p = ch.press;
@@ -251,11 +264,11 @@ export function loadChapters(data, flags) {
     // deck_valid (board-link) once the sizes and kinds are known to be sane.
     if (deckKindsOk && sizeOk.length === 2 && CHAPTER_MODES.indexOf(mode) !== -1) {
       const startRows = mode === 'press' && isObj(ch.press) ? ch.press.startRows : undefined;
-      if (!deckValid(ch.deck, { cols: ch.cols, rows: ch.rows, mode, startRows })) {
+      if (!deckValid(ch.deck, { cols: ch.cols, rows: ch.rows, mode, startRows, stackDepth })) {
         const cells = ch.cols * ch.rows;
         reject('deck', mode === 'press'
           ? 'press deck must be startRows x cols = ' + ch.cols * startRows + ', got ' + deckSum
-          : 'deck must be ' + cells + '-' + cells * (1 + STACK_DEPTH) + ' blocks, got ' + deckSum);
+          : 'deck must be ' + cells + '-' + cells * (1 + stackDepth) + ' blocks (stackDepth ' + stackDepth + '), got ' + deckSum);
       }
     }
 
@@ -342,7 +355,8 @@ export function loadChapters(data, flags) {
       }
     }
 
-    // Defaults (rules 2, 9; Edge Cases).
+    // Defaults (rules 2, 9, 13; Edge Cases).
+    if (mode !== 'press') ch.stackDepth = stackDepth;
     if (ch.pool === undefined) {
       ch.pool = {};
       for (const kind of UNIT_KINDS) if (ch.deck[kind] > 0) ch.pool[kind] = ch.deck[kind] / 2;
