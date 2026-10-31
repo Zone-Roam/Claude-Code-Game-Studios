@@ -183,7 +183,8 @@ export function createInput(root, { enqueue, layout, now })            // 只产
 - 绝不：在界面里根据动画是否播完来推进规则（规则上的时间只在令牌和 `gameTime` 里）。
 - 绝不：在规则层里格式化给玩家看的文字。
 - 绝不：用 CSS `filter`、`backdrop-filter`、`mix-blend-mode`、运行时 SVG `<filter>`（构建检查会拦）。
-- 震动（ui-interaction 规则 21d，TR-ui-interaction-011）：只在 `src/platform/` 包一层 `vibrate(ms)`：`typeof navigator.vibrate === 'function'` 才调用，外包 `try/catch`，失败静默；只用于暴怒 60 ms、击碎 80 ms；少动模式、暂停/横屏卡、后台不调。界面层不直接碰 `navigator`。平台未知项见 `docs/engine-reference/web-h5/VERSION.md`（探测键 `vibrate`）。
+
+- 震动与音效（ui-interaction 规则 21d、21e，TR-ui-interaction-011；2026-10-31 修订）：只在 `src/platform/feedback.mjs` 里调用：震动先用宿主 `window.xhs.miniTool.vibrateShort`，再退到 `navigator.vibrate`，都先判断是函数、外包 `try/catch`、失败静默；音效用 Web Audio 解码 `src/view/sfx-assets.mjs` 里内嵌的 Kenney CC0 录音，按 `src/view/sounds.mjs` 的配方播放，没解码好时用同名合成音。界面层通过注入的 `feedback` 调用，规则层不碰。少动模式和后台不震。
 
 ## Alternatives Considered
 

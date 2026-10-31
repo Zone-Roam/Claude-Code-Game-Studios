@@ -1,6 +1,6 @@
 // Pointer input -> round-flow intents (ui-interaction rules 14-16, ADR-0003 section 2).
 // Only produces intents; never changes rule state. Ported from the vertical slice.
-import { SAME_CELL_GUARD_MS, CARD_AFTER_BOARD_MS } from './ui-constants.mjs';
+import { SAME_CELL_GUARD_MS, CARD_AFTER_BOARD_MS, PRESS_MIN_MS } from './ui-constants.mjs';
 import { cellAt, LAYOUT } from './layout.mjs';
 
 function inside(node, e) {
@@ -25,15 +25,20 @@ export function buttonIntent(button, slot, general) {
   return intent;
 }
 
+/** What shows a pressed look under the finger (rule 21e). */
+export const PRESSABLE = 'button, .gcard, .tile';
+
 /**
  * Wires the view's elements to the intent queue.
  * Intents: {type:'cell',row,col}, {type:'offBoard'}, {type:'card',general},
  * {type:'pauseStamp'}, {type:'button',button} (open-card picker buttons add `slot`
  * (0-based) or `general`, see buttonIntent). Catalog picks go to `onCatalogPick`,
- * 开始游戏 on the start screen to `onTitleStart`.
+ * 开始游戏 on the start screen to `onTitleStart`. Every press also unlocks audio, shows
+ * the pressed look and plays its tap sound and haptic through `feedback` (rule 21e).
  * @param {Object} view createView's result
  * @param {{enqueue: function(Object): void, onCatalogPick: function(string): void,
- *   onTitleStart?: function(): void}} deps
+ *   onTitleStart?: function(): void, feedback?: Object}} deps `feedback` is
+ *   platform/feedback.mjs's player (silent when absent)
  */
 export function attachInput(view, deps) {
   const enqueue = deps.enqueue;
@@ -41,6 +46,46 @@ export function attachInput(view, deps) {
   let lastCellKey = '';
   let lastCellAt = -1e9;
   let cardDown = null;
+  const fb = deps.feedback || { unlock() {}, play() {}, haptic() {} };
+  let pressed = null;
+  let pressedAt = 0;
+
+  function knock(name) {
+    fb.play(name);
+    fb.haptic('light');
+  }
+
+  // Pressed look: the element under the finger shrinks until release (at least PRESS_MIN_MS).
+  // Capture phase, so it runs before the handlers below and whatever they stop.
+  document.addEventListener('pointerdown', function (e) {
+    if (!e.isPrimary) return;
+    fb.unlock();
+    const node = e.target && e.target.closest ? e.target.closest(PRESSABLE) : null;
+    if (pressed && pressed !== node) pressed.classList.remove('press');
+    pressed = node;
+    pressedAt = e.timeStamp;
+    if (node) node.classList.add('press');
+  }, true);
+  function release(e) {
+    if (!pressed) return;
+    const node = pressed;
+    pressed = null;
+    const wait = PRESS_MIN_MS - (e.timeStamp - pressedAt);
+    if (wait > 0) setTimeout(function () { node.classList.remove('press'); }, wait);
+    else node.classList.remove('press');
+  }
+  document.addEventListener('pointerup', release, true);
+  document.addEventListener('pointercancel', release, true);
+
+  // The speaker button (start screen, catalog, pause card) flips the mute switch (rule 21f).
+  document.addEventListener('pointerup', function (e) {
+    if (!e.isPrimary) return;
+    const btn = e.target && e.target.closest ? e.target.closest('[data-mute]') : null;
+    if (!btn || !inside(btn, e) || !fb.setMuted) return;
+    fb.setMuted(!fb.muted());
+    knock('button');
+    if (view.setMutedLook) view.setMutedLook(fb.muted());
+  });
 
   view.frame.addEventListener('pointerdown', function (e) {
     if (!e.isPrimary) return;
@@ -56,6 +101,7 @@ export function attachInput(view, deps) {
     lastCellKey = key;
     lastCellAt = e.timeStamp;
     lastBoardTapAt = e.timeStamp;
+    knock('tap');
     enqueue({ type: 'cell', row: cell.r, col: cell.c });
   });
 
@@ -80,17 +126,22 @@ export function attachInput(view, deps) {
     cardDown = null;
     if (!inside(down.card, e)) return;
     if (down.at - lastBoardTapAt < CARD_AFTER_BOARD_MS) return;
+    knock('button');
     enqueue({ type: 'card', general: down.id });
   });
   view.cardsEl.addEventListener('pointercancel', function () { cardDown = null; });
 
   view.pauseEl.addEventListener('pointerup', function (e) {
-    if (e.isPrimary) enqueue({ type: 'pauseStamp' });
+    if (!e.isPrimary) return;
+    knock('button');
+    enqueue({ type: 'pauseStamp' });
   });
 
   // 开始游戏 on the start screen is a screen change, not a round intent.
   view.titleStart.addEventListener('pointerup', function (e) {
-    if (e.isPrimary && inside(view.titleStart, e) && deps.onTitleStart) deps.onTitleStart();
+    if (!e.isPrimary || !inside(view.titleStart, e)) return;
+    knock('start');
+    if (deps.onTitleStart) deps.onTitleStart();
   });
 
   for (const id of Object.keys(view.overlayCards)) {
@@ -99,6 +150,7 @@ export function attachInput(view, deps) {
       const btn = e.target.closest('button[data-button]');
       if (!btn || !inside(btn, e)) return;
       const pick = btn.getAttribute('data-chapter');
+      knock(pick ? 'enter' : 'button');
       if (pick) {
         deps.onCatalogPick(pick);
         return;

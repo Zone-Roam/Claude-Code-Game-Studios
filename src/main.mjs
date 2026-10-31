@@ -1,5 +1,5 @@
 // Composition root (ADR-0002 assembly order): build flags -> chapters -> progress ->
-// screens (round factory: loadout picker, board, pressure, effects, skills) -> view ->
+// screens (round factory: loadout picker, board, pressure, effects, skills) -> feedback -> view ->
 // input -> lifecycle -> main loop. The only module that touches every layer.
 
 import { BUILD } from './app/build-flags.mjs';
@@ -10,7 +10,11 @@ import { CHAPTER_DATA } from './data/chapters.mjs';
 import { loadChapters } from './rules/chapter-loader.mjs';
 import { createProgress } from './rules/progress-save.mjs';
 import { createLocalStoragePort } from './platform/storage.mjs';
-import { attachLifecycle } from './platform/lifecycle.mjs';
+import { attachLifecycle, prefersReducedMotion } from './platform/lifecycle.mjs';
+import { createFeedback } from './platform/feedback.mjs';
+import { SAMPLE_SOUNDS, SOUNDS } from './view/sounds.mjs';
+import { SFX_DATA } from './view/sfx-assets.mjs';
+import { BGM_DATA } from './view/bgm-assets.mjs';
 import { createView } from './view/view.mjs';
 import { attachInput } from './view/input.mjs';
 
@@ -46,6 +50,12 @@ const factory = createRoundFactory({ book, progress, warn: devLog });
 
 const screens = createScreens({ chapters, salt: resolveSalt(window.location.search, BUILD.dev, random32), newRound: factory.newRound, title: true });
 const queue = [];
+const feedback = createFeedback(window, {
+  sounds: { samples: SAMPLE_SOUNDS, synth: SOUNDS, data: SFX_DATA },
+  music: BGM_DATA,
+  storage: createLocalStoragePort(window),
+  reducedMotion: prefersReducedMotion,
+});
 const view = createView(document.getElementById('app'), {
   texts: book.texts,
   enemies: book.enemies,
@@ -55,10 +65,12 @@ const view = createView(document.getElementById('app'), {
   chapter: () => factory.chapter(),
   picker: () => factory.picker(),
   catalog: () => progress.catalog(),
+  feedback,
 });
 
 attachInput(view, {
   enqueue: (intent) => queue.push(intent),
+  feedback,
   onTitleStart: () => screens.start(),
   onCatalogPick(chapterId) {
     if (screens.screen() !== 'catalog') return;

@@ -43,4 +43,5 @@
 - `IndexedDB`、`navigator.storage`、Clipboard API：探测页会报告，可用了再说。
 - `document.fonts`：毛笔体选定前不用。
 - `matchMedia('(prefers-reduced-motion: reduce)')`：读不到时按默认版本播放（界面规则 29）。
-- `navigator.vibrate`：只经 `src/platform/` 的包装调用（先 `typeof === 'function'`，再 `try/catch`，失败静默）；没有替代反馈（ui-interaction 规则 21d）。
+- 震动：只经 `src/platform/feedback.mjs` 调用，先用宿主的 `window.xhs.miniTool.vibrateShort`（客户端 9.50+），再退到 `navigator.vibrate`，都先判断是函数再 `try/catch`，失败静默（ui-interaction 规则 21d）。
+- Web Audio：小工具文档允许音视频播放，没有禁用 Web Audio；音效是内嵌的 MP3 录音（base64，`decodeAudioData` 解码，不走 `<audio>` 或网络），解码失败用合成音（规则 21e），第一次按下时才开启。

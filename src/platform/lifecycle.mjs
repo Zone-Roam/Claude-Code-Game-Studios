@@ -1,6 +1,6 @@
 // Page lifecycle -> round-flow entry points (ADR-0002 section 4; round-flow rules 10, 11;
 // ui-interaction rule 24). Direct calls, never queued: rAF stops in the background.
-// Also the only vibration wrapper (ui-interaction rule 21d; platform reference: vibrate unknown).
+// Vibration and sound live in platform/feedback.mjs (ui-interaction rules 21d, 21e).
 
 /**
  * Wires visibility, pagehide/pageshow, resize/orientation and the back key.
@@ -49,21 +49,6 @@ export function attachLifecycle(deps) {
   });
 
   return { checkOrientation };
-}
-
-/**
- * Vibrates for `ms` when the host allows it; silent otherwise (no substitute feedback).
- * @param {number} ms
- * @returns {boolean} whether the call was made without throwing
- */
-export function vibrate(ms) {
-  try {
-    if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return false;
-    navigator.vibrate(ms);
-    return true;
-  } catch (e) {
-    return false;
-  }
 }
 
 /**

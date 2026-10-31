@@ -859,3 +859,28 @@ html, body { background: linear-gradient(180deg, #f6deb0 0%, #ecc890 55%, #dfb17
 #cards .gcard .pips { left: 52.6%; right: 10.6%; top: 68.2%; height: 10.6%; padding: 1px 2px; gap: 2px; }
 #cards .gcard .pips b, #cards .gcard .pips b.on { height: 100%; border-radius: 99px; }
 #cards .gcard .pips .kind, #cards .gcard.ready .pips .kind { left: -23px; top: -5px; }
+
+/* Pressed look (ui-interaction rule 21e, 2026-10-31): transform only; last so it wins over .ready / .show. */
+button, .tile img { transition: transform 80ms ease; }
+button.press { transform: scale(0.9); }
+#title-screen .start.press { animation: none; transform: scale(0.88); }
+.gcard.press { transform: translateY(3px) scale(0.92); }
+.tile.press img { transform: scale(0.82); }
+
+/* Mute switch (ui-interaction rule 21f, 2026-10-31): one speaker button on the start screen, the
+   catalog and the pause card; <html class="sound-off"> swaps the waves for a cross. */
+button.mute, .card button.mute {
+  position: absolute; top: 8px; right: 8px; z-index: 2; box-sizing: border-box;
+  width: 40px; height: 40px; min-width: 0; min-height: 0; padding: 0; border-radius: 50%;
+  border: 2px solid var(--ink); background: var(--paper-hi);
+  display: flex; align-items: center; justify-content: center;
+}
+button.mute svg { width: 22px; height: 22px; fill: var(--ink); stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
+button.mute svg .on, button.mute svg .off { fill: none; }
+button.mute svg .off { display: none; }
+.sound-off button.mute svg .on { display: none; }
+.sound-off button.mute svg .off { display: inline; }
+#title-screen > button.mute { top: 14px; right: 14px; top: calc(14px + env(safe-area-inset-top, 0px)); }
+#card-catalog > button.mute { top: -16px; right: -16px; }
+#card-pause > button.mute { top: -16px; right: -16px; }
+.card p.credit { margin: 8px 4px 0; font-size: 11px; line-height: 1.4; color: var(--ink-soft); }

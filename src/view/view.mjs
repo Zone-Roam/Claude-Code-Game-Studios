@@ -14,8 +14,7 @@ import { BACKGROUNDS } from './bg-assets.mjs';
 import { KIND_NAMES, EFFECT_NAMES, UI_TEXT, GENERAL_NAMES, HUD_TEXT, HINT_TEXT, EVENT_TEXT, RESULT_TEXT, PICKER_TEXT, fill } from './strings.mjs';
 import { SPECIAL_NAMES } from '../rules/battle-pressure.mjs';
 import { skillLine } from '../rules/general-skills.mjs';
-import { SHOUT_MS, VIBRATE_MS, PREVIEW_DELAY_MS } from './ui-constants.mjs';
-import { vibrate } from '../platform/lifecycle.mjs';
+import { SHOUT_MS, PREVIEW_DELAY_MS } from './ui-constants.mjs';
 
 // Q版清爽版 skin pieces (ui-assets.mjs) -> the CSS variables styles.css reads.
 const UI_VARS = {
@@ -174,21 +173,60 @@ export function hudLine(h) {
 }
 
 /**
+ * The background track for a screen and round state (ui-interaction rule 21f): calm on the
+ * start screen, the catalog, a chapter's intro card and the result card; battle while the
+ * round runs; silence during the ending, so the win or lose phrase is heard.
+ * @param {string} screen 'title' | 'catalog' | 'round' | 'error'
+ * @param {(string|null)} state the round's state(), or null
+ * @returns {(string|null)} a BGM_DATA name, or null
+ * @example musicFor('round', 'play') // 'battle'
+ */
+export function musicFor(screen, state) {
+  if (screen === 'title' || screen === 'catalog') return 'calm';
+  if (screen !== 'round') return null;
+  if (state === 'starting' || state === 'play') return 'battle';
+  if (state === 'end') return null;
+  return 'calm';
+}
+
+// Speaker icon for the mute switch: waves while sound is on, a cross while off (CSS picks).
+const MUTE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M3 9h4l5-4v14l-5-4H3z"/>'
+  + '<path class="on" d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12"/>'
+  + '<path class="off" d="M15.5 9.5l5 5M20.5 9.5l-5 5"/></svg>';
+
+/**
  * Creates the page view. It follows the screen controller each frame: the
  * catalog card while no round runs, the round's board, HUD and cards otherwise.
  * @param {HTMLElement} root mount point
  * @param {{texts: Object, chapters: Array<Object>, screen: function(): string,
  *   round: function(): (Object|null), chapter: function(): (Object|null),
  *   catalog: function(): Array<Object>,
- *   enemies?: Object}} deps `texts` is chapter-loader's texts; `catalog` is
- *   progress.catalog() (unlocked, bestStars per chapter)
+ *   enemies?: Object, feedback?: Object}} deps `texts` is chapter-loader's texts; `catalog` is
+ *   progress.catalog() (unlocked, bestStars per chapter); `feedback` is
+ *   platform/feedback.mjs's player (silent when absent)
  * @returns {{stage: HTMLElement, frame: HTMLElement, pauseEl: HTMLElement, cardsEl: HTMLElement,
  *   overlayCards: Object, render: function(number, Array<Object>): void,
- *   applyLayout: function(number, number): void, layout: function(): Object}}
+ *   applyLayout: function(number, number): void, layout: function(): Object,
+ *   setMutedLook: function(boolean): void}}
  */
 export function createView(root, deps) {
   const texts = deps.texts || {};
   const enemies = deps.enemies || {};
+  // Sounds and haptics (rule 21e); main.mjs injects the platform player.
+  const fb = deps.feedback || { play() {}, haptic() {}, music() {}, muted: () => false };
+
+  // Mute switch (rule 21f): the same speaker button on the start screen, the catalog and the
+  // pause card; input.mjs toggles it, the <html> class shows which icon.
+  function muteButton(parent) {
+    const b = el('button', 'mute', parent);
+    b.setAttribute('data-mute', '');
+    b.innerHTML = MUTE_ICON;
+    return b;
+  }
+  function setMutedLook(on) {
+    document.documentElement.classList.toggle('sound-off', !!on);
+    for (const b of root.querySelectorAll('button.mute')) b.setAttribute('aria-label', on ? UI_TEXT.soundOn : UI_TEXT.soundOff);
+  }
   root.insertAdjacentHTML('beforeend', spriteMarkup());
   for (const name of Object.keys(UI_VARS)) {
     const art = UI_ART[UI_VARS[name]];
@@ -221,6 +259,7 @@ export function createView(root, deps) {
   }
   const titleStart = el('button', 'start', titleScreen, UI_TEXT.titleStart);
   const titleProgress = el('div', 'progress', titleScreen);
+  muteButton(titleScreen);
 
   // The progress line under 开始游戏: chapters won so far, empty on a fresh save.
   function fillTitle() {
@@ -286,6 +325,7 @@ export function createView(root, deps) {
   buttonRow(resumeCard, [{ id: 'resume', text: UI_TEXT.buttons.resume, primary: true }]);
   const pauseCard = overlayCard('pause');
   el('h2', '', pauseCard, UI_TEXT.pause);
+  muteButton(pauseCard);
   buttonRow(pauseCard, [
     { id: 'resume', text: UI_TEXT.buttons.resume, primary: true },
     { id: 'catalog', text: UI_TEXT.buttons.catalog },
@@ -548,6 +588,7 @@ export function createView(root, deps) {
     if (key === catalogKey) return;
     catalogKey = key;
     catalogCard.textContent = '';
+    muteButton(catalogCard);
     el('h1', '', catalogCard, UI_TEXT.gameTitle);
     el('h2', '', catalogCard, UI_TEXT.catalog);
     const list = el('div', 'catalog-list', catalogCard);
@@ -565,6 +606,8 @@ export function createView(root, deps) {
       el('span', 'cmode', btn, MODE_NAMES[ch.mode] || '');
       if (!row.unlocked) btn.appendChild(useIcon('s-lock', 'lock'));
     }
+    el('p', 'credit', catalogCard, UI_TEXT.musicCredit);
+    setMutedLook(fb.muted());
   }
 
   // ── shouts (ui-interaction rule 20) ──
@@ -784,7 +827,10 @@ export function createView(root, deps) {
     if (e.reason === 'effect') {
       showBanner('paper', EFFECT_NAMES[d.kind] || '');
       setHighlight(d.cells);
+      fb.play('swish');
     } else if (e.reason === 'skill') {
+      fb.play('gong');
+      fb.haptic('medium');
       mask.className = 'skill';
       const face = d.general ? PORTRAITS[d.general] : null;
       heroWho.style.backgroundImage = face ? 'url("' + face + '")' : '';
@@ -801,9 +847,11 @@ export function createView(root, deps) {
       showBanner('qing', qingText || EVENT_TEXT.attack);
       setHighlight(attackCells);
       quake();
-      vibrate(VIBRATE_MS.rage);
+      fb.play(e.reason === 'phase' ? 'rage' : 'drum');
+      fb.haptic(e.reason === 'phase' ? 'heavy' : 'medium');
     } else if (e.reason === 'reshuffle') {
       tokenShout = UI_TEXT.reshuffle;
+      fb.play('swish');
       boardEl.classList.add('out');
       later(RESHUFFLE_SHOW_MS * 0.55, () => boardEl.classList.remove('out'));
     }
@@ -852,7 +900,7 @@ export function createView(root, deps) {
         t.el.style.transform = 'translate(' + (dx / n) * L.cell * 1.6 + 'px, ' + (dy / n) * L.cell * 1.6 + 'px) rotate(' + (i % 2 ? 40 : -40) + 'deg) scale(0.3)';
       });
     });
-    vibrate(VIBRATE_MS.shatter);
+    fb.haptic('heavy');
   }
 
   function onState(e) {
@@ -860,6 +908,7 @@ export function createView(root, deps) {
       const res = round.result();
       const win = !!(res && res.win);
       endingLeft = win ? ENDING_WIN_MS : ENDING_LOSE_MS;
+      fb.play(win ? 'win' : 'lose');
       if (win) { shatter(); fillWinCard(); } else fillLoseCard();
     }
     if (e.to === 'settle') {
@@ -929,15 +978,18 @@ export function createView(root, deps) {
       case 'match':
         if (chapter && chapter.mode === 'boss') pulse(foe, 'hit', 260);
         drawLink(e);
+        fb.play('match', effects.combo());
+        fb.haptic(effects.combo() >= 3 ? 'medium' : 'light');
         burst(e.a, e.forced || effects.combo() >= 2);
         later(LINK_DRAW_MS, () => burst(e.b, e.forced || effects.combo() >= 2));
         showCombo(e);
         break;
       case 'clear': if (e.cells) ghosts(e.cells); break;
-      case 'miss': shake(e.a); shake(e.b); break;
+      case 'miss': shake(e.a); shake(e.b); fb.play('miss'); fb.haptic('medium'); break;
       case 'targetGone': showShout(fill(UI_TEXT.targetGone, { kind: KIND_NAMES[e.kind] || '' })); break;
       case 'push':
         quake();
+        fb.play('drum');
         if (e.cells) for (const p of e.cells) falls.push({ from: { r: 0, c: p.c }, to: p });
         break;
       case 'fall': for (const m of e.moves) falls.push(m); break;
@@ -952,15 +1004,15 @@ export function createView(root, deps) {
         qingText = e.shout || fill(EVENT_TEXT.phase2, { name: e.name || foeName.textContent });
         attackCells = e.cells || [];
         break;
-      case 'heal': heartPulse(e.heart, 'heal'); showShout(EVENT_TEXT.heal); break;
-      case 'foodRefill': pulse(chargeBox, 'up', 500); showShout(fill(EVENT_TEXT.foodRefill, { n: e.amount })); break;
+      case 'heal': heartPulse(e.heart, 'heal'); fb.play('chime'); showShout(EVENT_TEXT.heal); break;
+      case 'foodRefill': pulse(chargeBox, 'up', 500); fb.play('chime'); showShout(fill(EVENT_TEXT.foodRefill, { n: e.amount })); break;
       case 'foodSpent': pulse(chargeBox, 'down', 300); break;
       case 'comboPushback': pulse(chargeBox, 'up', 500); showShout(fill(EVENT_TEXT.comboPushback, { n: e.cut })); break;
       case 'scared': showShout(EVENT_TEXT.scared); break;
       case 'lastWave': showShout(EVENT_TEXT.lastWave); break;
-      case 'seal': flashCard(e.general, 'hit', 500); showShout(fill(EVENT_TEXT.seal, { general: generalName(e.general), left: e.left })); break;
+      case 'seal': flashCard(e.general, 'hit', 500); fb.play('thud'); showShout(fill(EVENT_TEXT.seal, { general: generalName(e.general), left: e.left })); break;
       case 'unseal': showShout(fill(EVENT_TEXT.unseal, { general: generalName(e.general) })); break;
-      case 'skillReady': flashCard(e.general, 'ping', 600); break;
+      case 'skillReady': flashCard(e.general, 'ping', 600); fb.play('ping'); break;
       case 'skillArmed': showShout(EVENT_TEXT.armed); break;
       case 'cardHint': {
         const g = gcards[e.general];
@@ -1200,6 +1252,7 @@ export function createView(root, deps) {
     const dt = dtReal < 0 || dtReal > 1000 ? 0 : dtReal;
     if (round && round === deps.round()) for (const e of events) handle(e);
     followScreen();
+    fb.music(musicFor(deps.screen(), round ? round.state() : null));
     if (!round || !board) return;
     runTimers(dt);
     selAge += dt;
@@ -1222,6 +1275,7 @@ export function createView(root, deps) {
   }
 
   applyLayout(viewport.w, viewport.h);
+  setMutedLook(fb.muted());
 
   return {
     stage,
@@ -1234,5 +1288,6 @@ export function createView(root, deps) {
     applyLayout,
     /** @returns {Object} the current layout (input maps taps through it) */
     layout() { return layout; },
+    setMutedLook,
   };
 }
