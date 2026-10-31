@@ -25,9 +25,9 @@ const UI_VARS = {
 };
 // 暖木 skin (warm-assets.mjs): Q版 portraits replace the older ones by id.
 const PORTRAITS = Object.assign({}, BASE_PORTRAITS, Q_PORTRAITS);
-// Lead card width when it has room for its skill line (unscaled px).
-const LEAD_CARD_MAX = 240;
-const LEAD_CARD_TEXT_MIN = 170;
+// General cards: one size for every card, as if the rail held CARD_SLOTS (unscaled px cap).
+const CARD_SLOTS = 3;
+const CARD_W_MAX = 110;
 const SVGNS = 'http://www.w3.org/2000/svg';
 const HEART_PATH = 'M20 34 C9 26 4 20 4 13 C4 8 8 5 12 5 C16 5 18 7 20 10 C22 7 24 5 28 5 C32 5 36 8 36 13 C36 20 31 26 20 34 Z';
 const STAR_PATH = 'M20 3 L25 15 L38 15 L27.5 23 L31.5 36 L20 28 L8.5 36 L12.5 23 L2 15 L15 15 Z';
@@ -336,16 +336,15 @@ export function createView(root, deps) {
     dead.style.top = L.deadY + 'px';
     cardsEl.style.top = L.cardsY + 'px';
     cardsEl.style.height = L.cards + 'px';
-    // The lead card (first) takes the room the others leave, up to LEAD_CARD_MAX.
+    // Every card has the same size: the rail is split for CARD_SLOTS (or more cards), up to CARD_W_MAX.
     const ids = Object.keys(gcards);
-    const room = L.stageW - 32 - 8 * Math.max(0, ids.length - 1);
-    const cardW = ids.length > 1 ? 72 : 83;
-    const leadW = Math.max(cardW, Math.min(LEAD_CARD_MAX, room - (ids.length - 1) * cardW));
+    const n = Math.max(CARD_SLOTS, ids.length);
+    const cardW = Math.min(CARD_W_MAX, (L.stageW - 32 - 8 * (n - 1)) / n);
     ids.forEach((id, i) => {
       const c = gcards[id];
-      c.root.style.width = (i === 0 ? leadW : cardW) + 'px';
+      c.root.style.width = cardW + 'px';
       c.root.style.height = (L.cards < 96 ? 76 : 94) + 'px';
-      c.root.classList.toggle('lead', i === 0 && leadW >= LEAD_CARD_TEXT_MIN);
+      c.root.classList.toggle('lead', i === 0);
     });
     hero.style.top = Math.max(L.topY + L.top - 20, L.boardY + L.boardH / 3 - 150) + 'px';
     placeTiles();
@@ -503,7 +502,6 @@ export function createView(root, deps) {
         av.src = PORTRAITS[card.general];
       }
       const name = el('div', 'gname', root, generalName(card.general));
-      el('div', 'skill', root, chapter ? skillLine(card.general, chapter.mode, texts) || '' : '');
       const pips = el('div', 'pips', root);
       el('div', 'token', root, '令');
       const hint = el('div', 'hint', root);

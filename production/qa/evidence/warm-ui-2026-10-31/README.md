@@ -24,3 +24,5 @@ largest-blob keep, edge-only despill, premultiplied Lanczos resize, PNG-8 (octre
 Both states were set in the page with a console call (class `ready`, segment classes) for the look only, because
 the press timer kept pushing rows mid-capture; the charge logic itself is covered by the general-skills tests.
 Also fixed: the 清爽 `border: none` rules reset `border-image`, so ready / armed / show / standby cards lost their frame.
+
+| cards-equal.png | 第五回: 张飞 / 关羽 / 赵云 cards at one size (rail split for 3), portrait over the frame, name, kind icon + segments |

@@ -735,3 +735,16 @@ html, body { background: linear-gradient(180deg, #f6deb0 0%, #ecc890 55%, #dfb17
 /* gravity press (2026-10-31): a tile that fell slides down from its old row */
 .tile.fall { animation: fall 200ms cubic-bezier(0.5, 0, 0.9, 0.6); }
 @keyframes fall { from { transform: translateY(var(--fall, 0)); } to { transform: translateY(0); } }
+
+/* general cards, equal size (2026-10-31): portrait peeking over the frame, name, charge row */
+.gcard, .gcard.lead { display: block; text-align: center; }
+.gcard .avatar, .gcard.lead .avatar {
+  display: block; width: 36px; height: 36px; max-height: none; margin: -14px auto 0; grid-row: auto;
+  border: none; border-radius: 0; background: none; object-fit: contain;
+}
+.gcard .gname, .gcard.lead .gname { font-size: 16px; line-height: 18px; margin: 0; }
+.gcard .pips, .gcard.lead .pips { justify-content: center; gap: 3px; height: 16px; margin-top: 2px; }
+.gcard .pips .kind, .gcard.lead .pips .kind { width: 16px; height: 16px; }
+.gcard .pips b, .gcard .pips b.on, .gcard.lead .pips b, .gcard.lead .pips b.on { width: 16px; height: 9px; border-radius: 5px; }
+.gcard.ready .pips .kind { display: none; }
+.gcard .pips .go { font-size: 12px; line-height: 16px; padding: 0 6px; }
