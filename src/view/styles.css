@@ -852,3 +852,52 @@ html, body { background: linear-gradient(180deg, #f6deb0 0%, #ecc890 55%, #dfb17
 }
 #cards[data-v="c"] .gcard .gname { font-size: 15px; line-height: 18px; text-align: center; padding: 0; margin-top: 18px; }
 #cards[data-v="c"] .gcard .pips { margin-top: 2px; justify-content: center; }
+
+/* D: generated card frame with a square portrait window, red name plaque and a gold charge groove */
+#cards[data-v="d"] .gcard, #cards[data-v="d"] .gcard.ready, #cards[data-v="d"] .gcard.armed,
+#cards[data-v="d"] .gcard.show, #cards[data-v="d"] .gcard.standby {
+  border: none; border-image: none; background: var(--warm-cardWin) center / 100% 100% no-repeat;
+}
+#cards[data-v="d"] .gcard.ready { background-image: var(--warm-cardWinReady); }
+#cards[data-v="d"] .gcard .avatar {
+  left: 9%; top: 13.5%; width: 35%; height: 71%; border-radius: 3px; box-shadow: none;
+  object-position: 50% 6%; background: radial-gradient(circle at 50% 35%, #6b5638 0%, #2a1e12 100%);
+}
+#cards[data-v="d"] .gcard .gname {
+  position: absolute; left: 52%; right: 9%; top: 17%; height: 20%; padding: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 12px; line-height: 1; color: #fff6e0;
+}
+#cards[data-v="d"] .gcard .pips {
+  position: absolute; left: 53.5%; right: 10.5%; top: 63.5%; height: 13%; margin: 0; padding: 0 2px;
+  box-sizing: border-box; gap: 2px; justify-content: stretch;
+}
+#cards[data-v="d"] .gcard .pips b, #cards[data-v="d"] .gcard .pips b.on { flex: 1; width: auto; height: 70%; border-radius: 5px; background: transparent; box-shadow: none; }
+#cards[data-v="d"] .gcard .pips b.on { background: linear-gradient(180deg, #fff2a8 0%, #f6c93a 55%, #d9901c 100%); }
+#cards[data-v="d"] .gcard .pips .kind {
+  position: absolute; left: -24px; top: -6px; width: 20px; height: 20px; padding: 3px; box-sizing: border-box;
+  background: var(--warm-badge) center / contain no-repeat;
+}
+#cards[data-v="d"] .gcard.ready .pips .kind { display: block; }
+#cards[data-v="d"] .gcard .pips .go { position: absolute; left: -2px; right: -2px; top: -4px; bottom: -4px; display: flex; align-items: center; justify-content: center; font-size: 11px; padding: 0; }
+
+/* F: round gold medallion with a red ribbon over the corner, name on the red banner, capsule charge pips */
+#cards[data-v="f"] .gcard::before {
+  content: ''; position: absolute; left: -15px; top: -21px; width: 58px; height: 73px; z-index: 2; pointer-events: none;
+  background: var(--warm-ring) center top / contain no-repeat;
+}
+#cards[data-v="f"] .gcard .avatar {
+  left: -7px; top: -12px; width: 42px; height: 42px; border-radius: 50%; box-shadow: none;
+  object-position: 50% 6%; background: radial-gradient(circle at 50% 35%, #fff3cf 0%, #e8c27a 70%, #b8803a 100%);
+}
+#cards[data-v="f"] .gcard .gname {
+  position: absolute; left: 42px; right: 0; top: 2px; height: 20px; padding: 0 4px; box-sizing: border-box;
+  background: var(--warm-banner) center / 100% 100% no-repeat; font-size: 12px; line-height: 20px; text-align: center; color: #fff6e0;
+}
+#cards[data-v="f"] .gcard .pips { position: absolute; left: 40px; right: 0; bottom: 3px; margin: 0; gap: 2px; justify-content: center; }
+#cards[data-v="f"] .gcard .pips b, #cards[data-v="f"] .gcard .pips b.on {
+  width: 13px; height: 8px; border-radius: 0; box-shadow: none; background: var(--warm-capEmpty) center / 100% 100% no-repeat;
+}
+#cards[data-v="f"] .gcard .pips b.on { background-image: var(--warm-capFull); }
+#cards[data-v="f"] .gcard .pips .kind { width: 18px; height: 18px; padding: 2px; box-sizing: border-box; background: var(--warm-badge) center / contain no-repeat; }
+#cards[data-v="d"] .gcard .pips .kind { z-index: 3; }
+#cards[data-v="f"] .gcard .avatar { z-index: 3; left: -6px; top: -11px; width: 40px; height: 40px; }
