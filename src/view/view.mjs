@@ -10,6 +10,7 @@ import { spriteMarkup } from './sprite.mjs';
 import { TILE_ART, PORTRAITS as BASE_PORTRAITS } from './art-assets.mjs';
 import { UI_ART } from './ui-assets.mjs';
 import { TILE_BASE, WARM_UI, Q_PORTRAITS } from './warm-assets.mjs';
+import { BACKGROUNDS } from './bg-assets.mjs';
 import { KIND_NAMES, EFFECT_NAMES, UI_TEXT, GENERAL_NAMES, HUD_TEXT, HINT_TEXT, EVENT_TEXT, RESULT_TEXT, PICKER_TEXT, fill } from './strings.mjs';
 import { SPECIAL_NAMES } from '../rules/battle-pressure.mjs';
 import { skillLine } from '../rules/general-skills.mjs';
@@ -193,6 +194,10 @@ export function createView(root, deps) {
   }
   for (const key of Object.keys(WARM_UI)) document.documentElement.style.setProperty('--warm-' + key, 'url("' + WARM_UI[key].src + '")');
   for (const k of Object.keys(TILE_BASE)) document.documentElement.style.setProperty('--tb-' + k, 'url("' + TILE_BASE[k] + '")');
+  // Scene behind everything: the catalog's 说书场, or the bound chapter's own scene.
+  const backdrop = el('div', '', root);
+  backdrop.id = 'backdrop';
+  let backdropKey = '';
   const stage = el('div', '', root);
   stage.id = 'stage';
   const errorEl = el('div', '', root, UI_TEXT.error);
@@ -1139,6 +1144,11 @@ export function createView(root, deps) {
         applyLayout(viewport.w, viewport.h);
       }
       const inRound = !!r;
+      const sceneKey = inRound && chapter && BACKGROUNDS[chapter.id] ? chapter.id : 'catalog';
+      if (sceneKey !== backdropKey) {
+        backdropKey = sceneKey;
+        backdrop.style.backgroundImage = 'url("' + BACKGROUNDS[sceneKey] + '")';
+      }
       frame.style.visibility = inRound ? '' : 'hidden';
       top.style.visibility = inRound ? '' : 'hidden';
       cardsEl.style.visibility = inRound ? '' : 'hidden';

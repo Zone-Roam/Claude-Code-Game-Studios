@@ -748,3 +748,10 @@ html, body { background: linear-gradient(180deg, #f6deb0 0%, #ecc890 55%, #dfb17
 .gcard .pips b, .gcard .pips b.on, .gcard.lead .pips b, .gcard.lead .pips b.on { width: 16px; height: 9px; border-radius: 5px; }
 .gcard.ready .pips .kind { display: none; }
 .gcard .pips .go { font-size: 12px; line-height: 16px; padding: 0 6px; }
+
+/* scene backgrounds (2026-10-31): one per chapter, 说书场 on the catalog (bg-assets.mjs) */
+#backdrop { position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: #e9c58e center / cover no-repeat; }
+#mask.dim { background: #3a2414; opacity: 0.3; }
+/* readouts sit on the scene, so they get a light halo */
+#pairs, #charge-label { text-shadow: 0 0 3px #fff6e0, 0 0 6px #fff6e0, 0 0 10px #fff6e0; }
+#hearts { box-shadow: 0 2px 6px rgba(58, 36, 20, 0.25); }
