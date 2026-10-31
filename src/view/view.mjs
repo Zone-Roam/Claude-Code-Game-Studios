@@ -1056,7 +1056,7 @@ export function createView(root, deps) {
       hud.classList.toggle('wide', h.mode !== 'boss');
     }
     if (h.mode === 'boss' && h.steps !== lastHud.steps) Array.prototype.forEach.call(track.children, (d, i) => d.classList.toggle('on', i < h.steps));
-    if (trackFill && line.fill !== lastHud.fill) trackFill.style.transform = 'scaleX(' + line.fill + ')';
+    if (trackFill && line.fill !== lastHud.fill) trackFill.style.transform = 'translateX(' + (line.fill - 1) * 100 + '%)'; // slides, so both rounded ends keep their shape
     if (line.label !== lastHud.label) chargeLabel.textContent = line.label;
     const isBoss = h.mode === 'boss';
     foe.style.display = isBoss ? '' : 'none';

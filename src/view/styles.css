@@ -805,3 +805,50 @@ html, body { background: linear-gradient(180deg, #f6deb0 0%, #ecc890 55%, #dfb17
 #foe .name { font-size: 16px; }
 #foe .face, #foe.rage .face { right: -2px; top: -18px; width: 48px; height: 48px; }
 #foe .hp { position: relative; z-index: 2; }
+
+/* countdown / food bar (2026-10-31): drawn in CSS — dark wood groove, gold rim, glossy fill that slides in */
+#charge-box:not(.pips) #charge-track, #charge-box.t2:not(.pips) #charge-track, #charge-box.t3:not(.pips) #charge-track {
+  height: 14px; top: 4px; border: none; border-radius: 8px; overflow: hidden;
+  background: linear-gradient(180deg, #2e1b0e 0%, #4e321c 100%);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.55), 0 0 0 2px #d9a35a, 0 0 0 3.5px #6b3f1c;
+}
+#charge-box:not(.pips) #charge-fill {
+  border-radius: 8px; transform-origin: 0 50%;
+  background: linear-gradient(180deg, #c6f57c 0%, #74c83a 48%, #3f921e 100%);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.5), inset 0 -2px 0 rgba(0, 0, 0, 0.18);
+}
+#charge-box.t2:not(.pips) #charge-fill { background: linear-gradient(180deg, #ffe08a 0%, #f2a93a 50%, #c4701a 100%); }
+#charge-box.t3:not(.pips) #charge-fill { background: linear-gradient(180deg, #ff9a7a 0%, #e5482a 50%, #a8241a 100%); }
+#charge-box.t3:not(.pips) #charge-track { box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.55), 0 0 0 2px #ff8a5a, 0 0 0 3.5px #8a1e10; }
+
+/* ── card portrait layouts under review (2026-10-31): #cards[data-v] a / b / c ── */
+#cards[data-v] .gcard .avatar {
+  position: absolute; margin: 0; z-index: 1; object-fit: cover; object-position: 50% 8%;
+  background: radial-gradient(circle at 50% 30%, #fff3cf 0%, #e8c27a 70%, #b8803a 100%);
+}
+#cards[data-v] .gcard .gname { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A: round gold-rimmed badge in the top-left corner */
+#cards[data-v="a"] .gcard .avatar {
+  left: -4px; top: -6px; width: 42px; height: 42px; border-radius: 50%;
+  box-shadow: 0 0 0 2.5px #f3c24a, 0 0 0 4px #7a3e12, 0 3px 4px rgba(0, 0, 0, 0.35);
+}
+#cards[data-v="a"] .gcard .gname { font-size: 15px; line-height: 18px; text-align: left; padding-left: 44px; margin-top: 6px; }
+#cards[data-v="a"] .gcard .pips { position: absolute; right: 2px; bottom: 2px; margin: 0; justify-content: flex-end; }
+#cards[data-v="a"] .gcard .pips b, #cards[data-v="a"] .gcard .pips b.on { width: 12px; }
+/* B: portrait fills the top of the card, a name strip over its lower edge, charge row below */
+#cards[data-v="b"] .gcard .avatar {
+  left: 0; right: 0; top: 0; width: 100%; height: calc(100% - 20px); border-radius: 6px 6px 2px 2px;
+  object-position: 50% 12%; box-shadow: inset 0 0 0 2px rgba(122, 62, 18, 0.6);
+}
+#cards[data-v="b"] .gcard .gname {
+  position: absolute; left: 0; right: 0; bottom: 20px; z-index: 2; padding: 1px 0 0; text-align: center;
+  font-size: 13px; line-height: 16px; background: linear-gradient(180deg, rgba(29, 58, 28, 0), rgba(29, 58, 28, 0.9));
+}
+#cards[data-v="b"] .gcard .pips { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; }
+/* C: round badge half out above the card, name and charge row centred */
+#cards[data-v="c"] .gcard .avatar {
+  left: 50%; margin-left: -23px; top: -30px; width: 46px; height: 46px; border-radius: 50%;
+  box-shadow: 0 0 0 2.5px #f3c24a, 0 0 0 4px #7a3e12, 0 3px 5px rgba(0, 0, 0, 0.35);
+}
+#cards[data-v="c"] .gcard .gname { font-size: 15px; line-height: 18px; text-align: center; padding: 0; margin-top: 18px; }
+#cards[data-v="c"] .gcard .pips { margin-top: 2px; justify-content: center; }
