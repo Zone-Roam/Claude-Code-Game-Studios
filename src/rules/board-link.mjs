@@ -441,7 +441,8 @@ export function createBoard(options) {
       return n;
     },
     /**
-     * Pairs left (formula pairs_left): (top-layer units + buried units) / 2; roadblocks excluded.
+     * Pairs left (formula pairs_left): (top-layer units + buried units) / 2, rounded down
+     * (gravity press can hold an unpaired half); roadblocks excluded.
      * @returns {number}
      * @example board.pairsLeft() // 22 after dealing chapter 5
      */
@@ -453,7 +454,7 @@ export function createBoard(options) {
           n += under[r][c].length;
         }
       }
-      return n / 2;
+      return Math.floor(n / 2);
     },
     /**
      * Number of cards buried under one cell (0..stackDepth(), at most
@@ -749,6 +750,68 @@ export function createBoard(options) {
         type: 'push', row: row.slice(),
         empty: row.every((v) => v === EMPTY_CELL), dropped,
       };
+    },
+    /**
+     * Drops one press row onto the column stacks (gravity press, 2026-10-31):
+     * each entry that is not EMPTY_CELL lands just above the topmost occupied
+     * cell of its column, or on the bottom row of an empty column. Kinds need
+     * not pair up inside the row (gravity press splits pairs across waves).
+     * Refused, with nothing changed, when a receiving column is full.
+     * @param {Array<*>} row cols entries: UNIT_KINDS ids, ROADBLOCK or EMPTY_CELL
+     * @returns {({type: string, row: Array<*>, empty: boolean, dropped: Array<number>,
+     *   cells: Array<{r: number, c: number, kind: *}>}|{ok: boolean})} `{type: 'push', ...}`
+     *   with the landing cells left to right, or `{ok: false}`
+     * @example board.dropRow(['qi', 'jiu', EMPTY_CELL, EMPTY_CELL, 'dao'])
+     */
+    dropRow(row) {
+      if (!Array.isArray(row) || row.length !== cols) throw new RangeError('row must have cols entries');
+      for (const value of row) {
+        if (value === EMPTY_CELL || value === ROADBLOCK) continue;
+        if (UNIT_KINDS.indexOf(value) === -1) throw new RangeError('unknown row entry: ' + value);
+      }
+      const landing = [];
+      for (let c = 1; c <= cols; c++) {
+        if (row[c - 1] === EMPTY_CELL) continue;
+        let r = 1;
+        while (r <= rows && top[r][c] === EMPTY_CELL) r++;
+        if (r === 1) return { ok: false };
+        landing.push({ r: r - 1, c, kind: row[c - 1] });
+      }
+      for (const cell of landing) {
+        top[cell.r][cell.c] = cell.kind;
+        under[cell.r][cell.c] = [];
+      }
+      return {
+        type: 'push', row: row.slice(), empty: landing.length === 0, dropped: [], cells: landing,
+      };
+    },
+    /**
+     * Settles every column downwards (gravity press, 2026-10-31): units and
+     * roadblocks fall into the empty cells below them, keeping their order; the
+     * buried layer moves with its cell and the selection follows its tile.
+     * @returns {({type: string, moves: Array<{from: {r: number, c: number},
+     *   to: {r: number, c: number}, kind: *}>}|null)} `{type: 'fall', moves}`
+     *   column by column, bottom first; null when nothing moved
+     * @example boardFromPicture(['dao', '.']).gravity() // {type:'fall', moves:[{from:{r:1,c:1}, to:{r:2,c:1}, kind:'dao'}]}
+     */
+    gravity() {
+      const moves = [];
+      for (let c = 1; c <= cols; c++) {
+        let dest = rows;
+        for (let r = rows; r >= 1; r--) {
+          if (top[r][c] === EMPTY_CELL) continue;
+          if (r !== dest) {
+            top[dest][c] = top[r][c];
+            under[dest][c] = under[r][c];
+            top[r][c] = EMPTY_CELL;
+            under[r][c] = [];
+            moves.push({ from: { r, c }, to: { r: dest, c }, kind: top[dest][c] });
+            if (selected !== null && selected.r === r && selected.c === c) selected = { r: dest, c };
+          }
+          dest--;
+        }
+      }
+      return moves.length > 0 ? { type: 'fall', moves } : null;
     },
     /**
      * Adds units in pairs (GDD rule 13; enemy reinforcements, phase-two refill).
@@ -1083,6 +1146,16 @@ export function createBoard(options) {
      */
     bottomOccupied() {
       for (let c = 1; c <= cols; c++) if (isUnit(top[rows][c])) return true;
+      return false;
+    },
+    /**
+     * Whether row 1 holds a unit or a roadblock (gravity press breach, 2026-10-31):
+     * such a column cannot take another drop.
+     * @returns {boolean}
+     * @example boardFromPicture(['jm .', 'dao dao']).topOccupied() // true
+     */
+    topOccupied() {
+      for (let c = 1; c <= cols; c++) if (top[1][c] !== EMPTY_CELL) return true;
       return false;
     },
     /**

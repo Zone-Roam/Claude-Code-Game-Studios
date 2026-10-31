@@ -33,6 +33,8 @@ const HEART_PATH = 'M20 34 C9 26 4 20 4 13 C4 8 8 5 12 5 C16 5 18 7 20 10 C22 7 
 const STAR_PATH = 'M20 3 L25 15 L38 15 L27.5 23 L31.5 36 L20 28 L8.5 36 L12.5 23 L2 15 L15 15 Z';
 const MODE_NAMES = { press: '压阵', food: '粮草', boss: '斗将' };
 const LINK_DRAW_MS = 150;
+// Gravity press: one fall animation, whatever the distance (styles.css @keyframes fall).
+const FALL_MS = 200;
 // Stage size used for the catalog, before any chapter is bound.
 const CATALOG_GRID = { rows: 8, cols: 5 };
 // Card hint after a tap that cannot fire, and the skill result banner (ms).
@@ -146,11 +148,14 @@ export function resultText(e, specialNames) {
  */
 export function hudLine(h) {
   if (h.mode === 'press') {
-    let label = fill(HUD_TEXT.press, { s: Math.ceil(h.msToNextPush / 1000), wave: h.wave, waves: h.waves });
+    let label = fill(h.gravity ? HUD_TEXT.pressFall : HUD_TEXT.press, { s: Math.ceil(h.msToNextPush / 1000), wave: h.wave, waves: h.waves });
     let tier = h.msToNextPush <= PRESS_WARN_MS ? 2 : 1;
     if (h.wave >= h.waves) { label = HUD_TEXT.pressLast; tier = 1; }
     if (h.scareArmed) label = HUD_TEXT.pressScared;
-    else if (h.bottomOccupied && h.wave < h.waves) { label = HUD_TEXT.pressDanger; tier = 3; }
+    else if ((h.danger !== undefined ? h.danger : h.bottomOccupied) && h.wave < h.waves) {
+      label = h.gravity ? HUD_TEXT.pressDangerTop : HUD_TEXT.pressDanger;
+      tier = 3;
+    }
     const left = h.interval > 0 ? Math.min(1, Math.max(0, h.msToNextPush / h.interval)) : 0;
     return { label, tier, fill: h.wave >= h.waves ? 0 : 1 - left };
   }
@@ -265,6 +270,8 @@ export function createView(root, deps) {
   let chapter = null;
   let layout = null;
   let tiles = [];
+  // Gravity press falls from this frame's events, played after the tiles take their new kinds.
+  const falls = [];
   let gcards = {};
   let gcardsBuilt = false;
   let selKey = '';
@@ -683,6 +690,20 @@ export function createView(root, deps) {
     later(900, () => remove(c));
   }
 
+  // Each moved tile slides down from where it was (transform only, ui-interaction rule 32).
+  function playFalls() {
+    for (const m of falls) {
+      const t = tileAt(m.to);
+      if (!t) continue;
+      t.el.style.setProperty('--fall', -(m.to.r - m.from.r) * layout.cell + 'px');
+      t.el.classList.remove('fall');
+      void t.el.offsetWidth;
+      t.el.classList.add('fall');
+      later(FALL_MS, () => t.el.classList.remove('fall'));
+    }
+    falls.length = 0;
+  }
+
   function tileAt(p) {
     for (const t of tiles) if (t.r === p.r && t.c === p.c) return t;
     return null;
@@ -886,7 +907,11 @@ export function createView(root, deps) {
       case 'clear': if (e.cells) ghosts(e.cells); break;
       case 'miss': shake(e.a); shake(e.b); break;
       case 'targetGone': showShout(fill(UI_TEXT.targetGone, { kind: KIND_NAMES[e.kind] || '' })); break;
-      case 'push': quake(); break;
+      case 'push':
+        quake();
+        if (e.cells) for (const p of e.cells) falls.push({ from: { r: 0, c: p.c }, to: p });
+        break;
+      case 'fall': for (const m of e.moves) falls.push(m); break;
       case 'hostAttack':
         if (e.kind === 'normal') { qingText = e.line || EVENT_TEXT.attack; heartPulse(e.heart, 'hit'); }
         else if (e.kind === 'special') qingText = e.name || EVENT_TEXT.attack;
@@ -1143,6 +1168,7 @@ export function createView(root, deps) {
     runTimers(dt);
     selAge += dt;
     syncTiles();
+    playFalls();
     syncPreview();
     syncHud();
     syncLines();

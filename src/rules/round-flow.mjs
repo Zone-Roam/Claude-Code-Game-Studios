@@ -425,12 +425,19 @@ export function createRound(options) {
   // Outcome first; when undecided and something happened since the last settle
   // point, board.ensurePlayable(): a reshuffle holds the board, a fallback
   // clear goes to pressure.onClear and the outcome is asked for once more.
+  // Gravity press (2026-10-31): the columns fall first (pressure.settleBoard),
+  // and pressure.holdReshuffle() skips ensurePlayable while waves are left.
   function settlePoint() {
     if (state !== 'play' || tokens.length > 0) return;
     const changed = pending;
     pending = false;
     handedBack = false;
+    if (changed && typeof pressure.settleBoard === 'function') {
+      const fall = pressure.settleBoard();
+      if (fall) emit(fall);
+    }
     if (decide() || !changed) return;
+    if (typeof pressure.holdReshuffle === 'function' && pressure.holdReshuffle()) return;
     const fixed = board.ensurePlayable();
     if (!fixed) return;
     route(fixed);

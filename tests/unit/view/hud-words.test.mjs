@@ -48,3 +48,16 @@ test('buttonIntent carries a 0-based slot or a general for the picker', () => {
   assert.deepEqual(buttonIntent('slot', '0', null), { type: 'button', button: 'slot', slot: 0 });
   assert.deepEqual(buttonIntent('pick', null, 'zhao_yun'), { type: 'button', button: 'pick', general: 'zhao_yun' });
 });
+
+test('hudLine gravity press: tier 3 and the top-row warning when danger is set', () => {
+  const base = { mode: 'press', msToNextPush: 6000, interval: 12000, wave: 2, waves: 6, bottomOccupied: true, danger: false, gravity: true, scareArmed: false };
+  assert.equal(hudLine(base).tier, 1);
+  const danger = hudLine(Object.assign({}, base, { danger: true }));
+  assert.equal(danger.tier, 3);
+  assert.equal(danger.label, '顶排有兵，再落就破城');
+});
+
+test('hudLine gravity press: the countdown says 落下一排', () => {
+  const h = { mode: 'press', msToNextPush: 6000, interval: 12000, wave: 2, waves: 6, bottomOccupied: false, danger: false, gravity: true, scareArmed: false };
+  assert.equal(hudLine(h).label, '6 秒后落下一排 · 2/6');
+});

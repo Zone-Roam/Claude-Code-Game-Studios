@@ -56,6 +56,8 @@ export const PRESS_INTERVAL_MS = 12000;
 /** Press waves / start rows used when a chapter omits them (Tuning Knobs). */
 export const PRESS_WAVES = 8;
 export const PRESS_START_ROWS = 4;
+/** Gravity press (2026-10-31): halves left open by each generated wave, closed by the next one. */
+export const SPLIT_OPEN_HALVES = 2;
 /** Food slack used when a chapter omits `food.slack` (food_start, MVP default 2). */
 export const FOOD_SLACK = 2;
 /** The three pressure modes (rule 1). */
@@ -113,6 +115,10 @@ function neutralHooks(mode) {
     canScare: () => false,
     /** Press mode only. @returns {void} */
     scareNextPush() {},
+    /** Gravity press only. @returns {null} nothing falls */
+    settleBoard: () => null,
+    /** Gravity press only. @returns {boolean} false: reshuffle as usual */
+    holdReshuffle: () => false,
     /** Food mode only. @returns {number} food added */
     addFood: () => 0,
     /** Boss mode only. @returns {number} steps pushed back */
@@ -551,7 +557,72 @@ export function buildWaveTable(press, cols, pool, stream) {
   return table;
 }
 
+/**
+ * Builds the gravity-press wave table (2026-10-31): `waveList` as written, or
+ * `waves` rows of `floor(cols / 2) * 2` units from `stream`, padded with
+ * EMPTY_CELL. Pairs are split across consecutive rows: each row first closes the
+ * halves the row before left open, then opens SPLIT_OPEN_HALVES new kinds (not
+ * open, not already in the row) and fills the rest with whole pairs; the last
+ * row opens nothing, so every kind ends even. Columns are shuffled with the same
+ * stream; then a unit that sits under the same kind in the row before (a free
+ * vertical match once dropped) swaps with the first cell where neither would.
+ * @param {{waves: number, waveList?: Array<Array<*>>}} press the chapter's `press` block
+ * @param {number} cols board columns (5 or 6)
+ * @param {Array<Array>} pool [kind, weight] entries in UNIT_KINDS order
+ * @param {{int: function(number): number, pickWeighted: function(Array): *,
+ *   shuffle: function(Array): Array}} stream the `wave` stream
+ * @returns {Array<Array<*>>} fresh rows of `cols` entries
+ * @example buildSplitWaveTable({ waves: 6 }, 5, [['dao', 3], ['qi', 3], ['jiu', 2], ['gu', 2]], board.rng('wave'))
+ *   // [['qi', 'qi', 'dao', '.', 'gu'], ['jiu', 'dao', '.', 'gu', 'qi'], ...]
+ */
+export function buildSplitWaveTable(press, cols, pool, stream) {
+  if (Array.isArray(press.waveList)) return press.waveList.map((row) => row.slice());
+  const units = Math.floor(cols / 2) * 2;
+  const table = [];
+  let open = [];
+  for (let w = 0; w < press.waves; w++) {
+    const last = w === press.waves - 1;
+    const row = open.slice();
+    open = [];
+    if (!last) {
+      const fresh = pool.filter((e) => row.indexOf(e[0]) === -1);
+      if (fresh.length >= SPLIT_OPEN_HALVES && units - row.length >= SPLIT_OPEN_HALVES) {
+        for (let i = 0; i < SPLIT_OPEN_HALVES; i++) {
+          const kind = stream.pickWeighted(pool.filter((e) => row.indexOf(e[0]) === -1));
+          row.push(kind);
+          open.push(kind);
+        }
+      }
+    }
+    while (row.length < units) {
+      const unused = pool.filter((e) => row.indexOf(e[0]) === -1);
+      const kind = stream.pickWeighted(unused.length > 0 ? unused : pool);
+      row.push(kind, kind);
+    }
+    while (row.length < cols) row.push(EMPTY_CELL);
+    const prev = w > 0 ? table[w - 1] : null;
+    stream.shuffle(row);
+    if (prev !== null) {
+      const bad = (v, c) => v !== EMPTY_CELL && prev[c] === v;
+      for (let c = 0; c < cols; c++) {
+        if (!bad(row[c], c)) continue;
+        for (let d = 0; d < cols; d++) {
+          if (d === c || bad(row[c], d) || bad(row[d], c)) continue;
+          const keep = row[c];
+          row[c] = row[d];
+          row[d] = keep;
+          break;
+        }
+      }
+    }
+    table.push(row);
+  }
+  return table;
+}
+
 // Press mode 压境 (rules 7-14, 9a). Time comes only from tick(dtGame).
+// Gravity press (`press.gravity`, 2026-10-31): the board settles downwards, rows
+// drop onto the column stacks, and the top row (not the bottom row) is the danger line.
 function createPress(ctx, K) {
   const board = ctx.board;
   const press = ctx.chapter.press || {};
@@ -559,7 +630,10 @@ function createPress(ctx, K) {
   const baseInterval = typeof press.interval === 'number' ? press.interval : K.PRESS_INTERVAL_MS;
   const interval = ctx.slow === true ? Math.round(baseInterval * K.SLOW_PRESS_FACTOR) : baseInterval;
   const spec = { waves: typeof press.waves === 'number' ? press.waves : K.PRESS_WAVES, waveList: press.waveList };
-  const table = buildWaveTable(spec, cols, poolEntries(ctx.chapter), board.rng('wave'));
+  const gravity = press.gravity === true;
+  const table = (gravity ? buildSplitWaveTable : buildWaveTable)(spec, cols, poolEntries(ctx.chapter), board.rng('wave'));
+  if (gravity) board.gravity(); // the dealt start rows settle before the first frame
+  const danger = () => (gravity ? board.topOccupied() : board.bottomOccupied());
   const waves = table.length;
   const emptyRow = () => new Array(cols).fill(EMPTY_CELL);
 
@@ -569,12 +643,14 @@ function createPress(ctx, K) {
   let wave = 0;
   let scare = false;
   let breached = false;
+  let stuck = false; // gravity press: no linkable pair after the last settle
   let dangerMs = 0;
 
   // Rule 9: one push (a wave row while there are waves, an empty row after).
   function push() {
     const wasWave = wave < waves;
-    const res = board.pushRowFromTop(wasWave ? table[wave].slice() : emptyRow());
+    const row = wasWave ? table[wave].slice() : emptyRow();
+    const res = gravity ? board.dropRow(row) : board.pushRowFromTop(row);
     if (res.ok === false) return;
     if (wasWave) wave += 1;
     nextPush = t + interval;
@@ -593,10 +669,11 @@ function createPress(ctx, K) {
      */
     tick(dtGame) {
       if (!(dtGame > 0)) return;
-      if (board.bottomOccupied()) dangerMs += dtGame;
+      if (danger()) dangerMs += dtGame;
       t += dtGame;
       if (breached) return;
-      if (board.isEmpty() && wave < waves) {
+      if ((board.isEmpty() || stuck) && wave < waves) {
+        stuck = false;
         push(); // rule 10: not delayed, not scared; the scare mark stays armed
         return;
       }
@@ -606,7 +683,7 @@ function createPress(ctx, K) {
         nextPush = t + interval;
         comboDelayW = 0;
         ctx.emit({ type: 'scared' });
-      } else if (board.bottomOccupied()) {
+      } else if (danger()) {
         breached = true; // 破城: no push
       } else {
         push();
@@ -642,14 +719,36 @@ function createPress(ctx, K) {
     metrics: () => ({ dangerMs: Math.floor(dangerMs) }),
     /**
      * @returns {{mode: string, msToNextPush: number, interval: number, wave: number,
-     *   waves: number, bottomOccupied: boolean, scareArmed: boolean}} rule 26
+     *   waves: number, bottomOccupied: boolean, danger: boolean, gravity: boolean,
+     *   scareArmed: boolean}} rule 26; `danger`: the next push breaches (top row
+     *   occupied under gravity, bottom row otherwise)
      */
     hud: () => ({
       mode: 'press', msToNextPush: Math.max(0, nextPush - t), interval, wave, waves,
-      bottomOccupied: board.bottomOccupied(), scareArmed: scare,
+      bottomOccupied: board.bottomOccupied(), danger: danger(), gravity, scareArmed: scare,
     }),
-    /** @returns {boolean} the bottom row holds a unit and no scare is armed (rule 13) */
-    canScare: () => board.bottomOccupied() && !scare,
+    /** @returns {boolean} the next push would breach and no scare is armed (rule 13) */
+    canScare: () => danger() && !scare,
+    /**
+     * Gravity press: settles the columns after the board changed (round-flow calls
+     * it at the settle point, before the outcome) and notes whether any pair is
+     * left to link: with none, the next tick pushes at once, like a cleared
+     * board (rule 10). Plain press does nothing.
+     * @returns {(Object|null)} the board's `{type: 'fall', moves}`, or null
+     */
+    settleBoard() {
+      if (!gravity) return null;
+      const fall = board.gravity();
+      stuck = !board.isEmpty() && !board.hasPlayablePair();
+      return fall;
+    },
+    /**
+     * Gravity press leaves unpaired halves on the board until their wave comes,
+     * so a board with no playable pair waits for the next push instead of being
+     * reshuffled while waves are left.
+     * @returns {boolean}
+     */
+    holdReshuffle: () => gravity && wave < waves,
     /** Zhang Fei (rule 13): the next scheduled push is scared off. @returns {void} */
     scareNextPush() {
       scare = true;

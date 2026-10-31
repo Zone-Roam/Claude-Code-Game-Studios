@@ -229,6 +229,7 @@ export function loadChapters(data, flags) {
         range('press.waves', p.waves);
         range('press.interval', p.interval);
         if (p.waveList !== undefined) checkWaveList(p, ch.cols, reject);
+        if (p.gravity !== undefined && typeof p.gravity !== 'boolean') reject('press.gravity', 'must be true or false');
       }
     } else if (mode === 'food') {
       if (!isObj(ch.food)) reject('food', 'missing');

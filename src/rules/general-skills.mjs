@@ -53,7 +53,7 @@ export const GENERALS = Object.freeze({
  */
 export const SKILL_LINES = Object.freeze({
   guan_yu: Object.freeze({ boss: '点选一排，整排斩掉', press: '点选一排，整排斩掉', food: '点选一排，整排斩掉' }),
-  zhang_fei: Object.freeze({ boss: '敌将退三步，三步不涨', press: '底排有兵时，吓退一次', food: '抢回三份粮' }),
+  zhang_fei: Object.freeze({ boss: '敌将退三步，三步不涨', press: '顶排有兵时，吓退一次', food: '抢回三份粮' }),
   zhao_yun: Object.freeze({ boss: '挡下敌将下一招', press: '下一对同种兵必消', food: '下一对同种兵必消' }),
   zhuge_liang: Object.freeze({ boss: '清最多的兵，破下一个特技', press: '清掉最多的那种兵', food: '清掉最多的那种兵' }),
   liu_bei: Object.freeze({ boss: '补一颗心，众将各蓄一格', press: '众将各蓄一格', food: '补两份粮，众将各蓄一格' }),

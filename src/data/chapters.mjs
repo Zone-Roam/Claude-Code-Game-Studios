@@ -22,7 +22,7 @@ export const ENEMIES = Object.freeze({
  */
 export const TEXTS = Object.freeze({
   ruleLine: {
-    press: '敌军每 {interval} 秒压下一排，最下一排有兵时再压就破城',
+    press: '敌军每 {interval} 秒落下一排，兵会往下掉；顶上一排有兵时再落就破城',
     food: '每消一对耗一份粮，连不上也扣，粮尽就输',
     boss: '{enemy}走满 {steps} 步就出手，{hearts} 颗心没了就输',
   },
@@ -44,7 +44,7 @@ export const TEXTS = Object.freeze({
   /** Skill line per general and mode (rule 4; wording owned by general-skills rule 18). */
   skillLine: {
     guan_yu: { boss: '点选一排，整排斩掉', press: '点选一排，整排斩掉', food: '点选一排，整排斩掉' },
-    zhang_fei: { boss: '敌将退三步，三步不涨', press: '底排有兵时，吓退一次', food: '抢回三份粮' },
+    zhang_fei: { boss: '敌将退三步，三步不涨', press: '顶排有兵时，吓退一次', food: '抢回三份粮' },
     zhao_yun: { boss: '挡下敌将下一招', press: '下一对同种兵必消', food: '下一对同种兵必消' },
     zhuge_liang: { boss: '清最多的兵，破下一个特技', press: '清掉最多的那种兵', food: '清掉最多的那种兵' },
     liu_bei: { boss: '补一颗心，众将各蓄一格', press: '众将各蓄一格', food: '补两份粮，众将各蓄一格' },
@@ -63,7 +63,7 @@ export const CHAPTERS = Object.freeze([
   {
     id: 'ch01', no: '第一回', title: '斩黄巾英雄首立功', mode: 'press', rows: 8, cols: 5,
     deck: { dao: 6, qi: 6, jiu: 4, gu: 4 },
-    press: { startRows: 4, waves: 6, interval: 12000 },
+    press: { startRows: 4, waves: 6, interval: 12000, gravity: true },
     slots: 1, lead: 'guan_yu', recommend: ['guan_yu'], unlock: 'zhang_fei', foe: '黄巾军',
   },
   {
@@ -97,7 +97,7 @@ export const CHAPTERS = Object.freeze([
     id: 'ch06', no: '第六回', title: '关云长过五关斩将', mode: 'press', rows: 8, cols: 5,
     deck: { dao: 6, gu: 6, dun: 6, qi: 2 },
     press: {
-      startRows: 4, waves: 8, interval: 12000,
+      startRows: 4, waves: 8, interval: 12000, gravity: true,
       waveList: [
         ['qi', 'dao', null, 'dao', 'qi'],
         ['gu', 'jiu', 'jiu', null, 'gu'],
@@ -123,7 +123,7 @@ export const CHAPTERS = Object.freeze([
     id: 'ch08', no: '第八回', title: '赵子龙单骑救主', mode: 'press', rows: 8, cols: 5,
     deck: { ma: 2, gong: 2, dun: 6, gu: 6, dao: 4 },
     pool: { gong: 3, ma: 1, dao: 1, gu: 1, dun: 1, qi: 1, jiu: 2, ying: 1 },
-    press: { startRows: 4, waves: 10, interval: 12000 },
+    press: { startRows: 4, waves: 10, interval: 12000, gravity: true },
     slots: 3, lead: 'zhao_yun', recommend: ['zhao_yun', 'zhang_fei', 'guan_yu'], unlock: 'huang_zhong',
     newEffect: 'ma', foe: '曹军（虎豹骑）',
   },

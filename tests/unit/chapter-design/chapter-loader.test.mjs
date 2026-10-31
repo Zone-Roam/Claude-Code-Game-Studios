@@ -168,7 +168,7 @@ test('AC19 water-board data: ch07 newEffect huo with its line, ch01 none, ch03 e
   assert.equal(byId(book, 'ch07').newEffect, 'huo');
   assert.equal(book.texts.effectLine.huo, '火烧连营：消一对火，烧掉所有营');
   assert.equal(byId(book, 'ch01').newEffect, undefined);
-  assert.equal(TEXTS.ruleLine.press, '敌军每 {interval} 秒压下一排，最下一排有兵时再压就破城');
+  assert.equal(TEXTS.ruleLine.press, '敌军每 {interval} 秒落下一排，兵会往下掉；顶上一排有兵时再落就破城');
   assert.equal(book.enemies[byId(book, 'ch03').boss.enemy].name, '文丑');
   assert.equal(TEXTS.ruleLine.boss, '{enemy}走满 {steps} 步就出手，{hearts} 颗心没了就输');
 });
@@ -309,4 +309,14 @@ test('press mode ignores stackDepth: warned and dropped, the chapter still loads
   assert.deepEqual(ids(book), ['tp']);
   assert.equal(book.chapters[0].stackDepth, undefined);
   assert.ok(fields(book.warnings, 'tp').indexOf('stackDepth') !== -1);
+});
+
+test('press.gravity (2026-10-31): true loads, a non-boolean is refused; the three press chapters use it', () => {
+  const on = loadChapters(dataWith([pressChapter({ press: { startRows: 4, waves: 6, interval: 12000, gravity: true } })]), DEV);
+  assert.equal(on.chapters.length, 1);
+  const bad = loadChapters(dataWith([pressChapter({ press: { startRows: 4, waves: 6, interval: 12000, gravity: 'yes' } })]), DEV);
+  assert.deepEqual(ids(bad), []);
+  assert.deepEqual(fields(bad.rejected, 'tp'), ['press.gravity']);
+  const book = loadChapters(CHAPTER_DATA, RELEASE);
+  for (const id of ['ch01', 'ch06', 'ch08']) assert.equal(byId(book, id).press.gravity, true, id);
 });

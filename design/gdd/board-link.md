@@ -116,7 +116,12 @@
     - `buriedCells(kind)`：按行优先返回底层最上面那张是 `kind` 的全部格子，供补斩在上层找不到同种时斩底牌。底下压着 2–3 张时，压在更深处的同种牌由武将技能用 `cells()` 自己找（只读），以带 `kind` 的 `under` 目标交来（2026-10-30）。
     - 斩一行的典型调用：这一行每个有兵的格给 `stack`、每个拒马格给 `block`，加上补斩的格（上层给 `top`、底牌给带 `kind` 的 `under`），一次 `clearCells` 交给本系统。射一列同理：用 `colContents` 取目标，一次 `clearCells`。补斩规则保证 I1 成立；本系统照常检查，不合就拒绝。
 16. **推行与选中**：`pushRowFromTop` 成功时，已选中的块跟着块一起下移，选中坐标随之加一行。压境不叠，推行只动上层：兵和拒马一起下移；最下一行只有拒马（或全空）时推行照常成功，那一行的拒马移出盘面（规则 9）。选中的块不会被推出盘面（最下一行有兵时推行被拒）。
-17. **查询接口**：`isEmpty()`（上层没有兵；按 I3 即全盘无兵）、`bottomOccupied()`（最下一行有没有兵）、`pairsLeft()`（全部牌的对数，含底牌，公式 pairs_left）、`count(kind)`（含底牌）、`cells()`、`cellsOf(kind)`（只上层）、`depthAt(r, c)`（这一格底下几张，0 到 `stackDepth`，最多 3）、`stackDepth()`（本局每格最多压几张）、`buriedCount()`、`buriedCells(kind)`、`blocks()`（拒马格）、`rowContents(r)`、`colContents(c)`、`selection()`、`forceNext()`、`hasPlayablePair()`（只看上层）、`rng(name)`。
+16a. **下落压境（用户决定，2026-10-31）**：回目的 `press.gravity` 为真时，本系统另外提供两个改动盘面的接口，压境用它们代替 `pushRowFromTop`：
+    - `gravity()`：每一列的兵和拒马往下掉，填满下面的空格，上下顺序不变；底牌跟着格子走，选中跟着块走。返回 `{type: 'fall', moves: [{from, to, kind}]}`（逐列、从下往上），没有东西动时返回 `null`。
+    - `dropRow(row)`：一排 `cols` 个，每个不空的兵或拒马落在本列最上面那块的上方（空列落到最下一行）。**同种不要求在本排成对**（下落压境把一对拆在相邻两排，见“战场压力”规则 9b），所以这时盘上可以暂时有落单的半对，I1 只在最后一排落下后重新成立。接收的列已满时返回 `{ok:false}`，盘面不变；成功返回 `{type: 'push', row, empty, dropped: [], cells}`，`cells` 是落点。
+    - `topOccupied()`：第 1 行有兵或拒马。
+    - 盘上有落单的半对时，`pairsLeft()` 向下取整。
+17. **查询接口**：`isEmpty()`（上层没有兵；按 I3 即全盘无兵）、`bottomOccupied()`（最下一行有没有兵）、`topOccupied()`（第 1 行有没有兵或拒马，规则 16a）、`pairsLeft()`（全部牌的对数，含底牌，公式 pairs_left）、`count(kind)`（含底牌）、`cells()`、`cellsOf(kind)`（只上层）、`depthAt(r, c)`（这一格底下几张，0 到 `stackDepth`，最多 3）、`stackDepth()`（本局每格最多压几张）、`buriedCount()`、`buriedCells(kind)`、`blocks()`（拒马格）、`rowContents(r)`、`colContents(c)`、`selection()`、`forceNext()`、`hasPlayablePair()`（只看上层）、`rng(name)`。
 18. **玩家不能做的事**：不能拖动块、不能交换位置、不能撤销、不能翻看底牌。盘锁住时（对局流程规则 5）点击直接丢弃，不缓存。
 
 ### States and Transitions
@@ -354,6 +359,9 @@ The reshuffle_bound formula is defined as:
 - **GIVEN** 第 1 行全空、第 2、3 行有兵和底牌，**WHEN** `shuffleTopRows`，**THEN** 只打乱第 2、3 行上层的兵，底牌和拒马不动，选中清空。
 - **GIVEN** 盘被锁住，**WHEN** 玩家点任意块，**THEN** 状态不变，这次点击不会在解锁后补发。
 - **GIVEN** 8 行 6 列满盘再压满底牌（96 张），**WHEN** 在技术准备阶段选定的测试用低端安卓机上发牌，**THEN** 发牌加首次可连检查 ≤ 200 ms（美术圣经第 8 节）。
+- **GIVEN** 一列里兵和拒马之间隔着空格，**WHEN** `gravity()`，**THEN** 它们按原顺序落到底，返回 `fall` 和每块的 `from`/`to`；选中的块跟着落；盘面已沉底时返回 `null`、不变（规则 16a）。
+- **GIVEN** 各列高低不一，**WHEN** `dropRow` 一排不成对的兵，**THEN** 每块落在本列最上面那块的上方，`cells` 是落点；**GIVEN** 接收的列已满，**THEN** 返回 `{ok:false}`、盘面不变；满列上方是空位时照常成功。
+- **GIVEN** 第 1 行有兵或拒马，**THEN** `topOccupied()` 为真；**GIVEN** 盘上 3 块里有 1 块落单，**THEN** `pairsLeft()` 为 1。
 
 ## Open Questions
 
