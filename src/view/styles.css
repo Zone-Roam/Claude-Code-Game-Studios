@@ -625,3 +625,76 @@ html, body { background: linear-gradient(180deg, var(--sky) 0%, var(--sky-hi) 28
 .gcard .avatar { margin-top: 5px; width: 24px; height: 24px; }
 .gcard .gname { font-size: 17px; line-height: 20px; }
 .gcard .pips { line-height: 16px; font-size: 14px; }
+
+/* ── 暖木 skin (2026-10-31): warm wood page, coloured tile bases per kind, wooden tray,
+   crescent plaque, hourglass countdown, green-board general cards. Art: warm-assets.mjs. ── */
+html, body { background: linear-gradient(180deg, #f6deb0 0%, #ecc890 55%, #dfb173 100%); }
+#mask.dim { background: #e9c58e; }
+#title {
+  width: 320px; margin-left: -160px; height: 54px; top: -6px; padding-top: 6px;
+  border-width: 16px 44px 8px; border-image: var(--warm-plaque) 64 128 32 fill / 16px 44px 8px stretch;
+  color: #fff6e0; text-shadow: 0 2px 0 #5a2a10, 1px 0 0 #5a2a10, -1px 0 0 #5a2a10;
+}
+#plaque:not([data-key=""]) { border-image: var(--warm-plaque) 64 128 32 fill / 9px 30px 5px stretch; border-width: 9px 30px 5px; }
+#plaque .read, #plaque .shout { color: #fff6e0; text-shadow: 0 1px 0 #5a2a10; }
+#pairs { color: #5a2a10; }
+#charge-label { color: #5a2a10; }
+#hourglass { position: absolute; left: -30px; top: -16px; width: 24px; height: 40px; background: var(--warm-hourglass) center / contain no-repeat; }
+#charge-box.pips #hourglass { display: none; }
+#hud.wide #charge-box { left: 44px; }
+#charge-box:not(.pips) #charge-track { height: 20px; background: var(--warm-barEmpty) center / 100% 100% no-repeat, #4a2e1a; border-radius: 10px; }
+#charge-box:not(.pips) #charge-fill,
+#charge-box.t2 #charge-fill, #charge-box.t3 #charge-fill { background: var(--warm-barFull) center / 100% 100% no-repeat, #5fae2e; border-radius: 10px; }
+#charge-box.t3 #charge-label { color: var(--zhu); }
+
+/* board: the wooden tray drawn behind the tiles (the frame itself stays layout-neutral) */
+#board-frame { background: transparent; border-color: transparent; }
+#board-frame::before {
+  content: ''; position: absolute; left: -8px; right: -8px; top: -10px; bottom: -10px;
+  border: 18px solid transparent; border-image: var(--warm-tray) 30 fill / 18px stretch;
+}
+#deadzone { background: transparent; }
+.tile { background: var(--ui-tile) center / 100% 100% no-repeat; border-radius: 16%; }
+.tile img { left: 13%; top: 9%; width: 74%; height: 74%; }
+.tile.sel { transform: translateY(-4px) scale(1.06); box-shadow: 0 0 0 3px #ffd84a, 0 4px 0 2px #b8741c; }
+.tile[data-k="huo"] { background-image: var(--tb-huo); }
+.tile[data-k="shui"] { background-image: var(--tb-shui); }
+.tile[data-k="gu"] { background-image: var(--tb-gu); }
+.tile[data-k="gong"] { background-image: var(--tb-gong); }
+.tile[data-k="dao"] { background-image: var(--tb-dao); }
+.tile[data-k="ma"] { background-image: var(--tb-ma); }
+.tile[data-k="dun"] { background-image: var(--tb-dun); }
+.tile[data-k="ying"] { background-image: var(--tb-ying); }
+.tile[data-k="jiu"] { background-image: var(--tb-jiu); }
+.tile[data-k="cheng"] { background-image: var(--tb-cheng); }
+.tile[data-k="shu"] { background-image: var(--tb-shu); }
+.tile[data-k="qi"] { background-image: var(--tb-qi); }
+
+/* general cards: green board in a wood frame, gold frame when ready */
+.gcard {
+  background: none; border-style: solid; border-color: transparent; border-width: 9px;
+  border-image: var(--warm-card) 40 fill / 9px stretch; border-radius: 0;
+}
+.gcard.ready { border-image-source: var(--warm-cardReady); background: none; }
+.gcard .gname, .gcard.ready .gname { color: #fff6e0; text-shadow: 0 1px 0 #1d3a1c; }
+.gcard .avatar { margin-top: -4px; width: 34px; height: 34px; border-radius: 0; border: none; background: none; object-fit: contain; }
+.gcard .pips b { border-color: #e9dcb8; }
+.gcard .pips b.on { background: #ffd84a; border-color: #b8741c; }
+.gcard .skill { display: none; }
+.gcard.lead { display: grid; grid-template-columns: 60px 1fr; grid-template-rows: auto 1fr auto; text-align: left; column-gap: 6px; }
+.gcard.lead .avatar { grid-row: 1 / 4; width: 60px; height: 100%; max-height: 62px; margin: -2px 0 0; align-self: end; }
+.gcard.lead .gname { font-size: 18px; }
+.gcard.lead .skill { display: block; font-size: 12px; line-height: 15px; color: #e6f0d2; overflow: hidden; }
+.gcard.lead .pips { text-align: left; }
+.gcard.lead .pips b:first-child { margin-left: 0; }
+.card button.primary {
+  background: var(--warm-btnPrimary) center / 100% 100% no-repeat, #5fae2e;
+  text-shadow: 0 2px 0 #2c6a12, 1px 0 0 #2c6a12, -1px 0 0 #2c6a12, 0 -1px 0 #2c6a12;
+}
+.gcard .pips { color: #fff6e0; }
+.gcard.lead .avatar { margin-left: 10px; }
+.gcard.lead { grid-template-columns: 70px 1fr; }
+.gcard.lead { grid-template-columns: 56px 1fr; column-gap: 4px; }
+.gcard.lead .avatar { width: 56px; margin-left: 6px; }
+.gcard.lead .skill { max-height: 30px; }
+.tile.sel, .tile.stack.sel { box-shadow: 0 0 0 3px #ffd84a, 0 0 0 5px #b8741c; }

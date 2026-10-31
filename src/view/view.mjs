@@ -7,8 +7,9 @@ import { ROADBLOCK, EFFECT_TARGETS, ENDING_WIN_MS, ENDING_LOSE_MS, RESHUFFLE_SHO
 import { comboLabel } from '../rules/clear-effects.mjs';
 import { computeLayout, pointCenter, LAYOUT } from './layout.mjs';
 import { spriteMarkup } from './sprite.mjs';
-import { TILE_ART, PORTRAITS } from './art-assets.mjs';
+import { TILE_ART, PORTRAITS as BASE_PORTRAITS } from './art-assets.mjs';
 import { UI_ART } from './ui-assets.mjs';
+import { TILE_BASE, WARM_UI, Q_PORTRAITS } from './warm-assets.mjs';
 import { KIND_NAMES, EFFECT_NAMES, UI_TEXT, GENERAL_NAMES, HUD_TEXT, HINT_TEXT, EVENT_TEXT, RESULT_TEXT, PICKER_TEXT, fill } from './strings.mjs';
 import { SPECIAL_NAMES } from '../rules/battle-pressure.mjs';
 import { skillLine } from '../rules/general-skills.mjs';
@@ -22,6 +23,11 @@ const UI_VARS = {
   '--ui-bar-full': 'barFull', '--ui-card': 'cardFrame', '--ui-card-ready': 'cardFrameReady',
   '--ui-star-off': 'starOff', '--ui-star-on': 'starOn',
 };
+// 暖木 skin (warm-assets.mjs): Q版 portraits replace the older ones by id.
+const PORTRAITS = Object.assign({}, BASE_PORTRAITS, Q_PORTRAITS);
+// Lead card width when it has room for its skill line (unscaled px).
+const LEAD_CARD_MAX = 240;
+const LEAD_CARD_TEXT_MIN = 170;
 const SVGNS = 'http://www.w3.org/2000/svg';
 const HEART_PATH = 'M20 34 C9 26 4 20 4 13 C4 8 8 5 12 5 C16 5 18 7 20 10 C22 7 24 5 28 5 C32 5 36 8 36 13 C36 20 31 26 20 34 Z';
 const STAR_PATH = 'M20 3 L25 15 L38 15 L27.5 23 L31.5 36 L20 28 L8.5 36 L12.5 23 L2 15 L15 15 Z';
@@ -180,6 +186,8 @@ export function createView(root, deps) {
     const art = UI_ART[UI_VARS[name]];
     if (art) document.documentElement.style.setProperty(name, 'url("' + art.src + '")');
   }
+  for (const key of Object.keys(WARM_UI)) document.documentElement.style.setProperty('--warm-' + key, 'url("' + WARM_UI[key].src + '")');
+  for (const k of Object.keys(TILE_BASE)) document.documentElement.style.setProperty('--tb-' + k, 'url("' + TILE_BASE[k] + '")');
   const stage = el('div', '', root);
   stage.id = 'stage';
   const errorEl = el('div', '', root, UI_TEXT.error);
@@ -195,6 +203,7 @@ export function createView(root, deps) {
   const hud = el('div', '', top); hud.id = 'hud';
   const heartsEl = el('div', '', hud); heartsEl.id = 'hearts';
   const chargeBox = el('div', '', hud); chargeBox.id = 'charge-box';
+  el('i', '', chargeBox).id = 'hourglass';
   const chargeLabel = el('div', '', chargeBox); chargeLabel.id = 'charge-label';
   const track = el('div', '', chargeBox); track.id = 'charge-track';
   const foe = el('div', '', hud); foe.id = 'foe';
@@ -320,11 +329,17 @@ export function createView(root, deps) {
     dead.style.top = L.deadY + 'px';
     cardsEl.style.top = L.cardsY + 'px';
     cardsEl.style.height = L.cards + 'px';
-    const cardW = Math.max(72, Math.min(83, (L.stageW - 32 - 24) / 4));
-    for (const id of Object.keys(gcards)) {
-      gcards[id].root.style.width = cardW + 'px';
-      gcards[id].root.style.height = (L.cards < 96 ? 76 : 94) + 'px';
-    }
+    // The lead card (first) takes the room the others leave, up to LEAD_CARD_MAX.
+    const ids = Object.keys(gcards);
+    const room = L.stageW - 32 - 8 * Math.max(0, ids.length - 1);
+    const cardW = ids.length > 1 ? 72 : 83;
+    const leadW = Math.max(cardW, Math.min(LEAD_CARD_MAX, room - (ids.length - 1) * cardW));
+    ids.forEach((id, i) => {
+      const c = gcards[id];
+      c.root.style.width = (i === 0 ? leadW : cardW) + 'px';
+      c.root.style.height = (L.cards < 96 ? 76 : 94) + 'px';
+      c.root.classList.toggle('lead', i === 0 && leadW >= LEAD_CARD_TEXT_MIN);
+    });
     hero.style.top = Math.max(L.topY + L.top - 20, L.boardY + L.boardH / 3 - 150) + 'px';
     placeTiles();
     shownOverlay = ''; // re-place the open card next frame
@@ -481,6 +496,7 @@ export function createView(root, deps) {
         av.src = PORTRAITS[card.general];
       }
       const name = el('div', 'gname', root, generalName(card.general));
+      el('div', 'skill', root, chapter ? skillLine(card.general, chapter.mode, texts) || '' : '');
       const pips = el('div', 'pips', root);
       el('div', 'token', root, '令');
       const hint = el('div', 'hint', root);
@@ -938,6 +954,7 @@ export function createView(root, deps) {
           t.el.classList.remove('smashed');
           t.el.style.transform = '';
         }
+        t.el.setAttribute('data-k', k || '');
         t.el.classList.toggle('empty', !k);
         t.el.classList.toggle('block', k === ROADBLOCK);
         const target = k ? EFFECT_TARGETS[k] : null;
