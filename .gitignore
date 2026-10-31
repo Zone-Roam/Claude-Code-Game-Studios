@@ -77,6 +77,8 @@ export_presets.cfg
 [Tt]emp/
 [Oo]bj/
 [Bb]uild/
+# ...but this project's own release build script lives in tools/build/ (ADR-0001)
+!tools/build/
 [Bb]uilds/
 [Ll]ogs/
 [Uu]ser[Ss]ettings/
