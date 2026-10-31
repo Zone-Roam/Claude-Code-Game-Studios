@@ -29,9 +29,11 @@ export function buttonIntent(button, slot, general) {
  * Wires the view's elements to the intent queue.
  * Intents: {type:'cell',row,col}, {type:'offBoard'}, {type:'card',general},
  * {type:'pauseStamp'}, {type:'button',button} (open-card picker buttons add `slot`
- * (0-based) or `general`, see buttonIntent). Catalog picks go to `onCatalogPick`.
+ * (0-based) or `general`, see buttonIntent). Catalog picks go to `onCatalogPick`,
+ * 开始游戏 on the start screen to `onTitleStart`.
  * @param {Object} view createView's result
- * @param {{enqueue: function(Object): void, onCatalogPick: function(string): void}} deps
+ * @param {{enqueue: function(Object): void, onCatalogPick: function(string): void,
+ *   onTitleStart?: function(): void}} deps
  */
 export function attachInput(view, deps) {
   const enqueue = deps.enqueue;
@@ -84,6 +86,11 @@ export function attachInput(view, deps) {
 
   view.pauseEl.addEventListener('pointerup', function (e) {
     if (e.isPrimary) enqueue({ type: 'pauseStamp' });
+  });
+
+  // 开始游戏 on the start screen is a screen change, not a round intent.
+  view.titleStart.addEventListener('pointerup', function (e) {
+    if (e.isPrimary && inside(view.titleStart, e) && deps.onTitleStart) deps.onTitleStart();
   });
 
   for (const id of Object.keys(view.overlayCards)) {

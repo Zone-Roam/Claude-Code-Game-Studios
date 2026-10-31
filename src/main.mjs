@@ -44,7 +44,7 @@ progress.boot();
 // One round per attempt (screens calls this on open, 再来一回 and 下一回).
 const factory = createRoundFactory({ book, progress, warn: devLog });
 
-const screens = createScreens({ chapters, salt: resolveSalt(window.location.search, BUILD.dev, random32), newRound: factory.newRound });
+const screens = createScreens({ chapters, salt: resolveSalt(window.location.search, BUILD.dev, random32), newRound: factory.newRound, title: true });
 const queue = [];
 const view = createView(document.getElementById('app'), {
   texts: book.texts,
@@ -59,6 +59,7 @@ const view = createView(document.getElementById('app'), {
 
 attachInput(view, {
   enqueue: (intent) => queue.push(intent),
+  onTitleStart: () => screens.start(),
   onCatalogPick(chapterId) {
     if (screens.screen() !== 'catalog') return;
     const row = progress.catalog().find((r) => r.id === chapterId);

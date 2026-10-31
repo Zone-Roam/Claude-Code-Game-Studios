@@ -28,6 +28,8 @@ const UI_VARS = {
 const PORTRAITS = Object.assign({}, BASE_PORTRAITS, Q_PORTRAITS);
 // General cards: one size for every card, as if the rail held CARD_SLOTS (unscaled px cap).
 const CARD_SLOTS = 3;
+// Start screen: the generals shown left to right; the middle one stands in front.
+const TITLE_GENERALS = ['huang_zhong', 'zhuge_liang', 'guan_yu', 'liu_bei', 'zhang_fei', 'zhao_yun'];
 const CARD_W_MAX = 110;
 const SVGNS = 'http://www.w3.org/2000/svg';
 const HEART_PATH = 'M20 34 C9 26 4 20 4 13 C4 8 8 5 12 5 C16 5 18 7 20 10 C22 7 24 5 28 5 C32 5 36 8 36 13 C36 20 31 26 20 34 Z';
@@ -202,6 +204,30 @@ export function createView(root, deps) {
   stage.id = 'stage';
   const errorEl = el('div', '', root, UI_TEXT.error);
   errorEl.id = 'error';
+
+  // Start screen (2026-10-31): title, a row of Q版 generals and 开始游戏, over the catalog's 说书场.
+  const titleScreen = el('div', '', root);
+  titleScreen.id = 'title-screen';
+  titleScreen.style.display = 'none';
+  const logo = el('div', 'logo', titleScreen);
+  el('div', 'name', logo, UI_TEXT.gameTitle);
+  el('div', 'sub', logo, UI_TEXT.titleSub);
+  const crew = el('div', 'crew', titleScreen);
+  for (const g of TITLE_GENERALS) {
+    const face = el('img', g === TITLE_GENERALS[Math.floor(TITLE_GENERALS.length / 2)] ? 'mid' : '', crew);
+    face.alt = generalName(g);
+    face.draggable = false;
+    face.src = PORTRAITS[g];
+  }
+  const titleStart = el('button', 'start', titleScreen, UI_TEXT.titleStart);
+  const titleProgress = el('div', 'progress', titleScreen);
+
+  // The progress line under 开始游戏: chapters won so far, empty on a fresh save.
+  function fillTitle() {
+    const rows = deps.catalog();
+    const won = rows.filter((row) => row.bestStars > 0).length;
+    titleProgress.textContent = won > 0 ? fill(UI_TEXT.titleProgress, { n: won, total: rows.length }) : '';
+  }
 
   // Static structure: built once; afterwards only text, classes and transforms change (rule 32).
   const top = el('div', '', stage); top.id = 'top';
@@ -1139,6 +1165,8 @@ export function createView(root, deps) {
     if (screen !== screenShown || r !== round) {
       screenShown = screen;
       errorEl.style.display = screen === 'error' ? 'flex' : 'none';
+      titleScreen.style.display = screen === 'title' ? '' : 'none';
+      if (screen === 'title') fillTitle();
       if (r !== round) {
         bindRound(r);
         applyLayout(viewport.w, viewport.h);
@@ -1200,6 +1228,7 @@ export function createView(root, deps) {
     frame,
     pauseEl,
     cardsEl,
+    titleStart,
     overlayCards: cards,
     render,
     applyLayout,

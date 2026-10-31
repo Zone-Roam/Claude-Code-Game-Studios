@@ -18,18 +18,20 @@ export function resolveSalt(search, readQuery, random32) {
 }
 
 /**
- * Creates the screen controller: catalog / round / error. Each round start
+ * Creates the screen controller: title / catalog / round / error. With
+ * `title: true` it starts on the start screen and `start()` goes on to the
+ * catalog (2026-10-31). Each round start
  * adds 1 to that chapter's attempt and seeds the round with
  * `hash32(chapterId, attempt, salt)`. 再来一回 hands the last round's
  * `round.slots()` to the new round unchanged (empty slots stay empty,
  * general-loadout rule 14); the catalog and 下一回 pass `slots: null` (fill by rule 9).
- * @param {{chapters: Array<{id: string}>, salt: number,
+ * @param {{chapters: Array<{id: string}>, salt: number, title?: boolean,
  *   newRound: function({chapter: Object, attempt: number, seed: number, hasNext: boolean,
  *     slots: (Array<(string|null)>|null)}): Object}} options
  *   `chapters` is the loadable chapter list in order; `newRound` is the assembly root's round factory
  * @returns {{open: function(string): Object, onEvents: function(Array<Object>): void,
- *   fail: function(*): void, screen: function(): string, round: function(): (Object|null),
- *   attempt: function(string): number}}
+ *   start: function(): void, fail: function(*): void, screen: function(): string,
+ *   round: function(): (Object|null), attempt: function(string): number}}
  * @example
  * const screens = createScreens({ chapters, salt: 42, newRound });
  * screens.open('ch01'); // attempt 1
@@ -37,7 +39,7 @@ export function resolveSalt(search, readQuery, random32) {
 export function createScreens(options) {
   const chapters = options.chapters;
   const attempts = {};
-  let screen = chapters.length > 0 ? 'catalog' : 'error';
+  let screen = chapters.length === 0 ? 'error' : (options.title === true ? 'title' : 'catalog');
   let round = null;
   let current = -1;
 
@@ -79,13 +81,18 @@ export function createScreens(options) {
       }
     },
 
+    /** 开始游戏 on the start screen: on to the catalog. Does nothing on any other screen. */
+    start() {
+      if (screen === 'title') screen = 'catalog';
+    },
+
     /** Drops the current round and shows the error page (ADR-0002 section 1). */
     fail() {
       screen = 'error';
       round = null;
     },
 
-    /** @returns {string} 'catalog' | 'round' | 'error' */
+    /** @returns {string} 'title' | 'catalog' | 'round' | 'error' */
     screen: () => screen,
 
     /** @returns {(Object|null)} the current round */
