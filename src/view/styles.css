@@ -796,3 +796,12 @@ html, body { background: linear-gradient(180deg, #f6deb0 0%, #ecc890 55%, #dfb17
 }
 #title-screen .progress { min-height: 20px; font-size: 15px; font-weight: 700; color: #fff6e0; text-shadow: 0 1px 3px #3a2414; }
 @keyframes startpulse { from { transform: scale(1); } to { transform: scale(1.06); } }
+
+/* Q版 enemy portrait (2026-10-31): big, out of the foe box's top-right corner like the general cards */
+#foe .face, #foe.rage .face {
+  right: -14px; top: -24px; width: 52px; height: 52px; z-index: 1;
+  border: none; border-radius: 0; background-color: transparent; background-size: contain; background-position: center bottom;
+}
+#foe .name { font-size: 16px; }
+#foe .face, #foe.rage .face { right: -2px; top: -18px; width: 48px; height: 48px; }
+#foe .hp { position: relative; z-index: 2; }
