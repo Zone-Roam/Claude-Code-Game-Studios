@@ -41,6 +41,7 @@ export const GENERAL_NAMES = Object.freeze({
 export const HUD_TEXT = Object.freeze({
   press: '{s} 秒后压下一排 · {wave}/{waves}',
   pressLast: '敌军压尽，清完就赢',
+  cardReady: '点我出招',
   pressDanger: '底排有兵，再压就破城',
   pressScared: '已吓住下一排',
   bossSteps: '还有 {n} 步出手',

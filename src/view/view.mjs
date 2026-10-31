@@ -1057,8 +1057,15 @@ export function createView(root, deps) {
       g.root.classList.toggle('standby', c.state === 'standby');
       g.root.classList.toggle('noeffect', c.state === 'ready' && !!c.hint);
       g.name.textContent = c.state === 'sealed' ? fill(HINT_TEXT.sealed, { left: c.sealed }) : generalName(c.general);
-      g.pips.textContent = KIND_NAMES[c.kind] || '';
-      for (let i = 0; i < c.need; i++) el('b', i < c.charge ? 'on' : '', g.pips);
+      // Charge row: the kind's icon, then gold segments; a ready card says so instead.
+      g.pips.textContent = '';
+      if (TILE_ART[c.kind]) {
+        const icon = el('img', 'kind', g.pips);
+        icon.alt = KIND_NAMES[c.kind] || '';
+        icon.src = TILE_ART[c.kind];
+      } else el('span', 'kind', g.pips, KIND_NAMES[c.kind] || '');
+      if (c.state === 'ready') el('span', 'go', g.pips, HUD_TEXT.cardReady);
+      else for (let i = 0; i < c.need; i++) el('b', i < c.charge ? 'on' : '', g.pips);
       g.hint.textContent = c.state === 'select' ? HINT_TEXT.select[round.selecting()] || '' : hintText(c.hint);
       g.root.classList.toggle('hinting', c.state === 'select' || c.state === 'standby' || c.state === 'sealed');
     }

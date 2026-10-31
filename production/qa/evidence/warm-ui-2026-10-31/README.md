@@ -13,3 +13,14 @@ hand-written test save in localStorage (ch01–ch06 won).
 Art: EvoMeme 暖木 UI sheet (GPT Image 2.5) matted per component with RMBG-2.0 in the user's ComfyUI, then
 largest-blob keep, edge-only despill, premultiplied Lanczos resize, PNG-8 (octree, alpha kept) — packed into
 `src/view/warm-assets.mjs`. Comparison: `../style-options-2026-10-30/rmbg-compare.png`.
+
+## Charge row and ready state (later on 2026-10-31)
+
+| File | Shows |
+|---|---|
+| card-charge-half.png | Lead card charge row: 刀 icon + gold / empty segments (1 of 2) |
+| card-ready.jpg | Ready lead card: gold frame, pulsing gold glow ring, "点我出招" badge, "令" token |
+
+Both states were set in the page with a console call (class `ready`, segment classes) for the look only, because
+the press timer kept pushing rows mid-capture; the charge logic itself is covered by the general-skills tests.
+Also fixed: the 清爽 `border: none` rules reset `border-image`, so ready / armed / show / standby cards lost their frame.
