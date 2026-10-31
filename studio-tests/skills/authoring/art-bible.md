@@ -22,6 +22,14 @@ option names the write (`[A] Lock this in and write it to design/art/art-bible.m
 Only the sections in the chosen scope are authored, and the close names the
 sections left out and why.
 
+Before any section, Phase 1b fixes one **target mockup** — a full-screen image
+the user picks (their own, or one of 3–4 directions `art-director` writes
+prompts for) — and records its path in the header's `> **Target Mockup**:` line;
+every later specialist brief passes it. When no image can be had, the header
+records `NOT CREATED [date] — [reason]` and the close warns that the bible was
+written from words only. Section 8 bans only what has a named platform cost;
+feel effects are `pending playtest`.
+
 If the file already exists, the skill builds a section status table from two
 Greps (headings and placeholder markers) without reading the document, and
 authors only Empty or Placeholder sections.
@@ -217,8 +225,39 @@ Fixture defaults.
 
 ---
 
+### Case 6: Target Mockup — chosen, or recorded as not created
+
+**Fixture:**
+- No `design/art/art-bible.md`; `design/gdd/game-concept.md` exists with pillars
+- `project.yaml` has `modes.workflow: standard` and `modes.review_mode: lean`
+- Scenario (a): the user has no image; `art-director` returns four prompt
+  directions, the user generates them and picks the second, and puts it at
+  `design/art/target/warm-wood.png`
+- Scenario (b): the user has no image and no image tool, and declines the step
+
+**Input:** `/art-bible`
+
+**Expected behavior:**
+1. After the Phase 1 framing and before Section 1, the skill asks whether the user already has a target image
+2. (a) `art-director` is spawned for 3–4 clearly different directions, each a prompt for the same screens (main play screen plus title or menu); the skill names no paid service and buys nothing
+3. (a) The four images are shown side by side and the user picks one; the header records `> **Target Mockup**: design/art/target/warm-wood.png — chosen [date]`
+4. (a) The Section 1 and Sections 2–4 briefs to `art-director` include the target mockup path
+5. (b) The header records `> **Target Mockup**: NOT CREATED [date] — [reason]`, the sections are still authored, and Phase 6 opens with "This art bible was written from words only; expect visual rework at the first playtest."
+6. Section 8's brief marks feel effects (shake, bounce, pop-in, glow, particles, flashes) `pending playtest` and bans only items with a named platform cost
+
+**Assertions:**
+- [ ] The target mockup step runs before Section 1 is drafted
+- [ ] (a) The directions are prompts from `art-director`, not drafted by the orchestrator, and no paid service is chosen for the user
+- [ ] (a) The chosen path is recorded in the `Target Mockup` header line and passed to every later section brief
+- [ ] (b) A declined or impossible mockup is recorded as `NOT CREATED` with its reason — the header never keeps `[Not yet chosen]` after the run
+- [ ] (b) The Phase 6 close states the not-created line and the words-only warning before naming the sections left out
+- [ ] Section 8 bans carry a platform cost; feel effects are `pending playtest`, not banned
+
+---
+
 ## Protocol Compliance
 
+- [ ] Fixes or records the target mockup (Phase 1b) before Section 1, and states its header line at the close
 - [ ] Reads the game concept (or game brief) before authoring; stops with the `/brainstorm` message if neither exists
 - [ ] Every section is drafted by a specialist agent; the orchestrator never drafts content itself
 - [ ] Each section is presented, approved and written one at a time — approvals and writes are never batched

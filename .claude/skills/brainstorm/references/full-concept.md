@@ -125,6 +125,11 @@ it is not for, and successful games that serve the same player.
 - Art pipeline and how labour-heavy it is; content scope (levels, items, hours); the MVP (the
   smallest build that tests whether the core loop is fun); the biggest technical, design and market
   risks; scope tiers (full vision, and what ships if time runs out).
+- **Mobile or Web platform: the MVP includes the **feedback layer** — tap, success and fail sounds, background music, a mute switch, a pressed state on every tappable element, and light haptics through the platform's own API.**
+  Players of a phone game judge these in the first seconds, so they test the core loop as much as
+  the rules do; never list audio or feedback under "Explicitly NOT in MVP". In the 2026-10-31
+  production trial the concept deferred audio to the full version and the first phone playtest's
+  first complaint was "no sound, no button feedback" (`docs/postmortems/2026-10-31-sanguo-lianliankan-playtest-lessons.md`, lesson 8).
 
 **Review mode** before TD-FEASIBILITY: `solo` or `lean` prints `TD-FEASIBILITY skipped — Solo
 mode.` (or `Lean mode`) and goes on to the scope tiers. `full`: after the technical risks, hand the

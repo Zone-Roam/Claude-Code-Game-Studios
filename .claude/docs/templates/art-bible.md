@@ -4,6 +4,7 @@
 > **Owned By**: art-director
 > **Last Updated**: [Date]
 > **Art Director Sign-Off (AD-ART-BIBLE)**: [Not yet reviewed]
+> **Target Mockup**: [Not yet chosen]
 
 `/art-bible` writes these nine sections in this order and replaces each
 section's `[To be designed]` line as that section is approved. A section still

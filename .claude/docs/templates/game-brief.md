@@ -23,7 +23,7 @@ thinking and cuts ceremony), and lean/agile GDD practice.
 -
 
 ## MVP — what must exist to be the game
-<!-- The ruthlessly short list of features without which this ISN'T the game yet. Each one becomes a story. Longer than ~7 and it's not an MVP. -->
+<!-- The ruthlessly short list of features without which this ISN'T the game yet. Each one becomes a story. Longer than ~7 and it's not an MVP. A phone or web game keeps one item for the feedback layer: tap/success/fail sounds, background music, a mute switch, pressed states, light haptics (docs/postmortems/2026-10-31-sanguo-lianliankan-playtest-lessons.md, lesson 8). -->
 -
 
 ## Out of scope — not building this

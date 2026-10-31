@@ -23,6 +23,12 @@ scope tiers are defined. Review mode comes from the resolved config
 (`--review` overrides it); `lean` and `solo` skip all four with a named note each.
 Both flows end with `Verdict: **COMPLETE**`.
 
+For a phone or web game, both flows keep the **feedback layer** in the MVP —
+tap, success and fail sounds, background music, a mute switch, pressed states
+and light haptics through the platform API — and never list audio as
+"not in MVP" (lesson 8 of
+`docs/postmortems/2026-10-31-sanguo-lianliankan-playtest-lessons.md`).
+
 ---
 
 ## Static Assertions (Structural)
@@ -234,8 +240,33 @@ Fixture defaults.
 
 ---
 
+### Case 7: Mobile Platform — the MVP keeps the feedback layer
+
+**Fixture:**
+- Scenario (a): `project.yaml` has `modes.workflow: standard` and
+  `modes.review_mode: lean` (pinned: the full flow asks for the platform);
+  at Phase 6 the user answers `Mobile (iOS / Android)`
+- Scenario (b): no `modes` block (Lean Brief flow); the user says the game is a
+  phone puzzle game, and proposes an MVP of seven gameplay items with sound left out
+
+**Input:** `/brainstorm puzzle`
+
+**Expected behavior:**
+1. (a) The MVP Definition the skill proposes lists the feedback layer (tap / success / fail sounds, background music, mute switch, pressed states, light haptics through the platform API) as required
+2. (a) Audio does not appear under "Explicitly NOT in MVP"
+3. (b) The skill keeps one MVP item for the feedback layer and, to stay at seven, proposes cutting a gameplay item the core loop works without — not the feedback layer
+4. Both write only after their "May I write" question, as in Cases 1 and 4
+
+**Assertions:**
+- [ ] (a) The written `design/gdd/game-concept.md` MVP includes the feedback layer and does not defer audio
+- [ ] (b) The written `design/game-brief.md` MVP has at most 7 items, one of them the feedback layer
+- [ ] The feedback layer is never the item proposed for cutting
+
+---
+
 ## Protocol Compliance
 
+- [ ] For a phone or web game, the MVP keeps the feedback layer in either flow
 - [ ] Checks `workflow` before anything else and runs exactly one flow
 - [ ] Full flow presents 3 concepts before the user commits; Lean Brief flow presents 2–3 one-liners
 - [ ] Concept selection always asks, regardless of `modes.automation`

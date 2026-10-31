@@ -88,6 +88,8 @@ Section | Status
 9. Reference Direction | ...
 ```
 
+- Read the header's `> **Target Mockup**:` line too (Grep `^> \*\*Target Mockup` in the same file). Absent or
+  `[Not yet chosen]`: run Phase 1b before the incomplete sections.
 - Present this table to the user:
   > "Found existing art bible at `design/art/art-bible.md`. [N] sections are complete, [M] need content. I'll work on the incomplete sections only — existing content will not be touched."
 - Only work on sections with Status: Empty or Placeholder. Do not re-author sections that are already complete.
@@ -141,6 +143,43 @@ If the game-concept.md has a Visual Identity Anchor section, note it:
 sections inside it — for `Resume`, the Empty and Placeholder rows of the
 retrofit table — and skip every other section, and any phase left with none.
 Phase 6 names each section not authored this run and why.
+
+---
+
+## Phase 1b: Target Mockup (before any section)
+
+Words do not settle a visual style; a picture the user picked does. In the
+2026-10-31 production trial the art bible was written from words first, the
+user called the result dated, and the UI was redrawn several times to reach an
+effect image the user already had (`docs/postmortems/2026-10-31-sanguo-lianliankan-playtest-lessons.md`, lesson 1).
+So before Section 1, fix **one target mockup**: a full-screen image of the game
+the user points at and says "this".
+
+1. Ask whether the user already has one — their own art, an effect image, a
+   screenshot of the closest reference game. If so, take its path and go to step 3.
+2. Otherwise spawn `art-director` via `Agent` (game concept, pillars or the
+   brief's pitch, platform and aspect ratio, Phase 1 references, the visual anchor
+   if any) and ask for **3–4 clearly different directions**, each as an
+   image-generation prompt for the same screens: the main play screen, plus the
+   title or menu screen. The user generates them with an image tool they already
+   use (or Claude runs a connected tool the user names). Never choose a paid
+   service for the user, and never buy credits.
+3. Show the images side by side and ask the user to pick one (or name what to
+   combine). The picked image belongs in `design/art/target/`; this skill cannot copy
+   files, so when it lives elsewhere ask the user to put it there and give the file
+   name. Record its path in the art bible header:
+   `> **Target Mockup**: design/art/target/[name] — chosen [date]` — now if the file
+   exists, otherwise in the same write that creates it from the template (Section 1).
+4. Every specialist brief in Phases 2–4 passes the target mockup path. Sections
+   describe and constrain **the picked image**; they do not invent a style beside it.
+   Later UI work is checked side by side against it.
+
+**Not created** — no image could be produced, or the user declined: record
+`> **Target Mockup**: NOT CREATED [date] — [reason]` in the header (the same timing as
+above) and carry on.
+Phase 6 then says, before anything else: "This art bible was written from words
+only; expect visual rework at the first playtest." Never leave the line at
+`[Not yet chosen]` after a run: a skipped mockup must read as skipped.
 
 ---
 
@@ -283,6 +322,12 @@ Write the approved section to file.
 - **`art-director`**: File format preferences, naming convention direction, texture resolution tiers, LOD level expectations, export settings philosophy
 - **`technical-artist`**: Engine-specific hard constraints — poly count budgets per asset category, texture memory limits, material slot counts, importer constraints, anything from the performance budgets (`performance.*` in `project.yaml`, falling back to `.claude/docs/technical-preferences.md`)
 
+**Bans are for cost, not taste.** A ban in this section (motion, effects, filters) must name the
+platform cost it avoids, measured or sourced. Feel effects the player may like — screen shake,
+bounce, pop-in, glow, particles, flashes — are listed as `pending playtest`, not banned: in the
+2026-10-31 trial every effect the user asked for at the first playtest (shatter ending, rage shake,
+pop-in) sat on this section's banned list (`docs/postmortems/2026-10-31-sanguo-lianliankan-playtest-lessons.md`, lesson 1).
+
 If any art preference conflicts with a technical constraint (e.g., art-director wants 4K textures but performance budget requires 2K for mobile), surface the conflict explicitly with both positions — the ideal and the constrained standard, and the tradeoff. Do NOT silently resolve it — use `AskUserQuestion` to let the user pick (options: the ideal standard, the constrained standard, or document both and let per-asset judgment apply). Ambiguity in asset standards is where production costs are born.
 
 Write the approved section to file.
@@ -337,8 +382,9 @@ Record the verdict in the art bible's status header:
 
 ## Phase 6: Close
 
-First, name each of the nine sections not authored this run and why — outside
-the chosen scope, or already complete — e.g. *"Not authored this run: sections
+First, state the target mockup line exactly as recorded in the header (the chosen path, or
+`NOT CREATED — [reason]` with the warning from Phase 1b). Then name each of the nine sections not
+authored this run and why — outside the chosen scope, or already complete — e.g. *"Not authored this run: sections
 5–9 (outside the chosen scope; `standard` requires 1–4)."* A run that stopped
 after Section 4 must not read like a finished bible.
 

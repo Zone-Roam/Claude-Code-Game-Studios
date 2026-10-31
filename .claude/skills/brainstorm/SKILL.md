@@ -57,7 +57,9 @@ one-liners). If `design/game-brief.md` exists, read it and refine it instead of 
      `/create-stories` turns it into acceptance criteria.
    - **MVP:** the short list that makes it the game; each item becomes a story. **More than 7
      items: push back.** Say it is too long for an MVP, propose which items to cut (the ones the
-     core loop works without), and keep the brief to 7 or fewer.
+     core loop works without), and keep the brief to 7 or fewer. **A phone or web game keeps one
+     item for the **feedback layer** — tap, success and fail sounds, background music, a mute switch, a pressed state on every tappable element, and light haptics through the platform's own API** — never cut it; see
+     `docs/postmortems/2026-10-31-sanguo-lianliankan-playtest-lessons.md`, lesson 8.
    - **Out of scope:** what they are deliberately not building (the cut items go here).
    - **Build order:** the riskiest or least proven part first.
    - **Who it's for and what they feel**, **Art & audio direction**, **Reference game** (the

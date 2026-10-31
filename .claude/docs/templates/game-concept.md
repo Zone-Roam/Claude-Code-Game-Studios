@@ -289,6 +289,10 @@ the combat-crafting loop engaging for 30+ minute sessions"]
 2. [Essential feature 2]
 3. [Essential feature 3]
 
+> **Mobile / Web games:** the MVP includes the feedback layer — tap, success and fail sounds,
+> background music, a mute switch, a pressed state on every tappable element, light haptics through
+> the platform's API. Do not list audio below. (`docs/postmortems/2026-10-31-sanguo-lianliankan-playtest-lessons.md`, lesson 8)
+
 **Explicitly NOT in MVP** (defer to later):
 - [Feature that's nice but doesn't test the hypothesis]
 - [Feature that adds scope without validating the core]
